@@ -1,0 +1,141 @@
+// Prisma Schema for Content Refinery
+// Using Render PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// SOURCES - Raw uploaded content
+// ============================================
+model Source {
+  id               String   @id @default(uuid())
+  title            String
+  sourceType       String   @map("source_type") // audio, video, text, url
+  fileUrl          String?  @map("file_url")
+  originalFilename String?  @map("original_filename")
+  fileSizeBytes    BigInt?  @map("file_size_bytes")
+  durationSeconds  Int?     @map("duration_seconds")
+  status           String   @default("pending") // pending, uploading, processing, completed, failed
+  errorMessage     String?  @map("error_message")
+  metadata         Json     @default("{}")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  transcripts  Transcript[]
+  extractions  Extraction[]
+
+  @@map("sources")
+}
+
+// ============================================
+// TRANSCRIPTS
+// ============================================
+model Transcript {
+  id              String   @id @default(uuid())
+  sourceId        String   @map("source_id")
+  fullText        String   @map("full_text")
+  wordTimestamps  Json?    @map("word_timestamps")
+  speakerSegments Json?    @map("speaker_segments")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  source      Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  extractions Extraction[]
+
+  @@map("transcripts")
+}
+
+// ============================================
+// EXTRACTIONS - AI-extracted content pieces
+// ============================================
+model Extraction {
+  id           String   @id @default(uuid())
+  sourceId     String   @map("source_id")
+  transcriptId String?  @map("transcript_id")
+  type         String   // quote, stat, hot_take, story, clip, product_mention
+  text         String
+  startTime    Decimal? @map("start_time")
+  endTime      Decimal? @map("end_time")
+  confidence   Decimal  @default(0.5)
+  productIds   String[] @map("product_ids")
+  isUsed       Boolean  @default(false) @map("is_used")
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  source           Source             @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  transcript       Transcript?        @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  generatedContent GeneratedContent[]
+
+  @@map("extractions")
+}
+
+// ============================================
+// GENERATED_CONTENT - Platform-specific posts
+// ============================================
+model GeneratedContent {
+  id              String    @id @default(uuid())
+  extractionId    String    @map("extraction_id")
+  platform        String    // twitter, instagram, facebook, linkedin, tiktok, youtube
+  text            String
+  hashtags        String[]
+  mediaUrl        String?   @map("media_url")
+  mediaGuidance   String?   @map("media_guidance")
+  status          String    @default("draft") // draft, pending_review, approved, scheduled, published, failed
+  scheduledFor    DateTime? @map("scheduled_for")
+  publishedAt     DateTime? @map("published_at")
+  platformPostId  String?   @map("platform_post_id")
+  platformPostUrl String?   @map("platform_post_url")
+  engagementData  Json      @default("{}")  @map("engagement_data")
+  reviewedBy      String?   @map("reviewed_by")
+  reviewedAt      DateTime? @map("reviewed_at")
+  metadata        Json      @default("{}")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  extraction Extraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+
+  @@map("generated_content")
+}
+
+// ============================================
+// PRODUCTS - Shopify product cache
+// ============================================
+model Product {
+  id                String   @id @default(uuid())
+  shopifyId         String   @unique @map("shopify_id")
+  title             String
+  description       String?
+  price             Decimal
+  compareAtPrice    Decimal? @map("compare_at_price")
+  url               String
+  imageUrl          String?  @map("image_url")
+  vendor            String?
+  productType       String?  @map("product_type")
+  tags              String[]
+  status            String   @default("active")
+  inventoryQuantity Int?     @map("inventory_quantity")
+  syncedAt          DateTime @default(now()) @map("synced_at")
+
+  @@map("products")
+}
+
+// ============================================
+// PLATFORM_CREDENTIALS - Social media tokens
+// ============================================
+model PlatformCredential {
+  id           String   @id @default(uuid())
+  platform     String   @unique // twitter, instagram, facebook, linkedin, tiktok, youtube
+  accessToken  String   @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  expiresAt    DateTime? @map("expires_at")
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_credentials")
+}

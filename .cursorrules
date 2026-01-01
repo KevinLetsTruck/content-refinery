@@ -1,0 +1,173 @@
+# Content Refinery - Cursor AI Rules
+
+## Project Overview
+Content Refinery is a social media content automation platform for Let's Truck Health Coaching. It transforms podcast episodes, coaching sessions, and health guides into platform-optimized social media content.
+
+## Tech Stack
+- **Frontend**: Next.js 14 (App Router), React 18, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui components
+- **Backend**: Next.js API Routes, Server Actions
+- **Database**: PostgreSQL on Render, Prisma ORM
+- **AI**: Anthropic Claude API (claude-sonnet-4-20250514 for bulk, claude-opus-4-5-20250514 for quality)
+- **Transcription**: Deepgram API
+- **Storage**: Local filesystem (MVP), Cloudflare R2 (production)
+- **Hosting**: Render
+
+## Voice & Brand Guidelines
+All generated content must match Kevin Rutherford's voice:
+- **Tone**: Direct, no-BS, Larry Winget style
+- **Language**: Plain English, trucking industry vernacular
+- **Stance**: Anti-conventional medicine establishment, pro-functional health
+- **Key phrases**: "proper human diet", "diesel in your blood", "owner-operator"
+- **Avoid**: Wishy-washy language, excessive disclaimers, corporate speak
+
+## Database Access
+ALWAYS use Prisma for database operations:
+
+```typescript
+import prisma from "@/lib/db/prisma";
+
+// Find records
+const sources = await prisma.source.findMany({
+  where: { status: "completed" },
+  orderBy: { createdAt: "desc" },
+});
+
+// Create records
+const source = await prisma.source.create({
+  data: { title, sourceType, status: "pending" },
+});
+
+// Update records
+await prisma.source.update({
+  where: { id },
+  data: { status: "processing" },
+});
+
+// Include relations
+const content = await prisma.generatedContent.findMany({
+  include: {
+    extraction: {
+      include: { source: true },
+    },
+  },
+});
+```
+
+## Code Style
+- Use TypeScript strict mode
+- Prefer Server Components, use 'use client' only when necessary
+- Use React Server Actions for mutations
+- Implement proper error boundaries
+- Use Zod for all API validation
+- Prefer composition over inheritance
+- Keep components small and focused
+
+## File Organization
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API routes
+│   └── (pages)/           # Page components
+├── components/
+│   ├── ui/                # shadcn/ui components
+│   ├── content/           # Content-specific components
+│   └── queue/             # Review queue components
+├── lib/
+│   ├── ai/                # Claude integration
+│   ├── audio/             # Transcription/audio processing
+│   ├── db/                # Prisma client
+│   ├── storage/           # File upload handling
+│   └── utils/             # Shared utilities
+├── types/                 # TypeScript types
+└── prisma/
+    └── schema.prisma      # Database schema
+```
+
+## Prisma Schema (Key Models)
+- `Source` - Uploaded audio/video/text content
+- `Transcript` - Processed transcriptions
+- `Extraction` - AI-extracted content pieces (quotes, stats, clips)
+- `GeneratedContent` - Platform-specific generated posts
+- `Product` - Shopify product cache
+
+## Common Patterns
+
+### API Route with Prisma
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db/prisma";
+
+export async function GET(request: NextRequest) {
+  try {
+    const items = await prisma.source.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json({ items });
+  } catch (error) {
+    console.error("Error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### AI Content Generation
+```typescript
+import { generateContent } from '@/lib/ai/claude';
+
+const result = await generateContent({
+  type: 'tweet',
+  source: extractedQuote,
+  voice: 'kevin',
+  productMentions: relevantProducts,
+});
+```
+
+## Priority Features (In Order)
+1. ✅ Audio upload + transcription
+2. ✅ AI extraction (quotes, stats, clip timestamps)
+3. ✅ Content generation (platform variations)
+4. ✅ Review queue UI
+5. 🔧 Shopify product integration
+6. 🔧 Twitter/X publishing
+7. 📋 Analytics dashboard
+8. 📋 Multi-platform expansion
+
+## Environment Variables Required
+```
+DATABASE_URL=postgresql://...
+ANTHROPIC_API_KEY=sk-ant-...
+DEEPGRAM_API_KEY=...
+SHOPIFY_STORE=store-letstruck
+SHOPIFY_ACCESS_TOKEN=shpat_...
+NEXT_PUBLIC_APP_URL=...
+```
+
+## Common Commands
+```bash
+npm run dev          # Start development server
+npm run build        # Production build
+npx prisma generate  # Generate Prisma client
+npx prisma db push   # Push schema to database
+npx prisma studio    # Open database GUI
+npm run test         # Run tests
+```
+
+## Key Decisions Made
+1. Render PostgreSQL + Prisma ORM (simpler than Supabase)
+2. Server Actions over tRPC for simplicity
+3. shadcn/ui for consistent, accessible components
+4. Deepgram for transcription (best accuracy for podcasts)
+5. Single review queue vs per-platform queues
+6. Local storage MVP, R2 for production scale
+
+## When Uncertain
+1. Prioritize shipping over perfection
+2. Match Kevin's voice exactly
+3. Keep the UI simple - this is for team members
+4. Log everything for debugging
+5. Use Prisma - never raw SQL
+6. Ask for clarification rather than assuming

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       contentId,      // Optional: Link to GeneratedContent record
       text,           // Required: The content to visualize
       contentType,    // Optional: quote, stat, testimonial, teaser, etc.
-      outputType,     // Optional: social_post (default), presentation, document
+      outputType,     // Optional: social (default), presentation, document, webpage
       waitForResult,  // Optional: true to poll until complete
       additionalInstructions, // Optional: Extra instructions for this generation
     } = body;
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Start generation
     const { generationId } = await gamma.generate({
       inputText: text,
-      outputType: outputType || "social_post",
+      outputType: outputType || "social",
       themeId: LETSTRUCK_THEME_ID,
       additionalInstructions: fullInstructions,
       imageOptions: {

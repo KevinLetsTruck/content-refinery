@@ -8,7 +8,7 @@ import { GAMMA_BRAND_INSTRUCTIONS, LETSTRUCK_THEME_ID } from "./brand-rules";
 const GAMMA_API_URL = "https://public-api.gamma.app/v1.0";
 const GAMMA_API_KEY = process.env.GAMMA_API_KEY;
 
-export type GammaOutputType = "social_post" | "presentation" | "document" | "webpage";
+export type GammaOutputType = "social" | "presentation" | "document" | "webpage";
 export type GammaImageSource = "aiGenerated" | "web" | "none";
 export type GammaStatus = "pending" | "completed" | "failed";
 
@@ -82,7 +82,8 @@ export class GammaClient {
       },
       body: JSON.stringify({
         inputText: request.inputText,
-        format: request.outputType || "social_post",
+        format: request.outputType || "social",
+        textMode: "generate",
         themeId: request.themeId || this.themeId,
         additionalInstructions: fullInstructions,
         imageOptions: request.imageOptions || {

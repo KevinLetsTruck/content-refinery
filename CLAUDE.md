@@ -1,3 +1,118 @@
+## Processing Pipeline
+
+The processing pipeline (`/api/process`) handles the full flow from raw content to platform-ready posts:
+
+### Pipeline Steps
+
+1. **Transcription** (Deepgram)
+   - Converts audio to text
+   - Word-level timestamps
+   - Speaker diarization
+
+2. **AI Extraction** (Claude)
+   - Identifies quotes, stats, hot takes, stories, clips
+   - Scores by engagement potential
+   - Links product mentions
+
+3. **Content Generation** (Claude)
+   - Creates platform-specific versions
+   - Applies voice profile
+   - Adds hashtags and CTAs
+
+### Auto-Processing
+
+Processing auto-triggers when content is ingested via `/api/ingest`. To disable:
+
+```json
+{ "autoProcess": false }
+```
+
+### Manual Processing
+
+```bash
+curl -X POST http://localhost:3000/api/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sourceId": "your-source-id",
+    "steps": ["transcribe", "extract", "generate"]
+  }'
+```
+
+---
+
+## Publishing
+
+Content Refinery can publish approved content directly to social platforms.
+
+### Supported Platforms
+
+| Platform | Status | Auth Method |
+|----------|--------|-------------|
+| Twitter/X | ✅ Ready | OAuth 1.0a |
+| Instagram | 🚧 Planned | Meta Business API |
+| Facebook | 🚧 Planned | Meta Business API |
+| LinkedIn | 🚧 Planned | OAuth 2.0 |
+| TikTok | 🚧 Planned | OAuth 2.0 |
+
+### Twitter Publishing
+
+Required environment variables:
+```env
+TWITTER_API_KEY=consumer_key
+TWITTER_API_SECRET=consumer_secret
+TWITTER_ACCESS_TOKEN=access_token
+TWITTER_ACCESS_SECRET=access_token_secret
+```
+
+Publish via API:
+```bash
+curl -X POST http://localhost:3000/api/publish \
+  -H "Content-Type: application/json" \
+  -d '{ "contentId": "your-content-id", "immediate": true }'
+```
+
+Or use the "Publish Now" button in the Review Queue.
+
+### Publishing Flow
+
+1. Content goes through Review Queue
+2. Team member clicks "Approve" or "Approve & Publish"
+3. If approved only, can publish later from Approved tab
+4. Publishing posts to platform and saves URL back to database
+
+---
+
+## AudioRoad Integration
+
+AudioRoad can send episodes directly to Content Refinery.
+
+### Client Library
+
+Copy `src/lib/client/audioroad-client.ts` to your AudioRoad app.
+
+```typescript
+import { sendEpisodeToContentRefinery } from './audioroad-client';
+
+const result = await sendEpisodeToContentRefinery({
+  title: 'TBB Episode 2847',
+  audioUrl: 'https://storage.com/episode.mp3',
+  showName: 'Trucking Business & Beyond',
+  episodeNumber: 2847,
+});
+
+console.log('Processing started:', result.sourceId);
+```
+
+### Environment Setup
+
+In AudioRoad's `.env`:
+```env
+CONTENT_REFINERY_URL=https://content-refinery.onrender.com
+CONTENT_REFINERY_API_KEY=cr_audioroad_xxxxx
+```
+
+---
+
 # CLAUDE.md - Project Knowledge Base
 
 ## What Is This Project?

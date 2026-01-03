@@ -20,6 +20,9 @@ const IngestPayloadSchema = z.object({
   
   // Optional metadata
   metadata: z.record(z.any()).optional(),
+  
+  // Processing control
+  autoProcess: z.boolean().optional().default(true), // Auto-trigger processing
 });
 
 type IngestPayload = z.infer<typeof IngestPayloadSchema>;
@@ -230,9 +233,17 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    // 8. Return success with source ID
     console.log(`[Ingest] Created source ${source.id} from ${sourceApp.name} (${payload.contentType})`);
     
+    // 8. Auto-trigger processing if enabled
+    if (payload.autoProcess !== false) {
+      // Fire and forget - don't wait for processing to complete
+      triggerProcessing(source.id).catch((err) => {
+        console.error(`[Ingest] Failed to trigger processing for ${source.id}:`, err);
+      });
+    }
+    
+    // 9. Return success with source ID
     return NextResponse.json({
       success: true,
       sourceId: source.id,
@@ -241,8 +252,9 @@ export async function POST(request: NextRequest) {
         needsTranscription: source.needsTranscription,
         needsExtraction: source.needsExtraction,
         voiceProfile: sourceApp.voiceProfile,
+        autoProcess: payload.autoProcess !== false,
       },
-      message: `Content received from ${sourceApp.displayName}. Processing will begin shortly.`,
+      message: `Content received from ${sourceApp.displayName}. ${payload.autoProcess !== false ? "Processing started." : "Ready for manual processing."}`,
     }, { status: 201 });
     
   } catch (error) {
@@ -251,6 +263,40 @@ export async function POST(request: NextRequest) {
       { error: "Internal server error" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Trigger processing for a source
+ * This is called internally, not from external apps
+ */
+async function triggerProcessing(sourceId: string): Promise<void> {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "http://localhost:3000";
+  
+  try {
+    const response = await fetch(`${baseUrl}/api/process`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceId }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Processing failed");
+    }
+    
+    const result = await response.json();
+    console.log(`[Ingest] Processing triggered for ${sourceId}:`, result);
+  } catch (error) {
+    console.error(`[Ingest] Processing trigger failed for ${sourceId}:`, error);
+    // Update source status to indicate processing failed to start
+    await prisma.source.update({
+      where: { id: sourceId },
+      data: {
+        status: "pending",
+        errorMessage: `Auto-processing failed to start: ${error instanceof Error ? error.message : "Unknown error"}`,
+      },
+    });
   }
 }
 

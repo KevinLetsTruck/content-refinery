@@ -180,7 +180,7 @@ const initialState = {
   publishOption: 'schedule' as PublishOption,
   scheduledTime: null,
   
-  aiPanelOpen: true,
+  aiPanelOpen: false,
   aiMessages: [],
   aiSuggestions: [],
 };

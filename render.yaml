@@ -24,10 +24,7 @@ services:
       - key: SHOPIFY_ACCESS_TOKEN
         sync: false
       - key: NEXT_PUBLIC_APP_URL
-        fromService:
-          type: web
-          name: content-refinery
-          property: url
+        value: https://content-refinery.onrender.com
       - key: UPLOAD_DIR
         value: /app/uploads
       - key: NODE_ENV

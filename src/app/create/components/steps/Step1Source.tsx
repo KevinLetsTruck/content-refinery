@@ -98,12 +98,12 @@ export function Step1Source() {
       {/* Quick Create Banner */}
       <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-6">
         <div className="flex items-start gap-4">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-lg">Quick Create</h3>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-muted-foreground mt-1 break-words">
               Just type your idea and let AI handle the rest. One click to create, review, and schedule.
             </p>
             <div className="mt-4 flex flex-col sm:flex-row gap-3">

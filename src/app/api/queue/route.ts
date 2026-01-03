@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
-// GET /api/queue - Get all pending review items
+// GET /api/queue - Get content items by status
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
     const platform = searchParams.get("platform");
+    const status = searchParams.get("status") || "pending";
     const limit = parseInt(searchParams.get("limit") || "50");
+
+    // Map status to database values
+    const statusMap: Record<string, string[]> = {
+      pending: ["pending", "pending_review", "draft"],
+      approved: ["approved", "scheduled"],
+      published: ["published"],
+      failed: ["failed"],
+    };
+
+    const dbStatuses = statusMap[status] || [status];
 
     const items = await prisma.generatedContent.findMany({
       where: {
-        status: "pending_review",
+        status: { in: dbStatuses },
         ...(platform ? { platform } : {}),
       },
       include: {
@@ -40,9 +51,11 @@ export async function GET(request: NextRequest) {
       created_at: item.createdAt,
       extraction_type: item.extraction?.type,
       extraction_text: item.extraction?.text,
-      confidence: item.extraction?.confidence,
+      confidence: item.extraction?.confidence?.toNumber(),
       source_title: item.extraction?.source?.title,
       source_type: item.extraction?.source?.sourceType,
+      platformPostUrl: item.platformPostUrl,
+      publishedAt: item.publishedAt,
     }));
 
     return NextResponse.json({ items: transformedItems });

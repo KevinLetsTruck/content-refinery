@@ -24,11 +24,20 @@ services:
       - key: SHOPIFY_ACCESS_TOKEN
         sync: false
       - key: NEXT_PUBLIC_APP_URL
-        value: https://content-refinery.onrender.com
+        value: https://content-refinery-07dc.onrender.com
       - key: UPLOAD_DIR
         value: /app/uploads
       - key: NODE_ENV
         value: production
+      # Cloudflare R2 Storage (for large file uploads)
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_R2_ACCESS_KEY_ID
+        sync: false
+      - key: CLOUDFLARE_R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: CLOUDFLARE_R2_BUCKET
+        value: content-refinery
     disk:
       name: uploads
       mountPath: /app/uploads

@@ -345,6 +345,11 @@ Each content type has specific processing rules:
 - `POST /api/queue/:id/reject` - Kill content
 - `POST /api/queue/:id/regenerate` - AI retry
 
+### Gamma Visual Generation
+- `POST /api/gamma/generate` - Create social media visual
+- `GET /api/gamma/generate?id=xxx` - Check generation status
+- `GET /api/gamma/themes` - List available themes
+
 ## API Keys & Services
 
 | Service | Purpose | Environment Variable |
@@ -352,6 +357,7 @@ Each content type has specific processing rules:
 | Render PostgreSQL | Database | DATABASE_URL |
 | Anthropic | AI content generation | ANTHROPIC_API_KEY |
 | Deepgram | Audio transcription | DEEPGRAM_API_KEY |
+| **Gamma** | Visual content generation | GAMMA_API_KEY |
 | Shopify | Product catalog | SHOPIFY_* |
 | Twitter/X | Publishing | TWITTER_* |
 | Meta | FB/IG publishing | META_* |
@@ -406,8 +412,53 @@ Each content type has specific processing rules:
 2. **Weekly**: Review analytics, identify winners
 3. **Monthly**: Suggest new content types or prompts
 
+## Gamma Visual Generation
+
+Content Refinery integrates with Gamma.app API to automatically generate on-brand social media visuals.
+
+### Theme Configuration
+- **Theme ID**: `jg2glj9ae8ah4vv` (Let's Truck custom theme)
+- **Style**: Dark backgrounds (#0D0D0D), orange accents (#FF4500), bold typography
+
+### Brand Voice Rules (Auto-Injected)
+All Gamma generations automatically include these rules:
+
+**CRITICAL TERMINOLOGY:**
+| ❌ NEVER Say | ✅ ALWAYS Use |
+|--------------|---------------|
+| Trucker | Driver, Professional Driver |
+| Truckers | Drivers, O/Os, Owner-Operators, The Tribe |
+| Truck driver | Professional driver |
+| Big rig, 18-wheeler | Truck, Rig, Equipment |
+
+**Voice**: Direct, no-BS, confident, anti-establishment
+**Phrases**: "proper human diet", "owner-operator of your health", "diesel in your blood"
+
+### Usage Example
+
+```bash
+curl -X POST http://localhost:3000/api/gamma/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "70% of professional drivers test positive for Candida overgrowth vs 13% of the general population.",
+    "contentType": "stat",
+    "waitForResult": true
+  }'
+```
+
+### Content Types
+- `quote` - Bold quote card with orange accent bar
+- `stat` - Large number prominent in orange
+- `testimonial` - Authentic transformation story
+- `teaser` - Story teaser with suspense
+- `tip` - Actionable tip card
+- `product` - Product spotlight tied to driver lifestyle
+
+---
+
 ## Future Enhancements (Backlog)
 
+- [x] ~~Gamma API integration~~ ✅ DONE
 - [ ] Video clip extraction with AI scene detection
 - [ ] Audiogram generation with waveform visualization
 - [ ] A/B testing of content variations

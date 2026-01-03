@@ -36,6 +36,6 @@ services:
 
 databases:
   - name: content-refinery-db
-    plan: basic_256mb
+    plan: free
     databaseName: content_refinery
     user: content_refinery_user

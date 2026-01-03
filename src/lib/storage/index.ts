@@ -1,5 +1,6 @@
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, readFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { existsSync } from "fs";
 import { v4 as uuid } from "uuid";
 
 // Simple local file storage for MVP
@@ -32,6 +33,16 @@ export async function uploadFile(
 
 export async function getFileUrl(key: string): Promise<string> {
   return `/uploads/${key}`;
+}
+
+export async function getFile(key: string): Promise<Buffer | null> {
+  const filePath = join(UPLOAD_DIR, key);
+  
+  if (!existsSync(filePath)) {
+    return null;
+  }
+  
+  return await readFile(filePath);
 }
 
 // For production with Cloudflare R2:

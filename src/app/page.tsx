@@ -7,7 +7,8 @@ import {
   Settings,
   Mic,
   FileText,
-  ShoppingBag
+  ShoppingBag,
+  Sparkles
 } from "lucide-react";
 import prisma from "@/lib/db/prisma";
 
@@ -65,6 +66,8 @@ export default async function HomePage() {
         </div>
         
         <nav className="px-4 space-y-2">
+          <NavItem href="/create" icon={<Sparkles className="h-4 w-4" />} label="✨ Create Content" />
+          <div className="h-px bg-border my-2" />
           <NavItem href="/ingest" icon={<Upload className="h-4 w-4" />} label="Ingest Content" />
           <NavItem href="/extract" icon={<Mic className="h-4 w-4" />} label="Extract" />
           <NavItem href="/generate" icon={<FileText className="h-4 w-4" />} label="Generate" />
@@ -111,6 +114,25 @@ export default async function HomePage() {
               trend="Coming soon"
             />
           </div>
+
+          {/* Hero Action - Create Content */}
+          <Link 
+            href="/create"
+            className="block bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/20 rounded-xl p-6 mb-8 hover:border-primary/40 transition-all group"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold">Create Content</h3>
+                <p className="text-muted-foreground">AI-guided wizard to create social media posts from ideas, guides, or products</p>
+              </div>
+              <div className="text-primary font-medium">
+                Start Creating →
+              </div>
+            </div>
+          </Link>
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

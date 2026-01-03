@@ -456,9 +456,58 @@ curl -X POST http://localhost:3000/api/gamma/generate \
 
 ---
 
+## Content Creation Wizard
+
+The wizard (`/create`) provides a 7-step AI-guided flow to create social media content:
+
+### Steps
+1. **Source** - Choose starting point (idea, guide, episode, product, testimonial, TruckTales)
+2. **Interview** - AI asks clarifying questions to refine the message
+3. **Content** - AI generates 3 content variations, user selects one
+4. **Platforms** - Select target platforms (Instagram, Facebook, LinkedIn, Twitter, TikTok)
+5. **Visuals** - Gamma generates on-brand graphics for each platform
+6. **Review** - Final check with brand compliance validation
+7. **Publish** - Schedule, post now, add to queue, or save as draft
+
+### Key Features
+- **AI Co-Pilot**: Persistent AI assistant panel available at every step
+- **Brand Compliance**: Auto-checks for banned terms ("trucker", etc.)
+- **Quick Create**: One-click mode where AI handles everything
+- **Multi-Platform**: Generate content for multiple platforms simultaneously
+
+### Technical Stack
+- **State**: Zustand store (`src/app/create/store.ts`)
+- **UI**: Step components in `src/app/create/components/steps/`
+- **AI**: `/api/ai/chat` for assistant, `/api/create/generate` for content
+- **Visuals**: Gamma API integration via `/api/gamma/generate`
+
+### File Structure
+```
+src/app/create/
+├── page.tsx           # Main wizard container
+├── layout.tsx         # Wizard layout
+├── store.ts           # Zustand state management
+└── components/
+    ├── WizardProgress.tsx
+    ├── WizardNavigation.tsx
+    ├── ai/
+    │   └── AIAssistantPanel.tsx
+    └── steps/
+        ├── Step1Source.tsx
+        ├── Step2Interview.tsx
+        ├── Step3Content.tsx
+        ├── Step4Platforms.tsx
+        ├── Step5Visuals.tsx
+        ├── Step6Review.tsx
+        └── Step7Publish.tsx
+```
+
+---
+
 ## Future Enhancements (Backlog)
 
 - [x] ~~Gamma API integration~~ ✅ DONE
+- [x] ~~Content Creation Wizard~~ ✅ DONE
 - [ ] Video clip extraction with AI scene detection
 - [ ] Audiogram generation with waveform visualization
 - [ ] A/B testing of content variations

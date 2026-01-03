@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { uploadFile } from "@/lib/storage";
 
+// Configure API route for large file uploads
+export const runtime = 'nodejs';
+export const maxDuration = 60; // 60 seconds timeout
+
 // POST /api/sources - Create a new source from uploaded file or URL
 export async function POST(request: NextRequest) {
   try {
@@ -53,8 +57,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ source }, { status: 201 });
   } catch (error) {
     console.error("Error creating source:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : "";
+    console.error("Error details:", { message: errorMessage, stack: errorStack });
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: `Failed to create source: ${errorMessage}` },
       { status: 500 }
     );
   }

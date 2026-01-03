@@ -99,7 +99,7 @@ export function AIAssistantPanel() {
   if (!aiPanelOpen) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-full w-80 bg-card border-l flex flex-col z-50 shadow-lg">
+    <aside className="fixed right-0 top-0 h-full w-72 bg-card border-l flex flex-col z-50 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-primary/5">
         <div className="flex items-center gap-2">

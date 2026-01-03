@@ -9,22 +9,66 @@ import {
   FileText,
   ShoppingBag
 } from "lucide-react";
+import prisma from "@/lib/db/prisma";
 
-export default function HomePage() {
+// Fetch real data from the database
+async function getDashboardData() {
+  const [
+    pendingReviewCount,
+    totalSources,
+    totalContent,
+    recentSources
+  ] = await Promise.all([
+    prisma.generatedContent.count({ where: { status: "pending" } }),
+    prisma.source.count(),
+    prisma.generatedContent.count(),
+    prisma.source.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: {
+        _count: {
+          select: { extractions: true }
+        }
+      }
+    })
+  ]);
+
+  return {
+    pendingReviewCount,
+    totalSources,
+    totalContent,
+    recentSources
+  };
+}
+
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} days ago`;
+}
+
+export default async function HomePage() {
+  const { pendingReviewCount, totalSources, totalContent, recentSources } = await getDashboardData();
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
       <aside className="w-64 border-r bg-card">
         <div className="p-6">
           <h1 className="text-xl font-bold text-primary">Content Refinery</h1>
-          <p className="text-sm text-muted-foreground">Let's Truck</p>
+          <p className="text-sm text-muted-foreground">Let&apos;s Truck</p>
         </div>
         
         <nav className="px-4 space-y-2">
           <NavItem href="/ingest" icon={<Upload className="h-4 w-4" />} label="Ingest Content" />
           <NavItem href="/extract" icon={<Mic className="h-4 w-4" />} label="Extract" />
           <NavItem href="/generate" icon={<FileText className="h-4 w-4" />} label="Generate" />
-          <NavItem href="/queue" icon={<ListTodo className="h-4 w-4" />} label="Review Queue" badge="12" />
+          <NavItem href="/queue" icon={<ListTodo className="h-4 w-4" />} label="Review Queue" badge={pendingReviewCount > 0 ? String(pendingReviewCount) : undefined} />
           <NavItem href="/calendar" icon={<Calendar className="h-4 w-4" />} label="Calendar" />
           <NavItem href="/analytics" icon={<BarChart3 className="h-4 w-4" />} label="Analytics" />
           <NavItem href="/products" icon={<ShoppingBag className="h-4 w-4" />} label="Products" />
@@ -44,27 +88,27 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard 
               title="Pending Review" 
-              value="12" 
+              value={String(pendingReviewCount)} 
               subtitle="Content pieces"
-              trend="+3 today"
+              trend={pendingReviewCount > 0 ? "Ready for review" : "All caught up!"}
             />
             <StatCard 
-              title="Scheduled" 
-              value="47" 
-              subtitle="Posts this week"
-              trend="89% coverage"
+              title="Sources" 
+              value={String(totalSources)} 
+              subtitle="Podcasts uploaded"
+              trend={totalSources > 0 ? "Processing" : "Upload your first!"}
             />
             <StatCard 
-              title="Published" 
-              value="234" 
-              subtitle="This month"
-              trend="+156% vs last month"
+              title="Content Generated" 
+              value={String(totalContent)} 
+              subtitle="Total pieces"
+              trend={totalContent > 0 ? "AI-generated" : "Start generating"}
             />
             <StatCard 
-              title="Engagement" 
-              value="89K" 
-              subtitle="Total interactions"
-              trend="+198% vs last month"
+              title="Ready to Publish" 
+              value="0" 
+              subtitle="Approved posts"
+              trend="Coming soon"
             />
           </div>
 
@@ -80,7 +124,7 @@ export default function HomePage() {
               href="/queue"
               icon={<ListTodo className="h-8 w-8" />}
               title="Review Queue"
-              description="12 items waiting for review"
+              description={pendingReviewCount > 0 ? `${pendingReviewCount} items waiting for review` : "No items to review"}
             />
             <QuickAction 
               href="/generate"
@@ -94,21 +138,20 @@ export default function HomePage() {
           <div className="bg-card rounded-lg border p-6">
             <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
             <div className="space-y-4">
-              <ActivityItem 
-                title="TBB Episode 2847 processed"
-                subtitle="42 content pieces extracted"
-                time="2 hours ago"
-              />
-              <ActivityItem 
-                title="15 posts published to Twitter"
-                subtitle="Average 2.3K impressions"
-                time="4 hours ago"
-              />
-              <ActivityItem 
-                title="Destination Health uploaded"
-                subtitle="Transcription in progress"
-                time="6 hours ago"
-              />
+              {recentSources.length === 0 ? (
+                <p className="text-muted-foreground text-sm py-4">
+                  No activity yet. Upload your first podcast to get started!
+                </p>
+              ) : (
+                recentSources.map((source) => (
+                  <ActivityItem 
+                    key={source.id}
+                    title={source.title}
+                    subtitle={`${source._count.extractions} extractions • ${source.status}`}
+                    time={formatTimeAgo(source.createdAt)}
+                  />
+                ))
+              )}
             </div>
           </div>
         </div>

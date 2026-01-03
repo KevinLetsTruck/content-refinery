@@ -11,7 +11,7 @@ export default function CreateLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0D0D0D]">
       {children}
     </div>
   );

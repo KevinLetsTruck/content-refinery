@@ -17,7 +17,7 @@ export function WizardProgress() {
   const { currentStep } = useWizardStore();
 
   return (
-    <div className="border-b bg-card px-6 py-4">
+    <div className="border-b border-[#333333] bg-[#0D0D0D] px-6 py-4">
       <div className="flex items-center justify-between max-w-3xl mx-auto">
         {STEPS.map(({ step, label }, index) => {
           const isCompleted = currentStep > step;
@@ -32,9 +32,9 @@ export function WizardProgress() {
                   className={`
                     w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
                     transition-all duration-200
-                    ${isCompleted ? 'bg-primary text-primary-foreground' : ''}
-                    ${isCurrent ? 'bg-primary text-primary-foreground ring-4 ring-primary/20' : ''}
-                    ${isUpcoming ? 'bg-muted text-muted-foreground' : ''}
+                    ${isCompleted ? 'bg-[#FF4500] text-white' : ''}
+                    ${isCurrent ? 'bg-[#FF4500] text-white ring-4 ring-[#FF4500]/20' : ''}
+                    ${isUpcoming ? 'bg-[#1A1A1A] text-[#888888] border border-[#333333]' : ''}
                   `}
                 >
                   {isCompleted ? (
@@ -46,7 +46,7 @@ export function WizardProgress() {
                 <span
                   className={`
                     mt-1 text-xs font-medium hidden sm:block
-                    ${isCurrent ? 'text-primary' : 'text-muted-foreground'}
+                    ${isCurrent ? 'text-[#FF4500]' : 'text-[#888888]'}
                   `}
                 >
                   {label}
@@ -58,7 +58,7 @@ export function WizardProgress() {
                 <div
                   className={`
                     h-0.5 w-8 sm:w-16 mx-2
-                    ${currentStep > step ? 'bg-primary' : 'bg-muted'}
+                    ${currentStep > step ? 'bg-[#FF4500]' : 'bg-[#333333]'}
                   `}
                 />
               )}

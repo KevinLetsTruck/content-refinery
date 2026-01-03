@@ -99,36 +99,36 @@ export function AIAssistantPanel() {
   if (!aiPanelOpen) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-full w-72 bg-card border-l flex flex-col z-50 shadow-lg">
+    <aside className="fixed right-0 top-0 h-full w-72 bg-[#1A1A1A] border-l border-[#333333] flex flex-col z-50 shadow-xl">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-primary/5">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#333333] bg-[#0D0D0D]">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-primary/10">
-            <Sparkles className="h-4 w-4 text-primary" />
+          <div className="p-1.5 rounded bg-[#FF4500]/20">
+            <Sparkles className="h-4 w-4 text-[#FF4500]" />
           </div>
           <div>
-            <h2 className="font-semibold text-sm">AI Assistant</h2>
-            <p className="text-xs text-muted-foreground">Here to help</p>
+            <h2 className="font-semibold text-sm text-white">AI Assistant</h2>
+            <p className="text-xs text-[#888888]">Here to help</p>
           </div>
         </div>
         <button
           onClick={toggleAIPanel}
-          className="p-1 rounded hover:bg-accent transition-colors"
+          className="p-1 rounded hover:bg-[#333333] transition-colors"
         >
-          <X className="h-4 w-4 text-muted-foreground" />
+          <X className="h-4 w-4 text-[#888888] hover:text-white" />
         </button>
       </div>
 
       {/* Suggestions Bar */}
       {aiSuggestions.length > 0 && (
-        <div className="px-4 py-2 border-b bg-amber-50 dark:bg-amber-950/20">
+        <div className="px-4 py-2 border-b border-[#333333] bg-[#F4A300]/10">
           <div className="flex items-start gap-2">
-            <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <Lightbulb className="h-4 w-4 text-[#F4A300] mt-0.5 flex-shrink-0" />
             <div className="text-xs">
-              <p className="font-medium text-amber-800 dark:text-amber-200">
+              <p className="font-medium text-[#F4A300]">
                 Suggestion
               </p>
-              <p className="text-amber-700 dark:text-amber-300">
+              <p className="text-[#F4A300]/80">
                 {aiSuggestions[0]?.message}
               </p>
             </div>
@@ -143,11 +143,11 @@ export function AIAssistantPanel() {
         ))}
         
         {isTyping && (
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-2 text-[#888888]">
             <div className="flex gap-1">
-              <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-2 h-2 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              <span className="w-2 h-2 bg-[#FF4500]/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-2 h-2 bg-[#FF4500]/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-2 h-2 bg-[#FF4500]/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
             </div>
             <span className="text-xs">AI is thinking...</span>
           </div>
@@ -158,12 +158,12 @@ export function AIAssistantPanel() {
 
       {/* Quick Suggestions */}
       {aiMessages.length > 0 && aiMessages[aiMessages.length - 1].suggestions && (
-        <div className="px-3 py-2 border-t flex flex-wrap gap-1.5">
+        <div className="px-3 py-2 border-t border-[#333333] flex flex-wrap gap-1.5">
           {aiMessages[aiMessages.length - 1].suggestions?.map((suggestion, i) => (
             <button
               key={i}
               onClick={() => handleSuggestionClick(suggestion)}
-              className="text-[11px] px-2.5 py-1 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
+              className="text-[11px] px-2.5 py-1 rounded-full bg-[#F4A300]/20 text-[#F4A300] hover:bg-[#F4A300]/30 transition-colors"
             >
               {suggestion}
             </button>
@@ -172,7 +172,7 @@ export function AIAssistantPanel() {
       )}
 
       {/* Input */}
-      <div className="p-3 border-t">
+      <div className="p-3 border-t border-[#333333]">
         <div className="flex gap-2">
           <input
             type="text"
@@ -180,12 +180,12 @@ export function AIAssistantPanel() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ask me anything..."
-            className="flex-1 px-3 py-1.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="flex-1 px-3 py-1.5 rounded border border-[#333333] bg-[#0D0D0D] text-white text-sm focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500]/20 placeholder-[#888888]"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isTyping}
-            className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded bg-[#FF4500] text-white hover:bg-[#FF4500]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="h-4 w-4" />
           </button>
@@ -204,8 +204,8 @@ function MessageBubble({ message }: { message: AIMessage }) {
         className={`
           max-w-[85%] rounded-lg px-3 py-2 text-sm
           ${isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted"
+            ? "bg-[#FF4500] text-white"
+            : "bg-[#0D0D0D] text-white border border-[#333333]"
           }
         `}
       >
@@ -217,7 +217,7 @@ function MessageBubble({ message }: { message: AIMessage }) {
             {message.actions.map((action, i) => (
               <button
                 key={i}
-                className="text-xs px-2 py-1 rounded bg-primary/20 hover:bg-primary/30 transition-colors"
+                className="text-xs px-2 py-1 rounded bg-[#FF4500]/20 text-[#FF4500] hover:bg-[#FF4500]/30 transition-colors"
               >
                 {action.label}
               </button>

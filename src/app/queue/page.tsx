@@ -18,6 +18,7 @@ import {
   ExternalLink,
   AlertCircle,
   ImageIcon,
+  Truck,
 } from "lucide-react";
 
 interface QueueItem {
@@ -55,7 +56,7 @@ const platformColors: Record<string, string> = {
   facebook: "bg-blue-600",
   linkedin: "bg-blue-700",
   youtube: "bg-red-600",
-  tiktok: "bg-black",
+  tiktok: "bg-white text-black",
 };
 
 export default function QueuePage() {
@@ -108,11 +109,9 @@ export default function QueuePage() {
         method: "POST",
       });
       if (response.ok) {
-        // Update item status locally instead of removing
         setItems(items.map((item) => 
           item.id === id ? { ...item, status: "approved" } : item
         ));
-        // If showing pending, remove from view
         if (statusFilter === "pending") {
           setItems(items.filter((item) => item.id !== id));
         }
@@ -153,7 +152,6 @@ export default function QueuePage() {
       
       if (response.ok) {
         setPublishResult({ id, success: true, url: data.postUrl });
-        // Update item with published URL
         setItems(items.map((item) => 
           item.id === id 
             ? { ...item, status: "published", platformPostUrl: data.postUrl } 
@@ -172,13 +170,11 @@ export default function QueuePage() {
   const handleApproveAndPublish = async (id: string) => {
     setActionLoading(id);
     try {
-      // First approve
       const approveResponse = await fetch(`/api/queue/${id}/approve`, {
         method: "POST",
       });
       
       if (approveResponse.ok) {
-        // Then publish
         await handlePublish(id, true);
       }
     } catch (error) {
@@ -254,20 +250,23 @@ export default function QueuePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0D0D0D]">
+      {/* Orange accent line */}
+      <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+      
       {/* Header */}
-      <header className="border-b sticky top-0 bg-background z-10">
+      <header className="border-b border-[#333333] sticky top-0 bg-[#0D0D0D] z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-[#888888] hover:text-white transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold">Review Queue</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-xl font-bold text-white">Review Queue</h1>
+              <p className="text-sm text-[#888888]">
                 {items.length} items {statusFilter === "pending" ? "waiting for review" : statusFilter}
               </p>
             </div>
@@ -275,7 +274,7 @@ export default function QueuePage() {
 
           <button
             onClick={fetchQueue}
-            className="flex items-center gap-2 px-3 py-1.5 border rounded-lg hover:bg-accent"
+            className="flex items-center gap-2 px-3 py-1.5 border border-[#333333] rounded hover:border-[#444444] hover:bg-[#1A1A1A] text-white transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -284,15 +283,15 @@ export default function QueuePage() {
 
         {/* Status Tabs */}
         <div className="container mx-auto px-4 pb-2">
-          <div className="flex gap-4 border-b">
+          <div className="flex gap-4 border-b border-[#333333]">
             {["pending", "approved", "published"].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
                 className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
                   statusFilter === status
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    ? "border-[#FF4500] text-[#FF4500]"
+                    : "border-transparent text-[#888888] hover:text-white"
                 }`}
               >
                 {status}
@@ -306,10 +305,10 @@ export default function QueuePage() {
           <div className="flex gap-2 overflow-x-auto">
             <button
               onClick={() => setFilter("all")}
-              className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
                 filter === "all"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80"
+                  ? "bg-[#FF4500] text-white"
+                  : "bg-[#1A1A1A] text-[#888888] hover:text-white hover:bg-[#333333]"
               }`}
             >
               All ({items.length})
@@ -318,16 +317,16 @@ export default function QueuePage() {
               <button
                 key={platform}
                 onClick={() => setFilter(platform)}
-                className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded text-sm whitespace-nowrap flex items-center gap-1.5 transition-colors ${
                   filter === platform
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted hover:bg-muted/80"
+                    ? "bg-[#FF4500] text-white"
+                    : "bg-[#1A1A1A] text-[#888888] hover:text-white hover:bg-[#333333]"
                 }`}
               >
                 {platformIcons[platform]}
                 {platform} ({count})
                 {!isPlatformConfigured(platform) && (
-                  <span className="text-amber-500 ml-1" title="Not configured">⚠</span>
+                  <span className="text-[#F4A300] ml-1" title="Not configured">⚠</span>
                 )}
               </button>
             ))}
@@ -338,15 +337,15 @@ export default function QueuePage() {
       <main className="container mx-auto px-4 py-6">
         {/* Publishing Status Banner */}
         {statusFilter === "approved" && (
-          <div className="mb-4 p-4 bg-muted rounded-lg">
-            <h3 className="font-medium mb-2">Publishing Status</h3>
+          <div className="mb-4 p-4 bg-[#1A1A1A] border border-[#333333] rounded-lg">
+            <h3 className="font-medium text-white mb-2">Publishing Status</h3>
             <div className="flex flex-wrap gap-3">
               {Object.entries(publishingPlatforms).map(([platform, status]) => (
                 <div key={platform} className="flex items-center gap-2 text-sm">
-                  <span className={`w-2 h-2 rounded-full ${status.configured ? "bg-green-500" : "bg-amber-500"}`} />
-                  <span className="capitalize">{platform}</span>
+                  <span className={`w-2 h-2 rounded-full ${status.configured ? "bg-[#22C55E]" : "bg-[#F4A300]"}`} />
+                  <span className="capitalize text-white">{platform}</span>
                   {!status.configured && (
-                    <span className="text-muted-foreground">(not configured)</span>
+                    <span className="text-[#888888]">(not configured)</span>
                   )}
                 </div>
               ))}
@@ -357,19 +356,21 @@ export default function QueuePage() {
         {/* Publish Result Toast */}
         {publishResult && (
           <div className={`mb-4 p-4 rounded-lg flex items-center justify-between ${
-            publishResult.success ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"
+            publishResult.success 
+              ? "bg-[#22C55E]/20 border border-[#22C55E]/50" 
+              : "bg-red-500/20 border border-red-500/50"
           }`}>
             <div className="flex items-center gap-2">
               {publishResult.success ? (
                 <>
-                  <Check className="h-5 w-5 text-green-600" />
-                  <span className="text-green-800">Published successfully!</span>
+                  <Check className="h-5 w-5 text-[#22C55E]" />
+                  <span className="text-[#22C55E]">Published successfully!</span>
                   {publishResult.url && (
                     <a 
                       href={publishResult.url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-green-600 hover:underline flex items-center gap-1"
+                      className="text-[#FF4500] hover:underline flex items-center gap-1"
                     >
                       View post <ExternalLink className="h-3 w-3" />
                     </a>
@@ -377,14 +378,14 @@ export default function QueuePage() {
                 </>
               ) : (
                 <>
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                  <span className="text-red-800">{publishResult.error}</span>
+                  <AlertCircle className="h-5 w-5 text-red-400" />
+                  <span className="text-red-400">{publishResult.error}</span>
                 </>
               )}
             </div>
             <button 
               onClick={() => setPublishResult(null)}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-[#888888] hover:text-white transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -393,11 +394,14 @@ export default function QueuePage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#FF4500]" />
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center">
+              <Truck className="w-8 h-8 text-[#888888]" />
+            </div>
+            <p className="text-[#888888] mb-4">
               {items.length === 0
                 ? `No ${statusFilter} content`
                 : "No content for this filter"}
@@ -405,9 +409,9 @@ export default function QueuePage() {
             {statusFilter === "pending" && (
               <Link
                 href="/ingest"
-                className="text-primary hover:underline"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FF4500] to-[#CC3700] hover:from-[#FF6633] hover:to-[#FF4500] text-white px-4 py-2 rounded font-semibold transition-all"
               >
-                Upload new content →
+                Upload content →
               </Link>
             )}
           </div>
@@ -416,11 +420,11 @@ export default function QueuePage() {
             {filteredItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-card border rounded-lg overflow-hidden"
+                className="bg-[#1A1A1A] border border-[#333333] rounded-lg overflow-hidden hover:border-[#444444] transition-colors"
               >
                 {/* Header */}
-                <div className="px-4 py-3 border-b bg-muted/30 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="px-4 py-3 border-b border-[#333333] bg-[#0D0D0D]/50 flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <div
                       className={`p-1.5 rounded text-white ${
                         platformColors[item.platform]
@@ -429,25 +433,25 @@ export default function QueuePage() {
                       {platformIcons[item.platform]}
                     </div>
                     <div>
-                      <span className="font-medium capitalize">
+                      <span className="font-medium capitalize text-white">
                         {item.platform}
                       </span>
                       {item.source_title && (
-                        <span className="text-muted-foreground text-sm ml-2">
+                        <span className="text-[#888888] text-sm ml-2">
                           from {item.source_title}
                         </span>
                       )}
                     </div>
                     {item.extraction_type && (
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
+                        className={`text-xs px-2 py-0.5 rounded ${
                           item.extraction_type === "quote"
-                            ? "bg-blue-100 text-blue-800"
+                            ? "bg-blue-500/20 text-blue-400"
                             : item.extraction_type === "stat"
-                            ? "bg-green-100 text-green-800"
+                            ? "bg-[#22C55E]/20 text-[#22C55E]"
                             : item.extraction_type === "hot_take"
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-gray-100 text-gray-800"
+                            ? "bg-[#FF4500]/20 text-[#FF4500]"
+                            : "bg-[#333333] text-[#888888]"
                         }`}
                       >
                         {item.extraction_type}
@@ -455,19 +459,19 @@ export default function QueuePage() {
                     )}
                     {/* Status badge */}
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
+                      className={`text-xs px-2 py-0.5 rounded ${
                         item.status === "published"
-                          ? "bg-green-100 text-green-800"
+                          ? "bg-[#22C55E]/20 text-[#22C55E]"
                           : item.status === "approved"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
+                          ? "bg-blue-500/20 text-blue-400"
+                          : "bg-[#333333] text-[#888888]"
                       }`}
                     >
                       {item.status}
                     </span>
                     {/* Visual indicator */}
                     {item.mediaUrl && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 flex items-center gap-1">
+                      <span className="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 flex items-center gap-1">
                         <ImageIcon className="h-3 w-3" />
                         Visual
                       </span>
@@ -479,12 +483,12 @@ export default function QueuePage() {
                         href={item.platformPostUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline text-sm flex items-center gap-1"
+                        className="text-[#FF4500] hover:underline text-sm flex items-center gap-1"
                       >
                         View <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-[#888888]">
                       {new Date(item.created_at).toLocaleDateString()}
                     </span>
                   </div>
@@ -504,10 +508,10 @@ export default function QueuePage() {
                         <img 
                           src={item.mediaUrl} 
                           alt="Generated visual" 
-                          className="w-full max-w-md rounded-lg border shadow-sm hover:shadow-md transition-shadow"
+                          className="w-full max-w-md rounded border border-[#333333] hover:border-[#FF4500] transition-colors"
                         />
                       </a>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-[#888888] mt-1">
                         Click to view full visual
                       </p>
                     </div>
@@ -517,11 +521,11 @@ export default function QueuePage() {
                     <textarea
                       value={editText}
                       onChange={(e) => setEditText(e.target.value)}
-                      className="w-full p-3 border rounded-lg bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full p-3 border border-[#333333] rounded bg-[#0D0D0D] text-white resize-none focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500]"
                       rows={4}
                     />
                   ) : (
-                    <p className="whitespace-pre-wrap">{item.text}</p>
+                    <p className="whitespace-pre-wrap text-white">{item.text}</p>
                   )}
 
                   {item.hashtags && item.hashtags.length > 0 && (
@@ -529,7 +533,7 @@ export default function QueuePage() {
                       {item.hashtags.map((tag, i) => (
                         <span
                           key={i}
-                          className="text-xs text-primary"
+                          className="text-xs text-[#FF4500]"
                         >
                           #{tag}
                         </span>
@@ -542,8 +546,8 @@ export default function QueuePage() {
                     <p
                       className={`text-xs mt-2 ${
                         item.text.length > 280
-                          ? "text-destructive"
-                          : "text-muted-foreground"
+                          ? "text-red-400"
+                          : "text-[#888888]"
                       }`}
                     >
                       {item.text.length}/280 characters
@@ -552,14 +556,14 @@ export default function QueuePage() {
                 </div>
 
                 {/* Actions */}
-                <div className="px-4 py-3 border-t bg-muted/30 flex items-center justify-between">
+                <div className="px-4 py-3 border-t border-[#333333] bg-[#0D0D0D]/50 flex items-center justify-between">
                   <div className="flex gap-2">
                     {editingId === item.id ? (
                       <>
                         <button
                           onClick={() => handleSaveEdit(item.id)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white rounded text-sm hover:from-[#FF6633] hover:to-[#FF4500] disabled:opacity-50 transition-all"
                         >
                           {actionLoading === item.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -573,7 +577,7 @@ export default function QueuePage() {
                             setEditingId(null);
                             setEditText("");
                           }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm hover:bg-accent"
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#333333] text-white rounded text-sm hover:bg-[#1A1A1A] transition-colors"
                         >
                           Cancel
                         </button>
@@ -582,7 +586,7 @@ export default function QueuePage() {
                       <>
                         <button
                           onClick={() => handleEdit(item)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm hover:bg-accent"
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#333333] text-white rounded text-sm hover:bg-[#1A1A1A] transition-colors"
                         >
                           <Edit3 className="h-4 w-4" />
                           Edit
@@ -590,7 +594,7 @@ export default function QueuePage() {
                         <button
                           onClick={() => handleRegenerate(item.id)}
                           disabled={actionLoading === item.id}
-                          className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm hover:bg-accent disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#333333] text-white rounded text-sm hover:bg-[#1A1A1A] disabled:opacity-50 transition-colors"
                         >
                           {actionLoading === item.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -610,7 +614,7 @@ export default function QueuePage() {
                           <button
                             onClick={() => handleReject(item.id)}
                             disabled={actionLoading === item.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 border border-destructive text-destructive rounded-lg text-sm hover:bg-destructive/10 disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-3 py-1.5 border border-red-500 text-red-400 rounded text-sm hover:bg-red-500/10 disabled:opacity-50 transition-colors"
                           >
                             <X className="h-4 w-4" />
                             Kill
@@ -618,7 +622,7 @@ export default function QueuePage() {
                           <button
                             onClick={() => handleApprove(item.id)}
                             disabled={actionLoading === item.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-[#22C55E] text-white rounded text-sm hover:bg-[#22C55E]/80 disabled:opacity-50 transition-colors"
                           >
                             {actionLoading === item.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -631,7 +635,7 @@ export default function QueuePage() {
                             <button
                               onClick={() => handleApproveAndPublish(item.id)}
                               disabled={actionLoading === item.id}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white rounded text-sm hover:from-[#FF6633] hover:to-[#FF4500] disabled:opacity-50 transition-all"
                             >
                               {actionLoading === item.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -650,7 +654,7 @@ export default function QueuePage() {
                             <button
                               onClick={() => handlePublish(item.id)}
                               disabled={actionLoading === item.id}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white rounded text-sm hover:from-[#FF6633] hover:to-[#FF4500] disabled:opacity-50 transition-all"
                             >
                               {actionLoading === item.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -660,7 +664,7 @@ export default function QueuePage() {
                               Publish Now
                             </button>
                           ) : (
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                            <span className="text-sm text-[#888888] flex items-center gap-1">
                               <AlertCircle className="h-4 w-4" />
                               {item.platform} not configured
                             </span>

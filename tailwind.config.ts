@@ -18,6 +18,8 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          light: "#FF6633",
+          dark: "#CC3700",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -43,11 +45,15 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Brand colors
+        success: "#22C55E",
+        warning: "#F4A300",
+        // Brand specific
         truck: {
-          orange: "#FF6B35",
-          navy: "#1E3A5F",
-          green: "#2D5A27",
+          orange: "#FF4500",
+          amber: "#F4A300",
+          navy: "#1A1A2E",
+          dark: "#0D0D0D",
+          muted: "#1A1A1A",
         },
       },
       borderRadius: {

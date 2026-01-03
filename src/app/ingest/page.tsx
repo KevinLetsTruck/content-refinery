@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Play,
   Sparkles,
+  Truck,
 } from "lucide-react";
 
 type UploadStatus = "idle" | "uploading" | "transcribing" | "extracting" | "complete" | "error";
@@ -256,17 +257,20 @@ export default function IngestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0D0D0D]">
+      {/* Orange accent line */}
+      <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+      
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b border-[#333333]">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/" className="text-muted-foreground hover:text-foreground">
+          <Link href="/" className="text-[#888888] hover:text-white transition-colors">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold">Ingest Content</h1>
-            <p className="text-sm text-muted-foreground">
-              Upload podcasts for transcription and AI extraction
+            <h1 className="text-xl font-bold text-white">Ingest Content</h1>
+            <p className="text-sm text-[#888888]">
+              Upload episodes for transcription and AI extraction
             </p>
           </div>
         </div>
@@ -277,7 +281,7 @@ export default function IngestPage() {
           <div className="space-y-6">
             {/* Title Input */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-white">
                 Content Title
               </label>
               <input
@@ -285,22 +289,22 @@ export default function IngestPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., TBB Episode 2847 - Gut Health"
-                className="w-full px-4 py-2 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 rounded border border-[#333333] bg-[#1A1A1A] text-white focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500]/20 placeholder-[#888888]"
               />
             </div>
 
             {/* Source Type Toggle */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-white">
                 Source Type
               </label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setSourceType("audio")}
-                  className={`flex-1 px-4 py-3 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                  className={`flex-1 px-4 py-3 rounded border flex items-center justify-center gap-2 transition-colors ${
                     sourceType === "audio"
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "hover:bg-accent"
+                      ? "bg-[#FF4500] text-white border-[#FF4500]"
+                      : "border-[#333333] text-[#888888] hover:text-white hover:bg-[#1A1A1A]"
                   }`}
                 >
                   <FileAudio className="h-4 w-4" />
@@ -308,10 +312,10 @@ export default function IngestPage() {
                 </button>
                 <button
                   onClick={() => setSourceType("url")}
-                  className={`flex-1 px-4 py-3 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
+                  className={`flex-1 px-4 py-3 rounded border flex items-center justify-center gap-2 transition-colors ${
                     sourceType === "url"
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "hover:bg-accent"
+                      ? "bg-[#FF4500] text-white border-[#FF4500]"
+                      : "border-[#333333] text-[#888888] hover:text-white hover:bg-[#1A1A1A]"
                   }`}
                 >
                   <LinkIcon className="h-4 w-4" />
@@ -323,23 +327,25 @@ export default function IngestPage() {
             {/* File Upload */}
             {sourceType === "audio" && (
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-white">
                   Audio File
                 </label>
                 <div
                   {...getRootProps()}
-                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
                     isDragActive
-                      ? "border-primary bg-primary/5"
-                      : "border-muted-foreground/25 hover:border-primary/50"
+                      ? "border-[#FF4500] bg-[#FF4500]/10"
+                      : selectedFile
+                      ? "border-[#22C55E] bg-[#22C55E]/10"
+                      : "border-[#333333] hover:border-[#FF4500]/50"
                   }`}
                 >
                   <input {...getInputProps()} />
                   {selectedFile ? (
                     <div className="space-y-2">
-                      <FileAudio className="h-12 w-12 mx-auto text-primary" />
-                      <p className="font-medium">{selectedFile.name}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <FileAudio className="h-12 w-12 mx-auto text-[#FF4500]" />
+                      <p className="font-medium text-white">{selectedFile.name}</p>
+                      <p className="text-sm text-[#888888]">
                         {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                       <button
@@ -347,20 +353,20 @@ export default function IngestPage() {
                           e.stopPropagation();
                           setSelectedFile(null);
                         }}
-                        className="text-sm text-destructive hover:underline"
+                        className="text-sm text-red-400 hover:underline"
                       >
                         Remove
                       </button>
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <p className="font-medium">
+                      <Upload className="h-12 w-12 mx-auto text-[#888888]" />
+                      <p className="font-medium text-white">
                         {isDragActive
                           ? "Drop the file here..."
                           : "Drag and drop an audio file"}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-[#888888]">
                         or click to browse • MP3, WAV, M4A up to 500MB
                       </p>
                     </div>
@@ -372,7 +378,7 @@ export default function IngestPage() {
             {/* URL Input */}
             {sourceType === "url" && (
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label className="block text-sm font-medium mb-2 text-white">
                   Audio URL
                 </label>
                 <input
@@ -380,9 +386,9 @@ export default function IngestPage() {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://example.com/episode.mp3"
-                  className="w-full px-4 py-2 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 rounded border border-[#333333] bg-[#1A1A1A] text-white focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500]/20 placeholder-[#888888]"
                 />
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-[#888888] mt-1">
                   Direct link to audio file or YouTube URL
                 </p>
               </div>
@@ -390,7 +396,7 @@ export default function IngestPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg flex items-center gap-2">
+              <div className="bg-red-500/20 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg flex items-center gap-2">
                 <XCircle className="h-4 w-4" />
                 {error}
               </div>
@@ -400,7 +406,7 @@ export default function IngestPage() {
             <button
               onClick={handleSubmit}
               disabled={!title || (sourceType === "audio" && !selectedFile) || (sourceType === "url" && !url)}
-              className="w-full bg-primary text-primary-foreground px-4 py-3 rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white px-4 py-3 rounded font-medium hover:from-[#FF6633] hover:to-[#FF4500] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
             >
               <Sparkles className="h-4 w-4" />
               Process Content
@@ -411,17 +417,17 @@ export default function IngestPage() {
         {/* Processing Status */}
         {(status === "uploading" || status === "transcribing" || status === "extracting") && (
           <div className="text-center py-12">
-            <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">
+            <Loader2 className="h-12 w-12 mx-auto animate-spin text-[#FF4500] mb-4" />
+            <h2 className="text-xl font-semibold mb-2 text-white">
               {status === "uploading" && "Uploading..."}
               {status === "transcribing" && "Transcribing..."}
               {status === "extracting" && "Extracting Content..."}
             </h2>
-            <p className="text-muted-foreground">{statusMessage}</p>
+            <p className="text-[#888888]">{statusMessage}</p>
             
             {/* Progress Steps */}
             <div className="flex justify-center gap-4 mt-8">
-              <div className={`flex items-center gap-2 ${status === "uploading" ? "text-primary" : "text-green-600"}`}>
+              <div className={`flex items-center gap-2 ${status === "uploading" ? "text-[#FF4500]" : "text-[#22C55E]"}`}>
                 {status === "uploading" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -430,25 +436,25 @@ export default function IngestPage() {
                 <span className="text-sm">Upload</span>
               </div>
               <div className={`flex items-center gap-2 ${
-                status === "transcribing" ? "text-primary" : 
-                status === "extracting" ? "text-green-600" : "text-muted-foreground"
+                status === "transcribing" ? "text-[#FF4500]" : 
+                status === "extracting" ? "text-[#22C55E]" : "text-[#888888]"
               }`}>
                 {status === "transcribing" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : status === "extracting" ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
-                  <div className="h-4 w-4 rounded-full border-2" />
+                  <div className="h-4 w-4 rounded-full border-2 border-[#888888]" />
                 )}
                 <span className="text-sm">Transcribe</span>
               </div>
               <div className={`flex items-center gap-2 ${
-                status === "extracting" ? "text-primary" : "text-muted-foreground"
+                status === "extracting" ? "text-[#FF4500]" : "text-[#888888]"
               }`}>
                 {status === "extracting" ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <div className="h-4 w-4 rounded-full border-2" />
+                  <div className="h-4 w-4 rounded-full border-2 border-[#888888]" />
                 )}
                 <span className="text-sm">Extract</span>
               </div>
@@ -459,12 +465,12 @@ export default function IngestPage() {
         {/* Error State */}
         {status === "error" && (
           <div className="text-center py-12">
-            <XCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Processing Failed</h2>
-            <p className="text-muted-foreground mb-6">{error}</p>
+            <XCircle className="h-12 w-12 mx-auto text-red-400 mb-4" />
+            <h2 className="text-xl font-semibold mb-2 text-white">Processing Failed</h2>
+            <p className="text-[#888888] mb-6">{error}</p>
             <button
               onClick={resetForm}
-              className="bg-primary text-primary-foreground px-6 py-2 rounded-lg hover:bg-primary/90"
+              className="bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white px-6 py-2 rounded hover:from-[#FF6633] hover:to-[#FF4500] transition-all"
             >
               Try Again
             </button>
@@ -475,40 +481,40 @@ export default function IngestPage() {
         {status === "complete" && (
           <div className="space-y-6">
             <div className="text-center py-8">
-              <CheckCircle className="h-12 w-12 mx-auto text-green-600 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Processing Complete!</h2>
-              <p className="text-muted-foreground">{statusMessage}</p>
+              <CheckCircle className="h-12 w-12 mx-auto text-[#22C55E] mb-4" />
+              <h2 className="text-xl font-semibold mb-2 text-white">Processing Complete!</h2>
+              <p className="text-[#888888]">{statusMessage}</p>
             </div>
 
             {/* Extractions Preview */}
             {extractions.length > 0 && (
               <div className="space-y-4">
-                <h3 className="font-semibold">Extracted Content ({extractions.length})</h3>
+                <h3 className="font-semibold text-white">Extracted Content ({extractions.length})</h3>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {extractions.slice(0, 10).map((extraction) => (
                     <div
                       key={extraction.id}
-                      className="bg-card border rounded-lg p-4"
+                      className="bg-[#1A1A1A] border border-[#333333] rounded-lg p-4"
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          extraction.type === "quote" ? "bg-blue-100 text-blue-800" :
-                          extraction.type === "stat" ? "bg-green-100 text-green-800" :
-                          extraction.type === "hot_take" ? "bg-orange-100 text-orange-800" :
-                          extraction.type === "story" ? "bg-purple-100 text-purple-800" :
-                          "bg-gray-100 text-gray-800"
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          extraction.type === "quote" ? "bg-blue-500/20 text-blue-400" :
+                          extraction.type === "stat" ? "bg-[#22C55E]/20 text-[#22C55E]" :
+                          extraction.type === "hot_take" ? "bg-[#FF4500]/20 text-[#FF4500]" :
+                          extraction.type === "story" ? "bg-purple-500/20 text-purple-400" :
+                          "bg-[#333333] text-[#888888]"
                         }`}>
                           {extraction.type}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-[#888888]">
                           {Math.round(extraction.confidence * 100)}% confidence
                         </span>
                       </div>
-                      <p className="text-sm line-clamp-3">{extraction.text}</p>
+                      <p className="text-sm text-white line-clamp-3">{extraction.text}</p>
                     </div>
                   ))}
                   {extractions.length > 10 && (
-                    <p className="text-sm text-muted-foreground text-center">
+                    <p className="text-sm text-[#888888] text-center">
                       +{extractions.length - 10} more extractions
                     </p>
                   )}
@@ -520,13 +526,13 @@ export default function IngestPage() {
             <div className="flex gap-4">
               <button
                 onClick={resetForm}
-                className="flex-1 border px-4 py-2 rounded-lg hover:bg-accent"
+                className="flex-1 border border-[#333333] text-white px-4 py-2 rounded hover:bg-[#1A1A1A] transition-colors"
               >
                 Upload Another
               </button>
               <Link
                 href="/queue"
-                className="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-center hover:bg-primary/90"
+                className="flex-1 bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white px-4 py-2 rounded text-center hover:from-[#FF6633] hover:to-[#FF4500] transition-all"
               >
                 View Queue →
               </Link>

@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Content Refinery | Let's Truck",
-  description: "Transform podcasts into social media gold",
+  description: "Transform podcasts into social media gold for The Tribe",
 };
 
 export default function RootLayout({
@@ -15,11 +15,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <div className="min-h-screen bg-background">
-          {children}
-        </div>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-[#0D0D0D] text-white antialiased`}>
+        {children}
       </body>
     </html>
   );

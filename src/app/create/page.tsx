@@ -12,7 +12,7 @@ import { Step5Visuals } from "./components/steps/Step5Visuals";
 import { Step6Review } from "./components/steps/Step6Review";
 import { Step7Publish } from "./components/steps/Step7Publish";
 import Link from "next/link";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, Truck } from "lucide-react";
 
 const STEP_TITLES = {
   1: "What's your starting point?",
@@ -49,33 +49,36 @@ export default function CreatePage() {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-[#0D0D0D]">
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${aiPanelOpen ? 'mr-72' : ''}`}>
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+        
         {/* Header */}
-        <header className="border-b bg-card px-6 py-4">
+        <header className="border-b border-[#333333] bg-[#0D0D0D] px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link 
                 href="/" 
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-2 text-[#888888] hover:text-white transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="text-sm">Dashboard</span>
               </Link>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-6 w-px bg-[#333333]" />
               <div>
-                <h1 className="text-lg font-semibold">Create Content</h1>
-                <p className="text-sm text-muted-foreground">{STEP_TITLES[currentStep]}</p>
+                <h1 className="text-lg font-semibold text-white">Create Content</h1>
+                <p className="text-sm text-[#888888]">{STEP_TITLES[currentStep]}</p>
               </div>
             </div>
             
             <button
               onClick={toggleAIPanel}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 rounded transition-all ${
                 aiPanelOpen 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  ? 'bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white' 
+                  : 'bg-[#1A1A1A] text-[#F4A300] hover:bg-[#333333] border border-[#333333]'
               }`}
             >
               <Sparkles className="h-4 w-4" />
@@ -88,7 +91,7 @@ export default function CreatePage() {
         <WizardProgress />
 
         {/* Step Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-[#0D0D0D]">
           <div className="max-w-3xl mx-auto p-6 lg:p-8">
             {renderStep()}
           </div>

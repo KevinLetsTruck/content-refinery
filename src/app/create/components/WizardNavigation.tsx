@@ -10,17 +10,17 @@ export function WizardNavigation() {
   const isLastStep = currentStep === 7;
 
   return (
-    <footer className="border-t bg-card px-6 py-4">
+    <footer className="border-t border-[#333333] bg-[#0D0D0D] px-6 py-4">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
         {/* Back Button */}
         <button
           onClick={prevStep}
           disabled={isFirstStep || isLoading}
           className={`
-            flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors
+            flex items-center gap-2 px-4 py-2 rounded font-medium transition-colors
             ${isFirstStep || isLoading
-              ? 'text-muted-foreground cursor-not-allowed'
-              : 'text-foreground hover:bg-accent'
+              ? 'text-[#888888] cursor-not-allowed'
+              : 'text-white hover:bg-[#1A1A1A]'
             }
           `}
         >
@@ -29,7 +29,7 @@ export function WizardNavigation() {
         </button>
 
         {/* Step Indicator */}
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-[#888888]">
           Step {currentStep} of 7
         </span>
 
@@ -38,10 +38,10 @@ export function WizardNavigation() {
           onClick={nextStep}
           disabled={!canProceed || isLoading}
           className={`
-            flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-colors
+            flex items-center gap-2 px-6 py-2 rounded font-medium transition-all
             ${!canProceed || isLoading
-              ? 'bg-muted text-muted-foreground cursor-not-allowed'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              ? 'bg-[#1A1A1A] text-[#888888] cursor-not-allowed border border-[#333333]'
+              : 'bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white hover:from-[#FF6633] hover:to-[#FF4500]'
             }
           `}
         >

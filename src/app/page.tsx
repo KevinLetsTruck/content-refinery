@@ -8,7 +8,9 @@ import {
   Mic,
   FileText,
   ShoppingBag,
-  Sparkles
+  Sparkles,
+  Truck,
+  Zap
 } from "lucide-react";
 import prisma from "@/lib/db/prisma";
 
@@ -57,17 +59,20 @@ export default async function HomePage() {
   const { pendingReviewCount, totalSources, totalContent, recentSources } = await getDashboardData();
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-[#0D0D0D]">
       {/* Sidebar */}
-      <aside className="w-64 border-r bg-card">
-        <div className="p-6">
-          <h1 className="text-xl font-bold text-primary">Content Refinery</h1>
-          <p className="text-sm text-muted-foreground">Let&apos;s Truck</p>
+      <aside className="w-64 border-r border-[#333333] bg-[#0D0D0D]">
+        <div className="p-6 border-b border-[#333333]">
+          <div className="flex items-center gap-2">
+            <Truck className="h-6 w-6 text-[#FF4500]" />
+            <h1 className="text-xl font-display text-gradient-orange">CONTENT REFINERY</h1>
+          </div>
+          <p className="text-sm text-[#888888] mt-1">Let&apos;s Truck</p>
         </div>
         
-        <nav className="px-4 space-y-2">
-          <NavItem href="/create" icon={<Sparkles className="h-4 w-4" />} label="✨ Create Content" />
-          <div className="h-px bg-border my-2" />
+        <nav className="px-4 py-4 space-y-1">
+          <NavItem href="/create" icon={<Sparkles className="h-4 w-4" />} label="Create Content" primary />
+          <div className="h-px bg-[#333333] my-3" />
           <NavItem href="/ingest" icon={<Upload className="h-4 w-4" />} label="Ingest Content" />
           <NavItem href="/extract" icon={<Mic className="h-4 w-4" />} label="Extract" />
           <NavItem href="/generate" icon={<FileText className="h-4 w-4" />} label="Generate" />
@@ -80,11 +85,14 @@ export default async function HomePage() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-[#0D0D0D]">
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+        
         <div className="p-8">
-          <h2 className="text-3xl font-bold mb-2">Dashboard</h2>
-          <p className="text-muted-foreground mb-8">
-            Transform your podcasts into social media content
+          <h2 className="text-3xl font-display text-white mb-2">DASHBOARD</h2>
+          <p className="text-[#888888] mb-8">
+            Transform your content into gold for The Tribe
           </p>
 
           {/* Stats Grid */}
@@ -94,11 +102,12 @@ export default async function HomePage() {
               value={String(pendingReviewCount)} 
               subtitle="Content pieces"
               trend={pendingReviewCount > 0 ? "Ready for review" : "All caught up!"}
+              highlight={pendingReviewCount > 0}
             />
             <StatCard 
               title="Sources" 
               value={String(totalSources)} 
-              subtitle="Podcasts uploaded"
+              subtitle="Episodes uploaded"
               trend={totalSources > 0 ? "Processing" : "Upload your first!"}
             />
             <StatCard 
@@ -118,17 +127,17 @@ export default async function HomePage() {
           {/* Hero Action - Create Content */}
           <Link 
             href="/create"
-            className="block bg-gradient-to-r from-primary/10 to-primary/5 border-2 border-primary/20 rounded-xl p-6 mb-8 hover:border-primary/40 transition-all group"
+            className="block bg-gradient-to-r from-[#FF4500]/20 to-[#FF4500]/5 border-2 border-[#FF4500]/40 rounded-lg p-6 mb-8 hover:border-[#FF4500] hover:border-glow-orange transition-all group"
           >
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                <Sparkles className="h-8 w-8 text-primary" />
+              <div className="p-3 rounded-lg bg-[#FF4500]/20 group-hover:bg-[#FF4500]/30 transition-colors">
+                <Zap className="h-8 w-8 text-[#FF4500]" />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold">Create Content</h3>
-                <p className="text-muted-foreground">AI-guided wizard to create social media posts from ideas, guides, or products</p>
+                <h3 className="text-xl font-bold text-white">Create Content</h3>
+                <p className="text-[#888888]">AI-guided wizard to create social media posts from ideas, guides, or products</p>
               </div>
-              <div className="text-primary font-medium">
+              <div className="text-[#FF4500] font-semibold group-hover:translate-x-1 transition-transform">
                 Start Creating →
               </div>
             </div>
@@ -139,7 +148,7 @@ export default async function HomePage() {
             <QuickAction 
               href="/ingest"
               icon={<Upload className="h-8 w-8" />}
-              title="Upload Podcast"
+              title="Upload Episode"
               description="Upload audio for transcription and extraction"
             />
             <QuickAction 
@@ -147,6 +156,7 @@ export default async function HomePage() {
               icon={<ListTodo className="h-8 w-8" />}
               title="Review Queue"
               description={pendingReviewCount > 0 ? `${pendingReviewCount} items waiting for review` : "No items to review"}
+              badge={pendingReviewCount > 0 ? String(pendingReviewCount) : undefined}
             />
             <QuickAction 
               href="/generate"
@@ -157,13 +167,23 @@ export default async function HomePage() {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-card rounded-lg border p-6">
-            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+          <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
             <div className="space-y-4">
               {recentSources.length === 0 ? (
-                <p className="text-muted-foreground text-sm py-4">
-                  No activity yet. Upload your first podcast to get started!
-                </p>
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center">
+                    <Mic className="w-8 h-8 text-[#888888]" />
+                  </div>
+                  <p className="text-[#888888] mb-4">No activity yet. Upload your first episode to get started!</p>
+                  <Link 
+                    href="/ingest"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FF4500] to-[#CC3700] hover:from-[#FF6633] hover:to-[#FF4500] text-white px-4 py-2 rounded font-semibold transition-all"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload Episode
+                  </Link>
+                </div>
               ) : (
                 recentSources.map((source) => (
                   <ActivityItem 
@@ -186,22 +206,36 @@ function NavItem({
   href, 
   icon, 
   label, 
-  badge 
+  badge,
+  primary = false
 }: { 
   href: string; 
   icon: React.ReactNode; 
   label: string;
   badge?: string;
+  primary?: boolean;
 }) {
+  if (primary) {
+    return (
+      <Link 
+        href={href}
+        className="flex items-center gap-3 px-3 py-2 rounded bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white font-semibold hover:from-[#FF6633] hover:to-[#FF4500] transition-all"
+      >
+        {icon}
+        <span className="flex-1">{label}</span>
+      </Link>
+    );
+  }
+  
   return (
     <Link 
       href={href}
-      className="flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+      className="flex items-center gap-3 px-3 py-2 rounded text-[#888888] hover:text-white hover:bg-[#1A1A1A] transition-colors"
     >
       {icon}
       <span className="flex-1">{label}</span>
       {badge && (
-        <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+        <span className="bg-[#FF4500] text-white text-xs px-2 py-0.5 rounded-full font-medium">
           {badge}
         </span>
       )}
@@ -213,19 +247,21 @@ function StatCard({
   title, 
   value, 
   subtitle,
-  trend 
+  trend,
+  highlight = false
 }: { 
   title: string; 
   value: string; 
   subtitle: string;
   trend: string;
+  highlight?: boolean;
 }) {
   return (
-    <div className="bg-card rounded-lg border p-6">
-      <p className="text-sm text-muted-foreground">{title}</p>
-      <p className="text-3xl font-bold mt-1">{value}</p>
-      <p className="text-sm text-muted-foreground">{subtitle}</p>
-      <p className="text-xs text-green-600 mt-2">{trend}</p>
+    <div className={`bg-[#1A1A1A] rounded-lg border p-6 ${highlight ? 'border-[#FF4500]/50' : 'border-[#333333]'} hover:border-[#444444] transition-colors`}>
+      <p className="text-sm text-[#888888]">{title}</p>
+      <p className={`text-3xl font-bold mt-1 ${highlight ? 'text-[#FF4500]' : 'text-white'}`}>{value}</p>
+      <p className="text-sm text-[#888888]">{subtitle}</p>
+      <p className="text-xs text-[#F4A300] mt-2">{trend}</p>
     </div>
   );
 }
@@ -234,23 +270,32 @@ function QuickAction({
   href, 
   icon, 
   title, 
-  description 
+  description,
+  badge
 }: { 
   href: string; 
   icon: React.ReactNode; 
   title: string;
   description: string;
+  badge?: string;
 }) {
   return (
     <Link 
       href={href}
-      className="bg-card rounded-lg border p-6 hover:border-primary transition-colors group"
+      className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 hover:border-[#FF4500] transition-colors group"
     >
-      <div className="text-muted-foreground group-hover:text-primary transition-colors mb-4">
-        {icon}
+      <div className="flex items-start justify-between mb-4">
+        <div className="text-[#888888] group-hover:text-[#FF4500] transition-colors">
+          {icon}
+        </div>
+        {badge && (
+          <span className="bg-[#FF4500] text-white text-xs px-2 py-0.5 rounded-full font-medium">
+            {badge}
+          </span>
+        )}
       </div>
-      <h3 className="font-semibold mb-1">{title}</h3>
-      <p className="text-sm text-muted-foreground">{description}</p>
+      <h3 className="font-semibold text-white mb-1">{title}</h3>
+      <p className="text-sm text-[#888888]">{description}</p>
     </Link>
   );
 }
@@ -265,12 +310,12 @@ function ActivityItem({
   time: string;
 }) {
   return (
-    <div className="flex items-start justify-between py-2 border-b last:border-0">
+    <div className="flex items-start justify-between py-3 border-b border-[#333333] last:border-0">
       <div>
-        <p className="font-medium">{title}</p>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
+        <p className="font-medium text-white">{title}</p>
+        <p className="text-sm text-[#888888]">{subtitle}</p>
       </div>
-      <p className="text-xs text-muted-foreground">{time}</p>
+      <p className="text-xs text-[#888888]">{time}</p>
     </div>
   );
 }

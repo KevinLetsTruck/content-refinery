@@ -58,7 +58,7 @@ export async function transcribeAudio(
       confidence: w.confidence,
     })),
     speakers: result.results.utterances?.map((u) => ({
-      speaker: u.speaker,
+      speaker: u.speaker ?? 0,
       start: u.start,
       end: u.end,
     })),
@@ -101,7 +101,7 @@ export async function transcribeAudioBuffer(
       confidence: w.confidence,
     })),
     speakers: result.results.utterances?.map((u) => ({
-      speaker: u.speaker,
+      speaker: u.speaker ?? 0,
       start: u.start,
       end: u.end,
     })),

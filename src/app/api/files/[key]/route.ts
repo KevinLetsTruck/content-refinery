@@ -46,7 +46,7 @@ export async function GET(
 
     const contentType = contentTypes[ext] || 'application/octet-stream';
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         'Content-Type': contentType,
         'Content-Length': fileBuffer.length.toString(),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { postTweet, uploadMedia, isConfigured as isTwitterConfigured } from "@/lib/social/twitter";
+import { postTweet, uploadMedia as uploadTwitterMedia, isConfigured as isTwitterConfigured } from "@/lib/social/twitter";
+import { postToFacebook, postToInstagram, isConfigured as isMetaConfigured } from "@/lib/social/meta";
 
 /**
  * POST /api/publish
@@ -75,16 +76,22 @@ export async function POST(request: NextRequest) {
         break;
       
       case "instagram":
+        result = await publishToInstagram(content);
+        break;
+        
       case "facebook":
-        // Meta platforms - not yet implemented
-        return NextResponse.json(
-          { error: `${content.platform} publishing not yet implemented` },
-          { status: 501 }
-        );
+        result = await publishToFacebookPage(content);
+        break;
       
       case "linkedin":
         return NextResponse.json(
           { error: "LinkedIn publishing not yet implemented" },
+          { status: 501 }
+        );
+      
+      case "tiktok":
+        return NextResponse.json(
+          { error: "TikTok publishing not yet implemented" },
           { status: 501 }
         );
       
@@ -149,7 +156,7 @@ async function publishToTwitter(content: {
   
   // Add hashtags if there's room (280 char limit)
   if (content.hashtags && content.hashtags.length > 0) {
-    const hashtagString = content.hashtags.join(" ");
+    const hashtagString = content.hashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ");
     if (tweetText.length + hashtagString.length + 2 <= 280) {
       tweetText = `${tweetText}\n\n${hashtagString}`;
     }
@@ -164,10 +171,10 @@ async function publishToTwitter(content: {
   let mediaIds: string[] | undefined;
   if (content.mediaUrl) {
     try {
-      const mediaId = await uploadMedia(content.mediaUrl);
+      const mediaId = await uploadTwitterMedia(content.mediaUrl);
       mediaIds = [mediaId];
     } catch (error) {
-      console.error("[Publish] Media upload failed:", error);
+      console.error("[Publish] Twitter media upload failed:", error);
       // Continue without media
     }
   }
@@ -184,22 +191,103 @@ async function publishToTwitter(content: {
 }
 
 /**
+ * Publish to Instagram
+ */
+async function publishToInstagram(content: {
+  text: string;
+  hashtags: string[];
+  mediaUrl?: string | null;
+}): Promise<{ id: string; url: string }> {
+  const metaConfig = isMetaConfigured();
+  
+  if (!metaConfig.instagram) {
+    throw new Error("Instagram credentials not configured. Set META_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID");
+  }
+
+  // Instagram requires an image
+  if (!content.mediaUrl) {
+    throw new Error("Instagram posts require an image. Generate a visual first.");
+  }
+
+  // Build caption with hashtags (Instagram allows 2200 chars, 30 hashtags)
+  let caption = content.text;
+  
+  if (content.hashtags && content.hashtags.length > 0) {
+    const hashtagString = content.hashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ");
+    caption = `${caption}\n\n${hashtagString}`;
+  }
+
+  // Truncate if needed
+  if (caption.length > 2200) {
+    caption = caption.substring(0, 2197) + "...";
+  }
+
+  const result = await postToInstagram({
+    caption,
+    imageUrl: content.mediaUrl,
+  });
+
+  return {
+    id: result.id,
+    url: result.url,
+  };
+}
+
+/**
+ * Publish to Facebook Page
+ */
+async function publishToFacebookPage(content: {
+  text: string;
+  hashtags: string[];
+  mediaUrl?: string | null;
+}): Promise<{ id: string; url: string }> {
+  const metaConfig = isMetaConfigured();
+  
+  if (!metaConfig.facebook) {
+    throw new Error("Facebook credentials not configured. Set META_ACCESS_TOKEN and FACEBOOK_PAGE_ID");
+  }
+
+  // Build message with hashtags
+  let message = content.text;
+  
+  if (content.hashtags && content.hashtags.length > 0) {
+    // Facebook best practice: fewer hashtags than Instagram
+    const limitedHashtags = content.hashtags.slice(0, 5);
+    const hashtagString = limitedHashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ");
+    message = `${message}\n\n${hashtagString}`;
+  }
+
+  const result = await postToFacebook({
+    message,
+    imageUrl: content.mediaUrl || undefined,
+  });
+
+  return {
+    id: result.id,
+    url: result.url,
+  };
+}
+
+/**
  * GET /api/publish/status
  * 
  * Check publishing capabilities
  */
 export async function GET() {
+  const metaConfig = isMetaConfigured();
+  
   const platforms = {
     twitter: {
       configured: isTwitterConfigured(),
       name: "Twitter/X",
     },
     instagram: {
-      configured: false,
+      configured: metaConfig.instagram,
       name: "Instagram",
+      requiresImage: true,
     },
     facebook: {
-      configured: false,
+      configured: metaConfig.facebook,
       name: "Facebook",
     },
     linkedin: {

@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
       source_type: item.extraction?.source?.sourceType,
       platformPostUrl: item.platformPostUrl,
       publishedAt: item.publishedAt,
+      mediaUrl: item.mediaUrl,
     }));
 
     return NextResponse.json({ items: transformedItems });

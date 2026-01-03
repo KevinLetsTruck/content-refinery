@@ -17,6 +17,7 @@ import {
   Loader2,
   ExternalLink,
   AlertCircle,
+  ImageIcon,
 } from "lucide-react";
 
 interface QueueItem {
@@ -31,6 +32,7 @@ interface QueueItem {
   confidence?: number;
   source_title?: string;
   platformPostUrl?: string;
+  mediaUrl?: string;
 }
 
 interface PlatformStatus {
@@ -463,6 +465,13 @@ export default function QueuePage() {
                     >
                       {item.status}
                     </span>
+                    {/* Visual indicator */}
+                    {item.mediaUrl && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" />
+                        Visual
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {item.platformPostUrl && (
@@ -483,6 +492,27 @@ export default function QueuePage() {
 
                 {/* Content */}
                 <div className="p-4">
+                  {/* Visual Preview */}
+                  {item.mediaUrl && (
+                    <div className="mb-4">
+                      <a 
+                        href={item.mediaUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img 
+                          src={item.mediaUrl} 
+                          alt="Generated visual" 
+                          className="w-full max-w-md rounded-lg border shadow-sm hover:shadow-md transition-shadow"
+                        />
+                      </a>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Click to view full visual
+                      </p>
+                    </div>
+                  )}
+
                   {editingId === item.id ? (
                     <textarea
                       value={editText}

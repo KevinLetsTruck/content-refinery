@@ -1,12 +1,14 @@
 import { createClient, DeepgramClient } from "@deepgram/sdk";
 
-let deepgramClient: DeepgramClient | null = null;
-
 function getDeepgramClient(): DeepgramClient {
-  if (!deepgramClient) {
-    deepgramClient = createClient(process.env.DEEPGRAM_API_KEY!);
+  const apiKey = process.env.DEEPGRAM_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("DEEPGRAM_API_KEY environment variable is not set");
   }
-  return deepgramClient;
+  
+  // Create a fresh client each time to ensure we have the current API key
+  return createClient(apiKey);
 }
 
 export interface TranscriptionResult {

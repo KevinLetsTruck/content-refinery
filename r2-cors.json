@@ -1,0 +1,10 @@
+{
+  "rules": [
+    {
+      "allowed_origins": ["https://content-refinery-07dc.onrender.com", "http://localhost:3000"],
+      "allowed_methods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+      "allowed_headers": ["*"],
+      "max_age_seconds": 3600
+    }
+  ]
+}

@@ -9,6 +9,14 @@ export const maxDuration = 60; // 60 seconds timeout
 // Max file size: 25MB to avoid memory issues on starter plan
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB in bytes
 
+// Helper to convert BigInt fields to numbers for JSON serialization
+function serializeSource(source: Record<string, unknown>) {
+  return {
+    ...source,
+    fileSizeBytes: source.fileSizeBytes ? Number(source.fileSizeBytes) : null,
+  };
+}
+
 // POST /api/sources - Create a new source from uploaded file or URL
 export async function POST(request: NextRequest) {
   try {
@@ -95,7 +103,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ source }, { status: 201 });
+    return NextResponse.json({ source: serializeSource(source) }, { status: 201 });
   } catch (error) {
     console.error("Error creating source:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -122,7 +130,7 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    return NextResponse.json({ sources });
+    return NextResponse.json({ sources: sources.map(serializeSource) });
   } catch (error) {
     console.error("Error fetching sources:", error);
     return NextResponse.json(

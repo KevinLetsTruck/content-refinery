@@ -1,8 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getAnthropicClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is not set");
+  }
+  
+  return new Anthropic({ apiKey });
+}
 
 export type ContentType = 
   | "quote" 
@@ -73,6 +79,7 @@ TOPICS KEVIN IS PASSIONATE ABOUT:
 `;
 
 export async function extractContent(transcript: string): Promise<Extraction[]> {
+  const anthropic = getAnthropicClient();
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 4096,
@@ -119,6 +126,7 @@ export async function generatePlatformContent(
   platform: Platform,
   products?: { name: string; url: string }[]
 ): Promise<GeneratedContent> {
+  const anthropic = getAnthropicClient();
   const platformGuidelines: Record<Platform, string> = {
     twitter: `
       - Max 280 characters (leave room for link if needed)

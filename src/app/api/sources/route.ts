@@ -6,6 +6,9 @@ import { uploadFile } from "@/lib/storage";
 export const runtime = 'nodejs';
 export const maxDuration = 60; // 60 seconds timeout
 
+// Max file size: 25MB to avoid memory issues on starter plan
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB in bytes
+
 // POST /api/sources - Create a new source from uploaded file or URL
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +32,17 @@ export async function POST(request: NextRequest) {
 
     // Handle file upload
     if (file && sourceType === "audio") {
+      // Check file size before processing
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeMB = Math.round(file.size / 1024 / 1024);
+        return NextResponse.json(
+          { error: `File too large (${sizeMB}MB). Maximum size is 25MB. For larger files, please compress the audio or split into segments.` },
+          { status: 413 }
+        );
+      }
+
+      console.log(`Processing file upload: ${file.name}, size: ${file.size} bytes`);
+      
       originalFilename = file.name;
       fileSizeBytes = BigInt(file.size);
 
@@ -36,8 +50,12 @@ export async function POST(request: NextRequest) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       
+      console.log(`File loaded into memory, uploading to storage...`);
+      
       const uploadResult = await uploadFile(buffer, file.name, file.type);
       fileUrl = uploadResult.url;
+      
+      console.log(`File uploaded successfully: ${fileUrl}`);
     } else if (url) {
       fileUrl = url;
     }

@@ -11,25 +11,59 @@ datasource db {
 }
 
 // ============================================
+// SOURCE APPS - External apps that send content
+// ============================================
+model SourceApp {
+  id           String   @id @default(uuid())
+  name         String   @unique // audioroad, health-coaching, trucktales
+  displayName  String   @map("display_name")
+  apiKey       String   @unique @map("api_key")
+  voiceProfile String   @default("kevin-health") @map("voice_profile") // Which AI voice to use
+  isActive     Boolean  @default(true) @map("is_active")
+  webhookUrl   String?  @map("webhook_url") // Optional callback URL
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  sources Source[]
+
+  @@map("source_apps")
+}
+
+// ============================================
 // SOURCES - Raw uploaded content
 // ============================================
 model Source {
   id               String   @id @default(uuid())
+  sourceAppId      String?  @map("source_app_id") // Which app sent this
   title            String
   sourceType       String   @map("source_type") // audio, video, text, url
+  contentType      String?  @map("content_type") // episode, success_story, chapter_teaser, etc.
   fileUrl          String?  @map("file_url")
   originalFilename String?  @map("original_filename")
   fileSizeBytes    BigInt?  @map("file_size_bytes")
   durationSeconds  Int?     @map("duration_seconds")
-  status           String   @default("pending") // pending, uploading, processing, completed, failed
+  status           String   @default("pending") // pending, uploading, processing, transcribing, extracting, completed, failed
   errorMessage     String?  @map("error_message")
+  
+  // Flexible data from source app
+  rawData          Json?    @map("raw_data") // Original payload from source app
   metadata         Json     @default("{}")
+  
+  // Processing flags
+  needsTranscription Boolean @default(false) @map("needs_transcription")
+  needsExtraction    Boolean @default(true) @map("needs_extraction")
+  
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
+  sourceApp    SourceApp?   @relation(fields: [sourceAppId], references: [id])
   transcripts  Transcript[]
   extractions  Extraction[]
 
+  @@index([sourceAppId])
+  @@index([status])
+  @@index([contentType])
   @@map("sources")
 }
 
@@ -57,7 +91,7 @@ model Extraction {
   id           String   @id @default(uuid())
   sourceId     String   @map("source_id")
   transcriptId String?  @map("transcript_id")
-  type         String   // quote, stat, hot_take, story, clip, product_mention
+  type         String   // quote, stat, hot_take, story, clip, product_mention, testimonial, teaser, excerpt
   text         String
   startTime    Decimal? @map("start_time")
   endTime      Decimal? @map("end_time")
@@ -138,4 +172,21 @@ model PlatformCredential {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("platform_credentials")
+}
+
+// ============================================
+// VOICE_PROFILES - AI generation styles
+// ============================================
+model VoiceProfile {
+  id          String   @id @default(uuid())
+  name        String   @unique // kevin-health, trucktales-storyteller, testimonial
+  displayName String   @map("display_name")
+  description String?
+  systemPrompt String  @map("system_prompt") @db.Text
+  examples    Json?    // Example outputs for this voice
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("voice_profiles")
 }

@@ -40,6 +40,8 @@ model Source {
   sourceType       String   @map("source_type") // audio, video, text, url
   contentType      String?  @map("content_type") // episode, success_story, chapter_teaser, etc.
   fileUrl          String?  @map("file_url")
+  storageKey       String?  @map("storage_key") // Key in R2 or local storage
+  storageType      String?  @map("storage_type") // "r2" or "local"
   originalFilename String?  @map("original_filename")
   fileSizeBytes    BigInt?  @map("file_size_bytes")
   durationSeconds  Int?     @map("duration_seconds")

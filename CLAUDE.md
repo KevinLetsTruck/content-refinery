@@ -4,6 +4,8 @@
 
 Content Refinery is an automated social media content engine for Let's Truck Health Coaching, founded by Kevin Rutherford, FNTP. It transforms 15+ hours of weekly podcast content into platform-optimized social media posts.
 
+**NEW: Multi-App Content Hub** - Content Refinery now serves as the central marketing hub for multiple Let's Truck apps, receiving content from AudioRoad, Health Coaching App, and TruckTales.
+
 ## The Problem We're Solving
 
 Kevin produces massive amounts of valuable content:
@@ -12,6 +14,8 @@ Kevin produces massive amounts of valuable content:
 - 12 comprehensive health guides
 - 250+ products in Shopify store
 - Years of accumulated wisdom
+- TruckTales fiction stories
+- Client success stories
 
 **But almost none of it gets distributed effectively on social media.**
 
@@ -21,6 +25,86 @@ Agencies have failed because they don't understand:
 3. How to connect content to products
 4. The volume of content being produced
 
+## Multi-App Content Ecosystem
+
+Content Refinery is the central hub for three source applications:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CONTENT SOURCE APPS                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                      │
+│  │  AudioRoad   │  │   Health     │  │  TruckTales  │                      │
+│  │  Broadcast   │  │  Coaching    │  │    App       │                      │
+│  │   Console    │  │     App      │  │              │                      │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘                      │
+│         │                 │                 │                               │
+│         ▼                 ▼                 ▼                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     POST /api/ingest                                 │   │
+│  │                  (Unified Ingestion API)                             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │  CONTENT REFINERY   │
+                          │   Processing Hub    │
+                          └─────────────────────┘
+```
+
+### Source Apps & Content Types
+
+| App | Content Types | Voice Profile |
+|-----|---------------|---------------|
+| **AudioRoad** | Episodes, Caller Segments | kevin-health |
+| **Health Coaching** | Success Stories, Protocols, Research, Lab Improvements | kevin-health |
+| **TruckTales** | Chapter Teasers, Character Spotlights, Story Launches | trucktales-storyteller |
+
+### Voice Profiles
+
+**kevin-health**: Direct, no-BS health authority voice for all health-related content.
+
+**trucktales-storyteller**: Engaging fiction storyteller that builds suspense and curiosity.
+
+**testimonial**: Authentic success story voice that lets results speak.
+
+## Ingestion API
+
+External apps send content via `POST /api/ingest`:
+
+```typescript
+// Example: AudioRoad sending an episode
+await fetch('https://content-refinery.onrender.com/api/ingest', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer cr_xxxxxxxxxxxx',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    source: 'audioroad',
+    contentType: 'episode',
+    title: 'TBB Episode 2847',
+    audioUrl: 'https://...',
+    transcript: '...',
+    metadata: { showName: 'Trucking Business & Beyond' }
+  })
+});
+```
+
+### Content Type Configurations
+
+Each content type has specific processing rules:
+
+| Content Type | Source Type | Needs Transcription | Extraction Types |
+|--------------|-------------|---------------------|------------------|
+| episode | audio | Yes (if no transcript) | quote, stat, hot_take, story, clip |
+| success_story | structured | No | testimonial, stat, quote |
+| chapter_teaser | text | No | teaser, excerpt, hook |
+| character_spotlight | structured | No | teaser, story |
+
 ## The Business
 
 **Let's Truck** serves America's 3.5 million professional truck drivers with:
@@ -28,6 +112,7 @@ Agencies have failed because they don't understand:
 - Supplement store (store.letstruck.com)
 - Radio shows on AudioRoad Network
 - Live events and training
+- TruckTales fiction
 
 **Key Insight**: Professional drivers have a 12-15 year shorter life expectancy than average Americans. Kevin is the leading voice addressing this crisis through functional nutrition.
 
@@ -74,7 +159,7 @@ Agencies have failed because they don't understand:
 
 ## Content Types We Generate
 
-### From Podcast Episodes
+### From Podcast Episodes (AudioRoad)
 | Type | Description | Platform |
 |------|-------------|----------|
 | Quotables | 1-3 sentence powerful statements | Twitter, IG, FB |
@@ -84,13 +169,28 @@ Agencies have failed because they don't understand:
 | Audiograms | 30-60 second audio clips with waveform | All |
 | Clip Timestamps | Identified moments for video clips | YT Shorts, TikTok |
 
+### From Health Coaching App
+| Type | Description | Platform |
+|------|-------------|----------|
+| Success Stories | Client transformations (anonymized) | IG, FB |
+| Protocol Snippets | Specific supplement protocols | All |
+| Research Insights | Educational science content | LinkedIn, Twitter |
+| Lab Improvements | Before/after lab marker improvements | IG, FB |
+
+### From TruckTales
+| Type | Description | Platform |
+|------|-------------|----------|
+| Chapter Teasers | Cliffhanger excerpts | Twitter, FB |
+| Character Spotlights | Driver character profiles | IG, FB |
+| Story Launches | New story announcements | All |
+| Audiograms | Voice actor clips | TikTok, IG |
+
 ### From Health Guides
 | Type | Description | Platform |
 |------|-------------|----------|
 | Tip Cards | Single actionable tips | IG, FB |
 | Carousels | Multi-slide educational content | IG, LinkedIn |
 | Infographics | Visual data representation | All |
-| Protocol Snippets | Specific supplement protocols | All |
 
 ### Product-Focused
 | Type | Description | Platform |
@@ -103,11 +203,21 @@ Agencies have failed because they don't understand:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        CONTENT SOURCES                          │
+│                     EXTERNAL SOURCE APPS                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  Podcast Audio → Deepgram Transcription → Structured Text      │
-│  Health Guides → Already structured in project knowledge        │
-│  Shopify Products → API sync every 24 hours                    │
+│  AudioRoad → POST /api/ingest (audioUrl, transcript)           │
+│  Health Coaching → POST /api/ingest (success_story, protocol)  │
+│  TruckTales → POST /api/ingest (chapter_teaser, character)     │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      INGESTION LAYER                            │
+├─────────────────────────────────────────────────────────────────┤
+│  - API key validation (per source app)                         │
+│  - Content type routing                                         │
+│  - Voice profile assignment                                     │
+│  - Processing queue                                             │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -120,6 +230,8 @@ Agencies have failed because they don't understand:
 │  - Product mentions and recommendations                        │
 │  - Hot takes and controversial statements                      │
 │  - Story/anecdote boundaries                                   │
+│  - Testimonial highlights                                      │
+│  - Fiction teasers and hooks                                   │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -127,6 +239,7 @@ Agencies have failed because they don't understand:
 │                    CONTENT GENERATION                           │
 ├─────────────────────────────────────────────────────────────────┤
 │  For each extraction, generate platform-specific versions:      │
+│  - Uses voice profile for the source app                       │
 │  - Twitter: 280 char, hook-first, optional thread              │
 │  - Instagram: Visual-first, carousel-friendly, hashtags        │
 │  - Facebook: Longer form, community-focused, link-friendly     │
@@ -138,6 +251,7 @@ Agencies have failed because they don't understand:
 ┌─────────────────────────────────────────────────────────────────┐
 │                      REVIEW QUEUE                               │
 ├─────────────────────────────────────────────────────────────────┤
+│  Filter by: [Source App ▼] [Platform ▼] [Content Type ▼]      │
 │  Team member reviews generated content:                        │
 │  - Approve → Goes to scheduled                                 │
 │  - Edit → Modify and approve                                   │
@@ -159,11 +273,10 @@ Agencies have failed because they don't understand:
 ┌─────────────────────────────────────────────────────────────────┐
 │                        ANALYTICS                                │
 ├─────────────────────────────────────────────────────────────────┤
-│  - Engagement metrics (likes, shares, comments)                │
+│  - Engagement by source app                                    │
+│  - Performance by content type                                 │
 │  - Click-through tracking                                      │
 │  - Conversion attribution (which posts → which sales)          │
-│  - Content type performance                                    │
-│  - Winner identification for repurposing                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -171,10 +284,21 @@ Agencies have failed because they don't understand:
 
 ### Core Tables
 
+**source_apps**
+- Registered external applications
+- API keys for authentication
+- Voice profile assignments
+
 **sources**
 - Raw uploaded content (audio files, text, URLs)
-- Metadata (title, duration, source_type)
+- Link to source app
+- Content type (episode, success_story, chapter_teaser, etc.)
 - Processing status
+
+**voice_profiles**
+- AI generation style configurations
+- System prompts for each voice
+- Examples for consistency
 
 **transcripts**
 - Full text transcription
@@ -183,7 +307,7 @@ Agencies have failed because they don't understand:
 
 **extractions**
 - Individual content pieces extracted from sources
-- Type (quote, stat, clip, hot_take, story)
+- Type (quote, stat, clip, hot_take, story, testimonial, teaser)
 - Timestamps (start/end for audio)
 - Raw text
 - Product associations
@@ -195,25 +319,37 @@ Agencies have failed because they don't understand:
 - Media attachments
 - Status (draft, pending_review, approved, scheduled, published)
 
-**scheduled_posts**
-- Approved content with scheduled publish time
-- Platform credentials reference
-- Retry count for failures
-
-**published_posts**
-- Successfully published content
-- Platform post ID
-- Analytics data
-
 **products**
 - Cached Shopify products
 - Used for product mention linking
+
+## API Endpoints
+
+### Ingestion (External Apps)
+- `POST /api/ingest` - Receive content from source apps
+- `GET /api/ingest?sourceId=xxx` - Check processing status
+
+### Source Apps Management
+- `GET /api/apps` - List registered apps
+- `POST /api/apps` - Register new app (returns API key)
+
+### Content Processing
+- `POST /api/transcribe` - Transcribe audio
+- `POST /api/extract` - Extract content pieces
+- `POST /api/generate` - Generate platform content
+
+### Review Queue
+- `GET /api/queue` - Get pending items (filterable)
+- `PATCH /api/queue/:id` - Edit content
+- `POST /api/queue/:id/approve` - Approve for scheduling
+- `POST /api/queue/:id/reject` - Kill content
+- `POST /api/queue/:id/regenerate` - AI retry
 
 ## API Keys & Services
 
 | Service | Purpose | Environment Variable |
 |---------|---------|---------------------|
-| Supabase | Database, Auth, Storage | SUPABASE_* |
+| Render PostgreSQL | Database | DATABASE_URL |
 | Anthropic | AI content generation | ANTHROPIC_API_KEY |
 | Deepgram | Audio transcription | DEEPGRAM_API_KEY |
 | Shopify | Product catalog | SHOPIFY_* |
@@ -231,34 +367,38 @@ Agencies have failed because they don't understand:
    ```
 
 2. **Database Changes**
-   - Edit schema in Supabase Dashboard or via migrations
-   - Generate types: `npm run db:types`
+   ```bash
+   npx prisma db push    # Push schema changes
+   npx prisma generate   # Regenerate client
+   npx prisma db seed    # Seed source apps
+   ```
 
-3. **Testing AI Prompts**
-   - Use the `/api/test/extraction` endpoint
-   - Check output matches Kevin's voice
+3. **Testing Ingestion**
+   ```bash
+   curl -X POST http://localhost:3000/api/ingest \
+     -H "Authorization: Bearer cr_your_api_key" \
+     -H "Content-Type: application/json" \
+     -d '{"source":"audioroad","contentType":"episode","title":"Test"}'
+   ```
 
 4. **Deployment**
    - Push to main branch
    - Render auto-deploys
 
-## Common Tasks
+## Integrating a New Source App
 
-### Adding a New Content Type
-1. Add type to `types/content.ts`
-2. Create extraction prompt in `lib/ai/prompts/`
-3. Create generation prompt for each platform
-4. Add UI for review queue
+1. Register the app:
+   ```bash
+   curl -X POST https://content-refinery.onrender.com/api/apps \
+     -H "Content-Type: application/json" \
+     -d '{"name":"new-app","displayName":"New App","voiceProfile":"kevin-health"}'
+   ```
 
-### Adding a New Platform
-1. Add platform credentials to env
-2. Create publishing function in `lib/social/`
-3. Add platform-specific generation prompt
-4. Update review queue filters
+2. Save the returned API key to the app's `.env`
 
-### Syncing Shopify Products
-- Runs automatically every 24 hours
-- Manual trigger: `POST /api/shopify/sync`
+3. Copy `src/lib/client/content-refinery-client.ts` to the app
+
+4. Add integration code (button or webhook)
 
 ## Team Member Workflow
 
@@ -276,3 +416,6 @@ Agencies have failed because they don't understand:
 - [ ] Community-generated content curation
 - [ ] Real-time trend response system
 - [ ] AI-assisted reply/comment management
+- [ ] Calendar view for content scheduling
+- [ ] Analytics dashboard
+- [ ] Batch approval/rejection in queue

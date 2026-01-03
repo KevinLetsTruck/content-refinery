@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { transcribeAudio } from "@/lib/audio/deepgram";
+import { getPresignedDownloadUrl, isR2Configured } from "@/lib/storage/r2";
+
+export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutes for long audio files
 
 // POST /api/transcribe - Transcribe a source
 export async function POST(request: NextRequest) {
@@ -26,9 +30,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!source.fileUrl) {
+    // Determine the audio URL based on storage type
+    let audioUrl: string;
+    
+    if (source.storageType === "r2" && source.storageKey) {
+      // R2 storage - get presigned download URL
+      if (!isR2Configured()) {
+        return NextResponse.json(
+          { error: "R2 storage is not configured but source is stored in R2" },
+          { status: 500 }
+        );
+      }
+      console.log(`Getting presigned URL for R2 key: ${source.storageKey}`);
+      audioUrl = await getPresignedDownloadUrl(source.storageKey);
+    } else if (source.fileUrl) {
+      // URL or local storage - use fileUrl directly
+      // Note: Local storage URLs won't work for Deepgram since they're internal
+      // For local storage, we'd need to use transcribeAudioBuffer instead
+      if (source.storageType === "local") {
+        return NextResponse.json(
+          { error: "Local storage files cannot be transcribed remotely. Please configure R2 for cloud storage." },
+          { status: 400 }
+        );
+      }
+      audioUrl = source.fileUrl;
+    } else {
       return NextResponse.json(
-        { error: "Source has no file URL" },
+        { error: "Source has no file URL or storage key" },
         { status: 400 }
       );
     }
@@ -41,8 +69,8 @@ export async function POST(request: NextRequest) {
 
     try {
       // Transcribe the audio
-      console.log(`Transcribing source ${sourceId}...`);
-      const result = await transcribeAudio(source.fileUrl);
+      console.log(`Transcribing source ${sourceId} from URL...`);
+      const result = await transcribeAudio(audioUrl);
 
       // Save transcript
       const transcript = await prisma.transcript.create({

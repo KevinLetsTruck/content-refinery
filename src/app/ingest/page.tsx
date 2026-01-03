@@ -62,6 +62,51 @@ export default function IngestPage() {
     maxSize: 500 * 1024 * 1024, // 500MB
   });
 
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Upload file directly to R2 using presigned URL
+  const uploadToR2 = async (file: File): Promise<{ key: string; publicUrl: string }> => {
+    // Step 1: Get presigned URL
+    const presignResponse = await fetch("/api/upload/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type,
+        fileSize: file.size,
+      }),
+    });
+
+    const presignData = await presignResponse.json();
+
+    if (!presignResponse.ok) {
+      // If R2 not configured, fall back to server upload (for small files only)
+      if (presignData.fallback) {
+        throw new Error("FALLBACK_TO_SERVER");
+      }
+      throw new Error(presignData.error || "Failed to get upload URL");
+    }
+
+    const { uploadUrl, key, publicUrl } = presignData;
+
+    // Step 2: Upload directly to R2
+    setStatusMessage(`Uploading ${file.name}...`);
+    
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error("Failed to upload file to storage");
+    }
+
+    return { key, publicUrl };
+  };
+
   const handleSubmit = async () => {
     if (!title) {
       setError("Please enter a title");
@@ -80,16 +125,58 @@ export default function IngestPage() {
 
     setError(null);
     setStatus("uploading");
-    setStatusMessage("Uploading content...");
+    setStatusMessage("Preparing upload...");
+    setUploadProgress(0);
 
     try {
-      // Step 1: Create source
+      let fileUrl: string | null = null;
+      let r2Key: string | null = null;
+
+      // Step 1: Upload file
+      if (sourceType === "audio" && selectedFile) {
+        try {
+          // Try R2 upload first (for large files)
+          const { key, publicUrl } = await uploadToR2(selectedFile);
+          r2Key = key;
+          fileUrl = publicUrl;
+          setStatusMessage("File uploaded to cloud storage!");
+        } catch (r2Error) {
+          // Fall back to server upload for small files or if R2 not configured
+          if (r2Error instanceof Error && r2Error.message === "FALLBACK_TO_SERVER") {
+            // Check file size for server upload
+            const MAX_SERVER_SIZE = 25 * 1024 * 1024; // 25MB
+            if (selectedFile.size > MAX_SERVER_SIZE) {
+              throw new Error(
+                `File is ${Math.round(selectedFile.size / 1024 / 1024)}MB. ` +
+                "Cloud storage is not configured. Please configure Cloudflare R2 for large file uploads, " +
+                "or use a file under 25MB."
+              );
+            }
+            // Continue with server upload (handled below)
+          } else {
+            throw r2Error;
+          }
+        }
+      }
+
+      // Step 2: Create source record
+      setStatusMessage("Creating source record...");
+      
       const formData = new FormData();
       formData.append("title", title);
       formData.append("sourceType", sourceType);
       
       if (sourceType === "audio" && selectedFile) {
-        formData.append("file", selectedFile);
+        if (r2Key) {
+          // R2 upload succeeded - pass the R2 key
+          formData.append("r2Key", r2Key);
+          formData.append("fileUrl", fileUrl || "");
+          formData.append("originalFilename", selectedFile.name);
+          formData.append("fileSizeBytes", String(selectedFile.size));
+        } else {
+          // Fall back to server upload
+          formData.append("file", selectedFile);
+        }
       } else if (sourceType === "url") {
         formData.append("url", url);
       }
@@ -100,13 +187,14 @@ export default function IngestPage() {
       });
 
       if (!createResponse.ok) {
-        throw new Error("Failed to create source");
+        const errorData = await createResponse.json();
+        throw new Error(errorData.error || "Failed to create source");
       }
 
       const { source: createdSource } = await createResponse.json();
       setSource(createdSource);
 
-      // Step 2: Transcribe
+      // Step 3: Transcribe
       setStatus("transcribing");
       setStatusMessage("Transcribing audio... This may take a few minutes.");
 
@@ -123,7 +211,7 @@ export default function IngestPage() {
 
       const { transcript } = await transcribeResponse.json();
 
-      // Step 3: Extract content
+      // Step 4: Extract content
       setStatus("extracting");
       setStatusMessage("AI is extracting content pieces...");
 

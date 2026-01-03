@@ -106,21 +106,22 @@ export function Step1Source() {
             <p className="text-sm text-muted-foreground mt-1">
               Just type your idea and let AI handle the rest. One click to create, review, and schedule.
             </p>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={content}
                 onChange={(e) => handleContentChange(e.target.value)}
                 placeholder="e.g., 70% of drivers have Candida overgrowth"
-                className="flex-1 px-4 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="flex-1 min-w-0 px-4 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <button
                 onClick={handleQuickCreate}
                 disabled={!content.trim()}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
                 <Sparkles className="h-4 w-4" />
-                Let AI Handle It
+                <span className="hidden sm:inline">Let AI Handle It</span>
+                <span className="sm:hidden">Create</span>
               </button>
             </div>
           </div>

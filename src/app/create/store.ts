@@ -204,7 +204,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     }
   },
   
-  setSource: (type, content, title = '', id = null) => set({
+  setSource: (type, content, title = '', id = undefined) => set({
     sourceType: type,
     sourceContent: content,
     sourceTitle: title,

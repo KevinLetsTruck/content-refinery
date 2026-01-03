@@ -115,7 +115,7 @@ model Extraction {
 // ============================================
 model GeneratedContent {
   id              String    @id @default(uuid())
-  extractionId    String    @map("extraction_id")
+  extractionId    String?   @map("extraction_id")
   platform        String    // twitter, instagram, facebook, linkedin, tiktok, youtube
   text            String
   hashtags        String[]
@@ -133,7 +133,7 @@ model GeneratedContent {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  extraction Extraction @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  extraction Extraction? @relation(fields: [extractionId], references: [id], onDelete: Cascade)
 
   @@map("generated_content")
 }

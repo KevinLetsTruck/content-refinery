@@ -55,8 +55,7 @@ export async function POST(request: NextRequest) {
         return prisma.generatedContent.create({
           data: {
             platform,
-            contentType: "social_post",
-            content: content.text,
+            text: content.text,
             hashtags: content.hashtags,
             status,
             scheduledFor: scheduledTime ? new Date(scheduledTime) : null,

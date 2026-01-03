@@ -99,7 +99,7 @@ export function AIAssistantPanel() {
   if (!aiPanelOpen) return null;
 
   return (
-    <aside className="fixed right-0 top-0 h-full w-96 bg-card border-l flex flex-col z-50">
+    <aside className="fixed right-0 top-0 h-full w-80 bg-card border-l flex flex-col z-50 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b bg-primary/5">
         <div className="flex items-center gap-2">
@@ -158,12 +158,12 @@ export function AIAssistantPanel() {
 
       {/* Quick Suggestions */}
       {aiMessages.length > 0 && aiMessages[aiMessages.length - 1].suggestions && (
-        <div className="px-4 py-2 border-t flex flex-wrap gap-2">
+        <div className="px-3 py-2 border-t flex flex-wrap gap-1.5">
           {aiMessages[aiMessages.length - 1].suggestions?.map((suggestion, i) => (
             <button
               key={i}
               onClick={() => handleSuggestionClick(suggestion)}
-              className="text-xs px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
+              className="text-[11px] px-2.5 py-1 rounded-full bg-secondary hover:bg-secondary/80 transition-colors"
             >
               {suggestion}
             </button>
@@ -172,7 +172,7 @@ export function AIAssistantPanel() {
       )}
 
       {/* Input */}
-      <div className="p-4 border-t">
+      <div className="p-3 border-t">
         <div className="flex gap-2">
           <input
             type="text"
@@ -180,12 +180,12 @@ export function AIAssistantPanel() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ask me anything..."
-            className="flex-1 px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="flex-1 px-3 py-1.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isTyping}
-            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="h-4 w-4" />
           </button>

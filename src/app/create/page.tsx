@@ -51,7 +51,7 @@ export default function CreatePage() {
   return (
     <div className="flex h-screen">
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${aiPanelOpen ? 'mr-96' : ''}`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${aiPanelOpen ? 'mr-80' : ''}`}>
         {/* Header */}
         <header className="border-b bg-card px-6 py-4">
           <div className="flex items-center justify-between">

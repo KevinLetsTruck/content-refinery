@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { postTweet, uploadMedia as uploadTwitterMedia, isConfigured as isTwitterConfigured } from "@/lib/social/twitter";
 import { postToFacebook, postToInstagram, isConfigured as isMetaConfigured } from "@/lib/social/meta";
 import { trackPublish } from "@/lib/analytics/track-performance";
+import { formatForTwitter, smartTruncate, PLATFORM_LIMITS } from "@/lib/utils/text";
 
 interface PublishRequest {
   content: {
@@ -246,31 +247,27 @@ async function publishToTwitter(content: {
     throw new Error("Twitter credentials not configured");
   }
 
-  // Build tweet text with hashtags
-  let tweetText = content.text;
+  // Use smart formatting to handle 280 char limit
+  const tweetText = formatForTwitter(content.text, content.hashtags);
   
-  // Add hashtags if there's room (280 char limit)
-  if (content.hashtags && content.hashtags.length > 0) {
-    const hashtagString = content.hashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ");
-    if (tweetText.length + hashtagString.length + 2 <= 280) {
-      tweetText = `${tweetText}\n\n${hashtagString}`;
-    }
-  }
-
-  // Truncate if needed
+  console.log(`[Create/Publish] Twitter text length: ${tweetText.length}/280`);
+  
+  // Final safety check
   if (tweetText.length > 280) {
-    tweetText = tweetText.substring(0, 277) + "...";
+    console.warn(`[Create/Publish] Text still over limit after formatting, hard truncating`);
   }
 
   // Upload media if present
   let mediaIds: string[] | undefined;
   if (content.mediaUrl) {
     try {
+      console.log(`[Create/Publish] Uploading media: ${content.mediaUrl}`);
       const mediaId = await uploadTwitterMedia(content.mediaUrl);
       mediaIds = [mediaId];
+      console.log(`[Create/Publish] Media uploaded: ${mediaId}`);
     } catch (error) {
-      console.error("[Create/Publish] Twitter media upload failed:", error);
-      // Continue without media
+      console.warn("[Create/Publish] Twitter media upload failed, continuing text-only:", error);
+      // Continue without media - don't fail the publish
     }
   }
 
@@ -278,6 +275,8 @@ async function publishToTwitter(content: {
     text: tweetText,
     mediaIds,
   });
+
+  console.log(`[Create/Publish] Tweet posted: ${result.url}`);
 
   return {
     id: result.id,

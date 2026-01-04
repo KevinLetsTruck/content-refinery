@@ -10,8 +10,10 @@ import {
   ExternalLink,
   Hash,
   Sparkles,
-  Shield
+  Shield,
+  Type
 } from "lucide-react";
+import { getCharacterStatus } from "@/lib/utils/text";
 
 const PLATFORM_NAMES: Record<Platform, string> = {
   instagram_feed: "Instagram Feed",
@@ -215,6 +217,26 @@ export function Step6Review() {
                 rows={8}
                 className="w-full px-4 py-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
+              {/* Live character count while editing */}
+              <div className="flex flex-wrap gap-3 text-xs">
+                {enabledPlatforms.map((platform) => {
+                  const status = getCharacterStatus(editText, platform.platform, hashtags);
+                  return (
+                    <span 
+                      key={platform.platform}
+                      className={`px-2 py-1 rounded ${
+                        status.status === 'error' 
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' 
+                          : status.status === 'warning' 
+                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' 
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {PLATFORM_NAMES[platform.platform]}: {status.count}/{status.limit}
+                    </span>
+                  );
+                })}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}
@@ -234,6 +256,69 @@ export function Step6Review() {
             <p className="whitespace-pre-wrap text-foreground leading-relaxed">
               {currentText}
             </p>
+          )}
+        </div>
+      </div>
+
+      {/* Character Count per Platform */}
+      <div className="bg-card rounded-xl border overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30 flex items-center gap-2">
+          <Type className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-medium">Character Limits</h3>
+        </div>
+        
+        <div className="p-4 space-y-3">
+          {enabledPlatforms.map((platform) => {
+            const status = getCharacterStatus(currentText, platform.platform, hashtags);
+            return (
+              <div key={platform.platform} className="flex items-center justify-between">
+                <span className="text-sm font-medium">
+                  {PLATFORM_NAMES[platform.platform]}
+                </span>
+                <div className="flex items-center gap-2">
+                  <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all ${
+                        status.status === 'error' 
+                          ? 'bg-red-500' 
+                          : status.status === 'warning' 
+                          ? 'bg-amber-500' 
+                          : 'bg-green-500'
+                      }`}
+                      style={{ width: `${Math.min(100, (status.count / status.limit) * 100)}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-mono min-w-[100px] text-right ${
+                    status.status === 'error' 
+                      ? 'text-red-500 font-semibold' 
+                      : status.status === 'warning' 
+                      ? 'text-amber-500' 
+                      : 'text-muted-foreground'
+                  }`}>
+                    {status.count}/{status.limit}
+                  </span>
+                  {status.status === 'error' && (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  )}
+                  {status.status === 'warning' && (
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  )}
+                  {status.status === 'good' && (
+                    <Check className="h-4 w-4 text-green-500" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          
+          {/* Warning message if any platform is over limit */}
+          {enabledPlatforms.some(p => getCharacterStatus(currentText, p.platform, hashtags).isOverLimit) && (
+            <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
+              <p className="text-sm text-red-700 dark:text-red-400">
+                <strong>Content exceeds limit.</strong> Text will be truncated when published. 
+                Consider editing to fit within limits.
+              </p>
+            </div>
           )}
         </div>
       </div>

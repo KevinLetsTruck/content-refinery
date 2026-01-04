@@ -118,5 +118,37 @@ export async function getFileBuffer(key: string): Promise<Buffer | null> {
   }
 }
 
+/**
+ * Upload a file buffer directly to R2
+ */
+export async function uploadToR2(
+  key: string,
+  data: Buffer,
+  contentType: string
+): Promise<void> {
+  const client = getR2Client();
 
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    Body: data,
+    ContentType: contentType,
+  });
 
+  await client.send(command);
+}
+
+/**
+ * Get the public URL for a file in R2
+ * Requires public access to be enabled on the bucket or a custom domain
+ */
+export function getPublicUrl(key: string): string {
+  // If a custom public URL is configured, use it
+  if (R2_PUBLIC_URL) {
+    return `${R2_PUBLIC_URL}/${key}`;
+  }
+  
+  // Otherwise use the default R2 URL format
+  // Note: This requires public access to be enabled on the bucket
+  return `https://pub-${R2_ACCOUNT_ID}.r2.dev/${key}`;
+}

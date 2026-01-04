@@ -244,6 +244,11 @@ function isDirectImageUrl(url: string): boolean {
     return false;
   }
   
+  // R2 URLs are direct images
+  if (url.includes('.r2.dev/') || url.includes('r2.cloudflarestorage.com')) {
+    return true;
+  }
+  
   // Check for common image extensions
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
   const lowerUrl = url.toLowerCase();

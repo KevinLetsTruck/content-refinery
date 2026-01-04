@@ -52,6 +52,9 @@ export function Step5Visuals() {
     }
   }, []);
 
+  // Platforms that need direct image URLs (not Gamma viewer pages)
+  const NEEDS_DIRECT_IMAGE = ["twitter"];
+
   const generateAllVisuals = async () => {
     setGeneratingAll(true);
     setLoading(true);
@@ -60,37 +63,70 @@ export function Step5Visuals() {
       setVisual(platform.platform, { status: "generating" });
       
       try {
-        console.log(`[Step5] Generating visual for ${platform.platform} (${platform.format})...`);
+        const needsDirectImage = NEEDS_DIRECT_IMAGE.includes(platform.platform);
+        console.log(`[Step5] Generating visual for ${platform.platform} (${platform.format}), direct: ${needsDirectImage}...`);
         
-        const response = await fetch("/api/gamma/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: selectedContent?.text || "",
-            contentType: selectedContent?.type || "educational",
-            format: platform.format,
-            platform: platform.platform,
-            waitForResult: true,
-          }),
-        });
-
-        const data = await response.json();
-        console.log(`[Step5] Response for ${platform.platform}:`, data);
-
-        if (response.ok && data.gammaUrl) {
-          setVisual(platform.platform, {
-            status: "completed",
-            generationId: data.generationId,
-            gammaUrl: data.gammaUrl,
+        if (needsDirectImage) {
+          // Use Cloudflare AI for platforms that need direct image URLs
+          const response = await fetch("/api/images/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: selectedContent?.text || "",
+              contentType: selectedContent?.type || "educational",
+              platform: platform.platform,
+            }),
           });
+
+          const data = await response.json();
+          console.log(`[Step5] CF AI Response for ${platform.platform}:`, data);
+
+          if (response.ok && data.imageUrl) {
+            setVisual(platform.platform, {
+              status: "completed",
+              generationId: data.filename,
+              gammaUrl: data.imageUrl, // Using gammaUrl field to store R2 image URL
+              imageUrl: data.imageUrl, // Also store in imageUrl for clarity
+            });
+          } else {
+            const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+            console.error(`[Step5] CF AI failed for ${platform.platform}:`, errorMessage);
+            setVisual(platform.platform, {
+              status: "failed",
+              error: errorMessage,
+            });
+          }
         } else {
-          // Show the actual error from the API
-          const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
-          console.error(`[Step5] Generation failed for ${platform.platform}:`, errorMessage);
-          setVisual(platform.platform, {
-            status: "failed",
-            error: errorMessage,
+          // Use Gamma for other platforms (creates viewable cards)
+          const response = await fetch("/api/gamma/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: selectedContent?.text || "",
+              contentType: selectedContent?.type || "educational",
+              format: platform.format,
+              platform: platform.platform,
+              waitForResult: true,
+            }),
           });
+
+          const data = await response.json();
+          console.log(`[Step5] Gamma Response for ${platform.platform}:`, data);
+
+          if (response.ok && data.gammaUrl) {
+            setVisual(platform.platform, {
+              status: "completed",
+              generationId: data.generationId,
+              gammaUrl: data.gammaUrl,
+            });
+          } else {
+            const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+            console.error(`[Step5] Generation failed for ${platform.platform}:`, errorMessage);
+            setVisual(platform.platform, {
+              status: "failed",
+              error: errorMessage,
+            });
+          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Network error";
@@ -113,36 +149,70 @@ export function Step5Visuals() {
     setVisual(platform, { status: "generating" });
 
     try {
-      console.log(`[Step5] Regenerating visual for ${platform} (${config.format})...`);
+      const needsDirectImage = NEEDS_DIRECT_IMAGE.includes(platform);
+      console.log(`[Step5] Regenerating visual for ${platform} (${config.format}), direct: ${needsDirectImage}...`);
       
-      const response = await fetch("/api/gamma/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: selectedContent?.text || "",
-          contentType: selectedContent?.type || "educational",
-          format: config.format,
-          platform: platform,
-          waitForResult: true,
-        }),
-      });
-
-      const data = await response.json();
-      console.log(`[Step5] Regenerate response for ${platform}:`, data);
-
-      if (response.ok && data.gammaUrl) {
-        setVisual(platform, {
-          status: "completed",
-          generationId: data.generationId,
-          gammaUrl: data.gammaUrl,
+      if (needsDirectImage) {
+        // Use Cloudflare AI for platforms that need direct image URLs
+        const response = await fetch("/api/images/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: selectedContent?.text || "",
+            contentType: selectedContent?.type || "educational",
+            platform: platform,
+          }),
         });
+
+        const data = await response.json();
+        console.log(`[Step5] CF AI Regenerate response for ${platform}:`, data);
+
+        if (response.ok && data.imageUrl) {
+          setVisual(platform, {
+            status: "completed",
+            generationId: data.filename,
+            gammaUrl: data.imageUrl,
+            imageUrl: data.imageUrl,
+          });
+        } else {
+          const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+          console.error(`[Step5] CF AI Regeneration failed for ${platform}:`, errorMessage);
+          setVisual(platform, {
+            status: "failed",
+            error: errorMessage,
+          });
+        }
       } else {
-        const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
-        console.error(`[Step5] Regeneration failed for ${platform}:`, errorMessage);
-        setVisual(platform, {
-          status: "failed",
-          error: errorMessage,
+        // Use Gamma for other platforms
+        const response = await fetch("/api/gamma/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: selectedContent?.text || "",
+            contentType: selectedContent?.type || "educational",
+            format: config.format,
+            platform: platform,
+            waitForResult: true,
+          }),
         });
+
+        const data = await response.json();
+        console.log(`[Step5] Gamma Regenerate response for ${platform}:`, data);
+
+        if (response.ok && data.gammaUrl) {
+          setVisual(platform, {
+            status: "completed",
+            generationId: data.generationId,
+            gammaUrl: data.gammaUrl,
+          });
+        } else {
+          const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+          console.error(`[Step5] Regeneration failed for ${platform}:`, errorMessage);
+          setVisual(platform, {
+            status: "failed",
+            error: errorMessage,
+          });
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Network error";
@@ -195,11 +265,10 @@ export function Step5Visuals() {
         <div className="flex items-start gap-3">
           <ImageIcon className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
           <div className="text-sm">
-            <p className="font-medium text-blue-700 dark:text-blue-300">About Gamma Visuals</p>
+            <p className="font-medium text-blue-700 dark:text-blue-300">Visual Generation</p>
             <p className="text-muted-foreground mt-1">
-              Gamma creates interactive visual cards you can view and share. For Twitter/X, posts are 
-              text-only (images must be manually downloaded and attached). Instagram/Facebook support 
-              direct image uploads.
+              <strong>Twitter/X:</strong> AI-generated images (Cloudflare AI) - auto-attached to posts.<br/>
+              <strong>Other platforms:</strong> Gamma visual cards - viewable and shareable links.
             </p>
           </div>
         </div>

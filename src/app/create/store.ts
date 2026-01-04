@@ -30,6 +30,7 @@ export interface GammaVisual {
   generationId?: string;
   status: 'pending' | 'generating' | 'completed' | 'failed';
   gammaUrl?: string;
+  imageUrl?: string; // Direct image URL (from Cloudflare AI)
   exportUrl?: string;
   error?: string;
 }

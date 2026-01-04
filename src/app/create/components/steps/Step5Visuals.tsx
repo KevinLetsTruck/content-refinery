@@ -60,6 +60,8 @@ export function Step5Visuals() {
       setVisual(platform.platform, { status: "generating" });
       
       try {
+        console.log(`[Step5] Generating visual for ${platform.platform} (${platform.format})...`);
+        
         const response = await fetch("/api/gamma/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -72,23 +74,30 @@ export function Step5Visuals() {
           }),
         });
 
-        if (response.ok) {
-          const data = await response.json();
+        const data = await response.json();
+        console.log(`[Step5] Response for ${platform.platform}:`, data);
+
+        if (response.ok && data.gammaUrl) {
           setVisual(platform.platform, {
             status: "completed",
             generationId: data.generationId,
             gammaUrl: data.gammaUrl,
           });
         } else {
+          // Show the actual error from the API
+          const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+          console.error(`[Step5] Generation failed for ${platform.platform}:`, errorMessage);
           setVisual(platform.platform, {
             status: "failed",
-            error: "Generation failed",
+            error: errorMessage,
           });
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Network error";
+        console.error(`[Step5] Network error for ${platform.platform}:`, error);
         setVisual(platform.platform, {
           status: "failed",
-          error: "Network error",
+          error: errorMessage,
         });
       }
     }
@@ -104,6 +113,8 @@ export function Step5Visuals() {
     setVisual(platform, { status: "generating" });
 
     try {
+      console.log(`[Step5] Regenerating visual for ${platform} (${config.format})...`);
+      
       const response = await fetch("/api/gamma/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -116,23 +127,29 @@ export function Step5Visuals() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+      console.log(`[Step5] Regenerate response for ${platform}:`, data);
+
+      if (response.ok && data.gammaUrl) {
         setVisual(platform, {
           status: "completed",
           generationId: data.generationId,
           gammaUrl: data.gammaUrl,
         });
       } else {
+        const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+        console.error(`[Step5] Regeneration failed for ${platform}:`, errorMessage);
         setVisual(platform, {
           status: "failed",
-          error: "Generation failed",
+          error: errorMessage,
         });
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Network error";
+      console.error(`[Step5] Network error for ${platform}:`, error);
       setVisual(platform, {
         status: "failed",
-        error: "Network error",
+        error: errorMessage,
       });
     }
   };

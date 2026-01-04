@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateAllWeights } from "@/lib/analytics/learning-engine";
+import { updateOptimalPostingTimes } from "@/lib/campaigns/smart-scheduler";
 
 /**
  * GET /api/cron/update-weights
  * 
- * Weekly cron job to recalculate content weights
+ * Weekly cron job to recalculate content weights and optimal posting times
  * Run every Sunday at 3 AM
  */
 export async function GET(request: NextRequest) {
@@ -20,6 +21,12 @@ export async function GET(request: NextRequest) {
     
     const startTime = Date.now();
     const results = await updateAllWeights();
+    
+    // Update optimal posting times
+    console.log("[Cron] Updating optimal posting times...");
+    const timingResults = await updateOptimalPostingTimes();
+    console.log(`[Cron] Updated ${timingResults.updated} posting time records`);
+    
     const duration = Date.now() - startTime;
     
     console.log(`[Cron] Weight update completed in ${duration}ms`);
@@ -27,6 +34,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       ...results,
+      optimalTimesUpdated: timingResults.updated,
       durationMs: duration,
       timestamp: new Date().toISOString(),
     });

@@ -236,6 +236,21 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Check if URL is a direct image file (not a web page)
+ */
+function isDirectImageUrl(url: string): boolean {
+  // Gamma URLs are document viewer pages, not direct images
+  if (url.includes('gamma.app/docs/')) {
+    return false;
+  }
+  
+  // Check for common image extensions
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+  const lowerUrl = url.toLowerCase();
+  return imageExtensions.some(ext => lowerUrl.includes(ext));
+}
+
+/**
  * Publish to Twitter
  */
 async function publishToTwitter(content: {
@@ -257,9 +272,9 @@ async function publishToTwitter(content: {
     console.warn(`[Create/Publish] Text still over limit after formatting, hard truncating`);
   }
 
-  // Upload media if present
+  // Upload media if present AND is a direct image URL
   let mediaIds: string[] | undefined;
-  if (content.mediaUrl) {
+  if (content.mediaUrl && isDirectImageUrl(content.mediaUrl)) {
     try {
       console.log(`[Create/Publish] Uploading media: ${content.mediaUrl}`);
       const mediaId = await uploadTwitterMedia(content.mediaUrl);
@@ -269,6 +284,8 @@ async function publishToTwitter(content: {
       console.warn("[Create/Publish] Twitter media upload failed, continuing text-only:", error);
       // Continue without media - don't fail the publish
     }
+  } else if (content.mediaUrl) {
+    console.log(`[Create/Publish] Skipping media - not a direct image URL: ${content.mediaUrl}`);
   }
 
   const result = await postTweet({

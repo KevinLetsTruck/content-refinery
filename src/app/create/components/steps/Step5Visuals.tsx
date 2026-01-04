@@ -190,6 +190,21 @@ export function Step5Visuals() {
         )}
       </div>
 
+      {/* Info Note */}
+      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <ImageIcon className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="text-sm">
+            <p className="font-medium text-blue-700 dark:text-blue-300">About Gamma Visuals</p>
+            <p className="text-muted-foreground mt-1">
+              Gamma creates interactive visual cards you can view and share. For Twitter/X, posts are 
+              text-only (images must be manually downloaded and attached). Instagram/Facebook support 
+              direct image uploads.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Progress Overview */}
       {generatingAll && (
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">

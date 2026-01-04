@@ -177,20 +177,21 @@ function extractKeywords(text: string): string[] {
 
 /**
  * Get dimensions for platform
+ * NOTE: All dimensions must be divisible by 8 for SDXL-Lightning
  */
 export function getDimensionsForPlatform(platform: string): { width: number; height: number } {
   switch (platform) {
     case "instagram_feed":
-      return { width: 1024, height: 1024 }; // Square
+      return { width: 1024, height: 1024 }; // Square (1024/8=128 ✓)
     case "instagram_story":
     case "tiktok":
-      return { width: 768, height: 1344 }; // 9:16 vertical
+      return { width: 768, height: 1344 }; // 9:16 vertical (both divisible by 8)
     case "twitter":
-      return { width: 1200, height: 675 }; // 16:9 landscape  
+      return { width: 1024, height: 576 }; // 16:9 landscape (both divisible by 8)
     case "facebook":
       return { width: 1024, height: 1024 }; // Square
     case "linkedin":
-      return { width: 1200, height: 627 }; // 1.91:1
+      return { width: 1200, height: 624 }; // ~1.92:1 (624/8=78 ✓)
     default:
       return { width: 1024, height: 1024 };
   }

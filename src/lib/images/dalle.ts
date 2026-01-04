@@ -91,7 +91,7 @@ export async function uploadImageToR2(
   platform: string
 ): Promise<string> {
   const filename = `social-images/${platform}/${Date.now()}.png`;
-  await uploadToR2(imageBuffer, filename, "image/png");
+  await uploadToR2(filename, imageBuffer, "image/png");
   return getPublicUrl(filename);
 }
 

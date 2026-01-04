@@ -393,7 +393,7 @@ export default function QueuePage() {
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center">
-              <Truck className="w-8 h-8 text-[#888888]" />
+              <AlertCircle className="w-8 h-8 text-[#888888]" />
             </div>
             <p className="text-[#888888] mb-4">
               {items.length === 0

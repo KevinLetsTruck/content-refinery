@@ -2,17 +2,13 @@ import Link from "next/link";
 import { 
   Upload, 
   ListTodo, 
-  Calendar, 
-  BarChart3, 
-  Settings,
   Mic,
   FileText,
-  ShoppingBag,
-  Sparkles,
-  Truck,
-  Zap
+  Zap,
+  FolderOpen,
 } from "lucide-react";
 import prisma from "@/lib/db/prisma";
+import { Sidebar } from "@/components/navigation/Sidebar";
 
 // Fetch real data from the database
 async function getDashboardData() {
@@ -59,33 +55,12 @@ export default async function HomePage() {
   const { pendingReviewCount, totalSources, totalContent, recentSources } = await getDashboardData();
 
   return (
-    <div className="flex h-screen bg-[#0D0D0D]">
+    <div className="flex min-h-screen bg-[#0D0D0D]">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-[#333333] bg-[#0D0D0D]">
-        <div className="p-6 border-b border-[#333333]">
-          <div className="flex items-center gap-2">
-            <Truck className="h-6 w-6 text-[#FF4500]" />
-            <h1 className="text-xl font-display text-gradient-orange">CONTENT REFINERY</h1>
-          </div>
-          <p className="text-sm text-[#888888] mt-1">Let&apos;s Truck</p>
-        </div>
-        
-        <nav className="px-4 py-4 space-y-1">
-          <NavItem href="/create" icon={<Sparkles className="h-4 w-4" />} label="Create Content" primary />
-          <div className="h-px bg-[#333333] my-3" />
-          <NavItem href="/ingest" icon={<Upload className="h-4 w-4" />} label="Ingest Content" />
-          <NavItem href="/extract" icon={<Mic className="h-4 w-4" />} label="Extract" />
-          <NavItem href="/generate" icon={<FileText className="h-4 w-4" />} label="Generate" />
-          <NavItem href="/queue" icon={<ListTodo className="h-4 w-4" />} label="Review Queue" badge={pendingReviewCount > 0 ? String(pendingReviewCount) : undefined} />
-          <NavItem href="/calendar" icon={<Calendar className="h-4 w-4" />} label="Calendar" />
-          <NavItem href="/analytics" icon={<BarChart3 className="h-4 w-4" />} label="Analytics" />
-          <NavItem href="/products" icon={<ShoppingBag className="h-4 w-4" />} label="Products" />
-          <NavItem href="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" />
-        </nav>
-      </aside>
+      <Sidebar queueCount={pendingReviewCount} />
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-[#0D0D0D]">
+      <main className="flex-1 ml-64 overflow-auto">
         {/* Orange accent line */}
         <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
         
@@ -146,10 +121,10 @@ export default async function HomePage() {
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <QuickAction 
-              href="/ingest"
-              icon={<Upload className="h-8 w-8" />}
-              title="Upload Episode"
-              description="Upload audio for transcription and extraction"
+              href="/sources"
+              icon={<FolderOpen className="h-8 w-8" />}
+              title="View Sources"
+              description="Browse all uploaded episodes and content"
             />
             <QuickAction 
               href="/queue"
@@ -159,10 +134,10 @@ export default async function HomePage() {
               badge={pendingReviewCount > 0 ? String(pendingReviewCount) : undefined}
             />
             <QuickAction 
-              href="/generate"
-              icon={<FileText className="h-8 w-8" />}
-              title="Generate Content"
-              description="Create content from guides and products"
+              href="/ingest"
+              icon={<Upload className="h-8 w-8" />}
+              title="Upload Episode"
+              description="Upload new audio for processing"
             />
           </div>
 
@@ -199,47 +174,6 @@ export default async function HomePage() {
         </div>
       </main>
     </div>
-  );
-}
-
-function NavItem({ 
-  href, 
-  icon, 
-  label, 
-  badge,
-  primary = false
-}: { 
-  href: string; 
-  icon: React.ReactNode; 
-  label: string;
-  badge?: string;
-  primary?: boolean;
-}) {
-  if (primary) {
-    return (
-      <Link 
-        href={href}
-        className="flex items-center gap-3 px-3 py-2 rounded bg-gradient-to-r from-[#FF4500] to-[#CC3700] text-white font-semibold hover:from-[#FF6633] hover:to-[#FF4500] transition-all"
-      >
-        {icon}
-        <span className="flex-1">{label}</span>
-      </Link>
-    );
-  }
-  
-  return (
-    <Link 
-      href={href}
-      className="flex items-center gap-3 px-3 py-2 rounded text-[#888888] hover:text-white hover:bg-[#1A1A1A] transition-colors"
-    >
-      {icon}
-      <span className="flex-1">{label}</span>
-      {badge && (
-        <span className="bg-[#FF4500] text-white text-xs px-2 py-0.5 rounded-full font-medium">
-          {badge}
-        </span>
-      )}
-    </Link>
   );
 }
 

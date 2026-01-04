@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import Link from "next/link";
+import { Sidebar } from "@/components/navigation/Sidebar";
 import {
   Upload,
   FileAudio,
@@ -10,10 +11,8 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  ArrowLeft,
   Play,
   Sparkles,
-  Truck,
 } from "lucide-react";
 
 type UploadStatus = "idle" | "uploading" | "transcribing" | "extracting" | "complete" | "error";
@@ -257,26 +256,24 @@ export default function IngestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D]">
-      {/* Orange accent line */}
-      <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+    <div className="flex min-h-screen bg-[#0D0D0D]">
+      <Sidebar />
+
+      <main className="flex-1 ml-64">
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
       
-      {/* Header */}
-      <header className="border-b border-[#333333]">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Link href="/" className="text-[#888888] hover:text-white transition-colors">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-white">Ingest Content</h1>
+        {/* Header */}
+        <header className="border-b border-[#333333]">
+          <div className="px-8 py-4">
+            <h1 className="text-xl font-bold text-white">Upload Episode</h1>
             <p className="text-sm text-[#888888]">
-              Upload episodes for transcription and AI extraction
+              Upload audio for transcription and AI extraction
             </p>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="px-8 py-8 max-w-3xl">
         {status === "idle" && (
           <div className="space-y-6">
             {/* Title Input */}
@@ -539,6 +536,7 @@ export default function IngestPage() {
             </div>
           </div>
         )}
+        </div>
       </main>
     </div>
   );

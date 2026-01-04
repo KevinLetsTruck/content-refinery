@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Sidebar } from "@/components/navigation/Sidebar";
 import {
-  ArrowLeft,
   Check,
   X,
   Edit3,
@@ -18,7 +18,6 @@ import {
   ExternalLink,
   AlertCircle,
   ImageIcon,
-  Truck,
 } from "lucide-react";
 
 interface QueueItem {
@@ -250,39 +249,34 @@ export default function QueuePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D]">
-      {/* Orange accent line */}
-      <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+    <div className="flex min-h-screen bg-[#0D0D0D]">
+      <Sidebar />
+
+      <main className="flex-1 ml-64">
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
       
-      {/* Header */}
-      <header className="border-b border-[#333333] sticky top-0 bg-[#0D0D0D] z-10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-[#888888] hover:text-white transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+        {/* Header */}
+        <header className="border-b border-[#333333] sticky top-0 bg-[#0D0D0D] z-10">
+          <div className="px-8 py-4 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-white">Review Queue</h1>
               <p className="text-sm text-[#888888]">
                 {items.length} items {statusFilter === "pending" ? "waiting for review" : statusFilter}
               </p>
             </div>
+
+            <button
+              onClick={fetchQueue}
+              className="flex items-center gap-2 px-3 py-1.5 border border-[#333333] rounded hover:border-[#444444] hover:bg-[#1A1A1A] text-white transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
           </div>
 
-          <button
-            onClick={fetchQueue}
-            className="flex items-center gap-2 px-3 py-1.5 border border-[#333333] rounded hover:border-[#444444] hover:bg-[#1A1A1A] text-white transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-        </div>
-
         {/* Status Tabs */}
-        <div className="container mx-auto px-4 pb-2">
+        <div className="px-8 pb-2">
           <div className="flex gap-4 border-b border-[#333333]">
             {["pending", "approved", "published"].map((status) => (
               <button
@@ -301,7 +295,7 @@ export default function QueuePage() {
         </div>
 
         {/* Platform Filters */}
-        <div className="container mx-auto px-4 py-3">
+        <div className="px-8 py-3">
           <div className="flex gap-2 overflow-x-auto">
             <button
               onClick={() => setFilter("all")}
@@ -334,7 +328,7 @@ export default function QueuePage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
+      <div className="px-8 py-6">
         {/* Publishing Status Banner */}
         {statusFilter === "approved" && (
           <div className="mb-4 p-4 bg-[#1A1A1A] border border-[#333333] rounded-lg">
@@ -678,6 +672,7 @@ export default function QueuePage() {
             ))}
           </div>
         )}
+      </div>
       </main>
     </div>
   );

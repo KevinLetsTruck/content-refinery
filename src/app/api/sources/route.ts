@@ -116,21 +116,50 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET /api/sources - List all sources
+// GET /api/sources - List all sources with extraction and content counts
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
     const status = searchParams.get("status");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limit = parseInt(searchParams.get("limit") || "100");
 
     const sources = await prisma.source.findMany({
       where: status ? { status } : undefined,
       orderBy: { createdAt: "desc" },
       take: limit,
+      include: {
+        _count: {
+          select: {
+            extractions: true,
+          },
+        },
+        extractions: {
+          include: {
+            _count: {
+              select: { generatedContent: true },
+            },
+          },
+        },
+      },
     });
 
-    return NextResponse.json({ sources: sources.map(serializeSource) });
+    // Transform sources to include counts
+    const transformedSources = sources.map((source) => ({
+      id: source.id,
+      title: source.title,
+      sourceType: source.sourceType,
+      contentType: source.contentType,
+      status: source.status,
+      createdAt: source.createdAt,
+      extractionCount: source._count.extractions,
+      generatedCount: source.extractions.reduce(
+        (sum, e) => sum + e._count.generatedContent,
+        0
+      ),
+    }));
+
+    return NextResponse.json({ sources: transformedSources });
   } catch (error) {
     console.error("Error fetching sources:", error);
     return NextResponse.json(

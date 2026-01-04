@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { postTweet, uploadMedia as uploadTwitterMedia, isConfigured as isTwitterConfigured } from "@/lib/social/twitter";
+import { postToFacebook, postToInstagram, isConfigured as isMetaConfigured } from "@/lib/social/meta";
+import { trackPublish } from "@/lib/analytics/track-performance";
 
 interface PublishRequest {
   content: {
@@ -16,10 +19,24 @@ interface PublishRequest {
   scheduledTime?: string;
 }
 
+interface PublishResult {
+  platform: string;
+  success: boolean;
+  postId?: string;
+  postUrl?: string;
+  error?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: PublishRequest = await request.json();
     const { content, visuals, publishOption, scheduledTime } = body;
+
+    console.log("[Create/Publish] Received request:", {
+      publishOption,
+      platforms: content?.platforms,
+      textLength: content?.text?.length,
+    });
 
     if (!content || !content.text) {
       return NextResponse.json(
@@ -28,23 +45,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine status based on publish option
-    let status: string;
+    if (!content.platforms || content.platforms.length === 0) {
+      return NextResponse.json(
+        { error: "At least one platform is required" },
+        { status: 400 }
+      );
+    }
+
+    // Determine initial status based on publish option
+    let initialStatus: string;
     switch (publishOption) {
       case "now":
-        status = "publishing";
+        initialStatus = "approved"; // Will be updated to published after API call
         break;
       case "schedule":
-        status = "scheduled";
+        initialStatus = "scheduled";
         break;
       case "queue":
-        status = "pending";
+        initialStatus = "pending";
         break;
       case "draft":
-        status = "draft";
+        initialStatus = "draft";
         break;
       default:
-        status = "draft";
+        initialStatus = "draft";
     }
 
     // Create generated content records for each platform
@@ -57,7 +81,7 @@ export async function POST(request: NextRequest) {
             platform,
             text: content.text,
             hashtags: content.hashtags,
-            status,
+            status: initialStatus,
             scheduledFor: scheduledTime ? new Date(scheduledTime) : null,
             mediaUrl: visual?.gammaUrl || null,
             metadata: {
@@ -70,31 +94,136 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // If publishing now, trigger the actual publish (placeholder for MVP)
+    console.log("[Create/Publish] Created content records:", createdContent.map(c => ({ id: c.id, platform: c.platform })));
+
+    // If publishing now, actually publish to social media
+    const publishResults: PublishResult[] = [];
+
     if (publishOption === "now") {
-      // In production, this would call social media APIs
-      // For MVP, we just mark as published after a delay
-      setTimeout(async () => {
-        await Promise.all(
-          createdContent.map((c) =>
-            prisma.generatedContent.update({
-              where: { id: c.id },
+      console.log("[Create/Publish] Publishing now to social media...");
+
+      for (const contentRecord of createdContent) {
+        try {
+          let result: { id: string; url: string } | null = null;
+
+          switch (contentRecord.platform) {
+            case "twitter":
+              result = await publishToTwitter(contentRecord);
+              break;
+            case "facebook":
+              result = await publishToFacebook(contentRecord);
+              break;
+            case "instagram":
+            case "instagram_feed":
+            case "instagram_story":
+              result = await publishToInstagramPlatform(contentRecord);
+              break;
+            case "linkedin":
+              publishResults.push({
+                platform: contentRecord.platform,
+                success: false,
+                error: "LinkedIn publishing not yet implemented",
+              });
+              continue;
+            case "tiktok":
+              publishResults.push({
+                platform: contentRecord.platform,
+                success: false,
+                error: "TikTok publishing not yet implemented",
+              });
+              continue;
+            default:
+              publishResults.push({
+                platform: contentRecord.platform,
+                success: false,
+                error: `Unknown platform: ${contentRecord.platform}`,
+              });
+              continue;
+          }
+
+          if (result) {
+            // Update content with publish info
+            const publishedAt = new Date();
+            await prisma.generatedContent.update({
+              where: { id: contentRecord.id },
               data: {
                 status: "published",
-                publishedAt: new Date(),
+                publishedAt,
+                platformPostId: result.id,
+                platformPostUrl: result.url,
               },
-            })
-          )
-        );
-      }, 2000);
+            });
+
+            // Track performance
+            try {
+              const metadata = contentRecord.metadata as Record<string, unknown> || {};
+              await trackPublish({
+                generatedContentId: contentRecord.id,
+                platform: contentRecord.platform,
+                publishedAt,
+                formula: metadata.formula as string | undefined,
+                hookType: metadata.hookType as string | undefined,
+                pillar: metadata.pillar as string | undefined,
+                objective: metadata.objective as string | undefined,
+              });
+            } catch (trackError) {
+              console.error("[Create/Publish] Failed to track performance:", trackError);
+            }
+
+            publishResults.push({
+              platform: contentRecord.platform,
+              success: true,
+              postId: result.id,
+              postUrl: result.url,
+            });
+
+            console.log(`[Create/Publish] Published to ${contentRecord.platform}: ${result.url}`);
+          }
+        } catch (error) {
+          console.error(`[Create/Publish] Failed to publish to ${contentRecord.platform}:`, error);
+          
+          // Mark as failed
+          await prisma.generatedContent.update({
+            where: { id: contentRecord.id },
+            data: { status: "failed" },
+          });
+
+          publishResults.push({
+            platform: contentRecord.platform,
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      }
+    }
+
+    // Check if any publishes failed
+    const failedPublishes = publishResults.filter(r => !r.success);
+    const successfulPublishes = publishResults.filter(r => r.success);
+
+    if (publishOption === "now" && failedPublishes.length > 0 && successfulPublishes.length === 0) {
+      // All publishes failed
+      return NextResponse.json({
+        success: false,
+        error: `Publishing failed: ${failedPublishes.map(f => `${f.platform}: ${f.error}`).join(", ")}`,
+        contentIds: createdContent.map((c) => c.id),
+        publishResults,
+      }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: `Content ${publishOption === "now" ? "published" : publishOption === "schedule" ? "scheduled" : publishOption === "queue" ? "queued" : "saved"}`,
+      message: publishOption === "now"
+        ? `Published to ${successfulPublishes.length} platform(s)${failedPublishes.length > 0 ? `, ${failedPublishes.length} failed` : ""}`
+        : publishOption === "schedule"
+        ? "Content scheduled"
+        : publishOption === "queue"
+        ? "Added to queue"
+        : "Draft saved",
       contentIds: createdContent.map((c) => c.id),
       platforms: content.platforms,
       scheduledFor: scheduledTime || null,
+      publishResults: publishOption === "now" ? publishResults : undefined,
     });
   } catch (error) {
     console.error("[Create/Publish] Error:", error);
@@ -103,4 +232,131 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Publish to Twitter
+ */
+async function publishToTwitter(content: {
+  text: string;
+  hashtags: string[];
+  mediaUrl?: string | null;
+}): Promise<{ id: string; url: string }> {
+  if (!isTwitterConfigured()) {
+    throw new Error("Twitter credentials not configured");
+  }
+
+  // Build tweet text with hashtags
+  let tweetText = content.text;
+  
+  // Add hashtags if there's room (280 char limit)
+  if (content.hashtags && content.hashtags.length > 0) {
+    const hashtagString = content.hashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ");
+    if (tweetText.length + hashtagString.length + 2 <= 280) {
+      tweetText = `${tweetText}\n\n${hashtagString}`;
+    }
+  }
+
+  // Truncate if needed
+  if (tweetText.length > 280) {
+    tweetText = tweetText.substring(0, 277) + "...";
+  }
+
+  // Upload media if present
+  let mediaIds: string[] | undefined;
+  if (content.mediaUrl) {
+    try {
+      const mediaId = await uploadTwitterMedia(content.mediaUrl);
+      mediaIds = [mediaId];
+    } catch (error) {
+      console.error("[Create/Publish] Twitter media upload failed:", error);
+      // Continue without media
+    }
+  }
+
+  const result = await postTweet({
+    text: tweetText,
+    mediaIds,
+  });
+
+  return {
+    id: result.id,
+    url: result.url,
+  };
+}
+
+/**
+ * Publish to Facebook
+ */
+async function publishToFacebook(content: {
+  text: string;
+  hashtags: string[];
+  mediaUrl?: string | null;
+}): Promise<{ id: string; url: string }> {
+  const metaConfig = isMetaConfigured();
+  
+  if (!metaConfig.facebook) {
+    throw new Error("Facebook credentials not configured. Set META_ACCESS_TOKEN and FACEBOOK_PAGE_ID");
+  }
+
+  // Build message with hashtags
+  let message = content.text;
+  
+  if (content.hashtags && content.hashtags.length > 0) {
+    const limitedHashtags = content.hashtags.slice(0, 5);
+    const hashtagString = limitedHashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ");
+    message = `${message}\n\n${hashtagString}`;
+  }
+
+  const result = await postToFacebook({
+    message,
+    imageUrl: content.mediaUrl || undefined,
+  });
+
+  return {
+    id: result.id,
+    url: result.url,
+  };
+}
+
+/**
+ * Publish to Instagram
+ */
+async function publishToInstagramPlatform(content: {
+  text: string;
+  hashtags: string[];
+  mediaUrl?: string | null;
+}): Promise<{ id: string; url: string }> {
+  const metaConfig = isMetaConfigured();
+  
+  if (!metaConfig.instagram) {
+    throw new Error("Instagram credentials not configured. Set META_ACCESS_TOKEN and INSTAGRAM_BUSINESS_ACCOUNT_ID");
+  }
+
+  // Instagram requires an image
+  if (!content.mediaUrl) {
+    throw new Error("Instagram posts require an image. Generate a visual first.");
+  }
+
+  // Build caption with hashtags
+  let caption = content.text;
+  
+  if (content.hashtags && content.hashtags.length > 0) {
+    const hashtagString = content.hashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(" ");
+    caption = `${caption}\n\n${hashtagString}`;
+  }
+
+  if (caption.length > 2200) {
+    caption = caption.substring(0, 2197) + "...";
+  }
+
+  const result = await postToInstagram({
+    caption,
+    imageUrl: content.mediaUrl,
+  });
+
+  return {
+    id: result.id,
+    url: result.url,
+  };
 }

@@ -107,13 +107,13 @@ export async function GET(request: NextRequest) {
       total_impressions: bigint;
     }>>(`
       SELECT 
-        DATE("publishedAt") as date,
+        DATE("published_at") as date,
         COUNT(*) as posts,
-        AVG("engagementRate") as avg_engagement,
+        AVG("engagement_rate") as avg_engagement,
         SUM("impressions") as total_impressions
-      FROM "PostPerformance"
-      WHERE "publishedAt" >= $1
-      GROUP BY DATE("publishedAt")
+      FROM "post_performance"
+      WHERE "published_at" >= $1
+      GROUP BY DATE("published_at")
       ORDER BY date ASC
     `, startDate);
     

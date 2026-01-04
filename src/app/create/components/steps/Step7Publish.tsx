@@ -75,6 +75,12 @@ export function Step7Publish() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [publishedIds, setPublishedIds] = useState<string[]>([]);
+  const [publishResults, setPublishResults] = useState<Array<{
+    platform: string;
+    success: boolean;
+    postUrl?: string;
+    error?: string;
+  }>>([]);
 
   const enabledPlatforms = platforms.filter((p) => p.enabled);
 
@@ -149,8 +155,9 @@ export function Step7Publish() {
         throw new Error(data.error || "Unknown error occurred");
       }
 
-      // Store the created content IDs
+      // Store the created content IDs and publish results
       setPublishedIds(data.contentIds || []);
+      setPublishResults(data.publishResults || []);
       
       // Show success
       setIsComplete(true);
@@ -192,22 +199,34 @@ export function Step7Publish() {
         {/* Platform Summary */}
         <div className="flex justify-center gap-4 mb-8">
           {enabledPlatforms.map((platform) => {
-            const visual = visuals.find((v) => v.platform === platform.platform);
+            const result = publishResults.find((r) => r.platform === platform.platform);
+            const isSuccess = result?.success !== false;
             return (
               <div key={platform.platform} className="text-center">
-                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-2">
-                  <Check className="h-6 w-6 text-green-600" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2 ${
+                  isSuccess 
+                    ? "bg-green-100 dark:bg-green-900/30" 
+                    : "bg-red-100 dark:bg-red-900/30"
+                }`}>
+                  {isSuccess ? (
+                    <Check className="h-6 w-6 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-6 w-6 text-red-600" />
+                  )}
                 </div>
                 <p className="text-sm font-medium">{PLATFORM_NAMES[platform.platform]}</p>
-                {visual?.gammaUrl && (
+                {result?.postUrl && (
                   <a
-                    href={visual.gammaUrl}
+                    href={result.postUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
                   >
-                    View <ExternalLink className="h-3 w-3" />
+                    View Post <ExternalLink className="h-3 w-3" />
                   </a>
+                )}
+                {result?.error && (
+                  <p className="text-xs text-red-500 mt-1">{result.error}</p>
                 )}
               </div>
             );

@@ -157,10 +157,11 @@ export async function postTweet(options: TweetOptions): Promise<TweetResult> {
   const data = await response.json();
   const tweetId = data.data.id;
 
+  // Use x.com for cleaner URLs (twitter.com also redirects here)
   return {
     id: tweetId,
     text: options.text,
-    url: `https://twitter.com/i/web/status/${tweetId}`,
+    url: `https://x.com/lets_truck/status/${tweetId}`,
   };
 }
 

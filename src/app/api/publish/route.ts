@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { postTweet, uploadMedia as uploadTwitterMedia, isConfigured as isTwitterConfigured } from "@/lib/social/twitter";
 import { postToFacebook, postToInstagram, isConfigured as isMetaConfigured } from "@/lib/social/meta";
+import { trackPublish } from "@/lib/analytics/track-performance";
 
 /**
  * POST /api/publish
@@ -103,11 +104,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Update content with publish info
+    const publishedAt = new Date();
     await prisma.generatedContent.update({
       where: { id: contentId },
       data: {
         status: "published",
-        publishedAt: new Date(),
+        publishedAt,
         platformPostId: result.id,
         platformPostUrl: result.url,
       }
@@ -119,6 +121,24 @@ export async function POST(request: NextRequest) {
         where: { id: content.extractionId },
         data: { isUsed: true }
       });
+    }
+
+    // Track performance for analytics
+    try {
+      const metadata = content.metadata as Record<string, unknown> || {};
+      await trackPublish({
+        generatedContentId: content.id,
+        platform: content.platform,
+        publishedAt,
+        formula: metadata.formula as string | undefined,
+        hookType: metadata.hookType as string | undefined,
+        pillar: metadata.pillar as string | undefined,
+        objective: metadata.objective as string | undefined,
+        contentType: content.extraction?.type,
+      });
+    } catch (trackError) {
+      // Don't fail the publish if tracking fails
+      console.error("[Publish] Failed to track performance:", trackError);
     }
 
     return NextResponse.json({

@@ -106,6 +106,7 @@ model Extraction {
   source           Source             @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   transcript       Transcript?        @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
   generatedContent GeneratedContent[]
+  abTests          ABTest[]
 
   @@map("extractions")
 }
@@ -133,7 +134,8 @@ model GeneratedContent {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  extraction Extraction? @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  extraction  Extraction?      @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  performance PostPerformance?
 
   @@map("generated_content")
 }
@@ -191,4 +193,226 @@ model VoiceProfile {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("voice_profiles")
+}
+
+// ============================================
+// CONTENT INTELLIGENCE SYSTEM
+// ============================================
+
+// Track performance metrics for every published post
+model PostPerformance {
+  id                 String   @id @default(uuid())
+  generatedContentId String   @unique @map("generated_content_id")
+  platform           String   // twitter, facebook, instagram
+  
+  // Content metadata (for correlation analysis)
+  formula            String?  // data_bomb, tough_love, transformation, etc.
+  hookType           String?  @map("hook_type") // shocking_stat, contrarian, etc.
+  pillar             String?  // proper_human_diet, gut_health, etc.
+  objective          String?  // email_list, coaching, product_sales, etc.
+  contentType        String?  @map("content_type") // quote, stat, hot_take, story
+  
+  // Timing metadata
+  publishedAt        DateTime @map("published_at")
+  dayOfWeek          Int      @map("day_of_week") // 0=Sunday, 6=Saturday
+  hourOfDay          Int      @map("hour_of_day") // 0-23
+  
+  // Raw metrics (updated by cron job)
+  impressions        Int      @default(0)
+  reach              Int      @default(0)
+  likes              Int      @default(0)
+  comments           Int      @default(0)
+  shares             Int      @default(0)
+  saves              Int      @default(0)
+  clicks             Int      @default(0)
+  profileVisits      Int      @default(0) @map("profile_visits")
+  follows            Int      @default(0)
+  
+  // Calculated metrics
+  engagementRate     Decimal  @default(0) @map("engagement_rate") @db.Decimal(10, 6)
+  clickRate          Decimal  @default(0) @map("click_rate") @db.Decimal(10, 6)
+  viralityScore      Decimal  @default(0) @map("virality_score") @db.Decimal(10, 6)
+  saveRate           Decimal  @default(0) @map("save_rate") @db.Decimal(10, 6)
+  
+  // Performance classification
+  performanceLevel   String   @default("pending") @map("performance_level") // pending, poor, average, good, excellent, viral
+  
+  // A/B test reference
+  abTestId           String?  @map("ab_test_id")
+  variant            String?  // A, B, or C
+  
+  // Tracking
+  lastFetchedAt      DateTime? @map("last_fetched_at")
+  fetchCount         Int      @default(0) @map("fetch_count")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  generatedContent   GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+  abTest             ABTest?  @relation(fields: [abTestId], references: [id])
+  
+  @@index([platform])
+  @@index([formula])
+  @@index([hookType])
+  @@index([pillar])
+  @@index([objective])
+  @@index([performanceLevel])
+  @@index([publishedAt])
+  @@index([abTestId])
+  @@map("post_performance")
+}
+
+// A/B test experiments
+model ABTest {
+  id              String    @id @default(uuid())
+  name            String    // "Gut Health Hook Test - Jan 2026"
+  extractionId    String?   @map("extraction_id")
+  
+  // Test configuration
+  testVariable    String    @map("test_variable") // formula, hook, cta, timing
+  platform        String    // twitter, facebook, instagram
+  pillar          String?   // Content pillar being tested
+  
+  // Variant configurations (JSON)
+  variantAConfig  Json      @map("variant_a_config")
+  variantBConfig  Json      @map("variant_b_config")
+  variantCConfig  Json?     @map("variant_c_config")
+  
+  // Status tracking
+  status          String    @default("running") // draft, running, completed, cancelled
+  startedAt       DateTime  @default(now()) @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  
+  // Results
+  winningVariant  String?   @map("winning_variant") // A, B, C, or null if inconclusive
+  confidenceLevel Decimal?  @map("confidence_level") @db.Decimal(5, 4) // 0.0000 to 1.0000
+  liftPercentage  Decimal?  @map("lift_percentage") @db.Decimal(10, 2) // Winner vs loser improvement
+  
+  // Metrics summary (JSON)
+  variantAMetrics Json?     @map("variant_a_metrics")
+  variantBMetrics Json?     @map("variant_b_metrics")
+  variantCMetrics Json?     @map("variant_c_metrics")
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  posts           PostPerformance[]
+  extraction      Extraction? @relation(fields: [extractionId], references: [id])
+  
+  @@index([status])
+  @@index([platform])
+  @@index([testVariable])
+  @@map("ab_tests")
+}
+
+// Learned formula weights (updated by learning engine)
+model FormulaWeight {
+  id               String   @id @default(uuid())
+  
+  // Scope
+  platform         String   // twitter, facebook, instagram
+  pillar           String   @default("all") // specific pillar or "all"
+  
+  // Formula weights (1.0 = neutral, >1 = boost, <1 = reduce)
+  dataBomb         Decimal  @default(1.0) @map("data_bomb") @db.Decimal(5, 3)
+  toughLove        Decimal  @default(1.0) @map("tough_love") @db.Decimal(5, 3)
+  transformation   Decimal  @default(1.0) @db.Decimal(5, 3)
+  contrarian       Decimal  @default(1.0) @db.Decimal(5, 3)
+  protocol         Decimal  @default(1.0) @db.Decimal(5, 3)
+  mythBuster       Decimal  @default(1.0) @map("myth_buster") @db.Decimal(5, 3)
+  insiderSecret    Decimal  @default(1.0) @map("insider_secret") @db.Decimal(5, 3)
+  
+  // Tracking
+  lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
+  sampleSize       Int      @default(0) @map("sample_size")
+  
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  
+  @@unique([platform, pillar])
+  @@map("formula_weights")
+}
+
+// Learned hook weights
+model HookWeight {
+  id               String   @id @default(uuid())
+  
+  // Scope
+  platform         String
+  pillar           String   @default("all")
+  
+  // Hook type weights
+  shockingStat     Decimal  @default(1.0) @map("shocking_stat") @db.Decimal(5, 3)
+  contrarian       Decimal  @default(1.0) @db.Decimal(5, 3)
+  challenge        Decimal  @default(1.0) @db.Decimal(5, 3)
+  curiosityGap     Decimal  @default(1.0) @map("curiosity_gap") @db.Decimal(5, 3)
+  storyTease       Decimal  @default(1.0) @map("story_tease") @db.Decimal(5, 3)
+  directCommand    Decimal  @default(1.0) @map("direct_command") @db.Decimal(5, 3)
+  usVsThem         Decimal  @default(1.0) @map("us_vs_them") @db.Decimal(5, 3)
+  boldPromise      Decimal  @default(1.0) @map("bold_promise") @db.Decimal(5, 3)
+  
+  // Tracking
+  lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
+  sampleSize       Int      @default(0) @map("sample_size")
+  
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  
+  @@unique([platform, pillar])
+  @@map("hook_weights")
+}
+
+// Best posting times learned from data
+model TimingInsight {
+  id               String   @id @default(uuid())
+  
+  platform         String
+  pillar           String   @default("all")
+  
+  // Best/worst times as JSON arrays
+  // Format: [{dayOfWeek: 0-6, hourOfDay: 0-23, avgEngagement: 0.05}]
+  bestTimes        Json     @map("best_times")
+  worstTimes       Json     @map("worst_times")
+  
+  // Tracking
+  lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
+  sampleSize       Int      @default(0) @map("sample_size")
+  
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  
+  @@unique([platform, pillar])
+  @@map("timing_insights")
+}
+
+// General content insights (AI-generated recommendations)
+model ContentInsight {
+  id              String    @id @default(uuid())
+  
+  // Scope
+  platform        String    @default("all") // specific platform or "all"
+  pillar          String?   // specific pillar or null for all
+  
+  // Insight details
+  insightType     String    @map("insight_type") // top_formula, best_time, cta_winner, trend, recommendation
+  title           String    // Short title
+  description     String    // Full insight text
+  data            Json?     // Supporting data
+  
+  // Confidence/validity
+  sampleSize      Int       @map("sample_size")
+  confidenceScore Decimal   @map("confidence_score") @db.Decimal(5, 4)
+  
+  // Expiration
+  validFrom       DateTime  @default(now()) @map("valid_from")
+  validUntil      DateTime? @map("valid_until")
+  isActive        Boolean   @default(true) @map("is_active")
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  @@index([insightType])
+  @@index([isActive])
+  @@map("content_insights")
 }

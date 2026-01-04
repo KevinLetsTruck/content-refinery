@@ -11,7 +11,8 @@ import {
   Calendar,
   Sparkles,
   ExternalLink,
-  PartyPopper
+  PartyPopper,
+  AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 
@@ -70,8 +71,10 @@ export function Step7Publish() {
 
   const [isPublishing, setIsPublishing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [publishedIds, setPublishedIds] = useState<string[]>([]);
 
   const enabledPlatforms = platforms.filter((p) => p.enabled);
 
@@ -98,21 +101,62 @@ export function Step7Publish() {
 
   const handlePublish = async () => {
     setIsPublishing(true);
+    setError(null);
 
-    // Combine date and time
+    // Combine date and time for scheduling
+    let scheduledDateTime: Date | null = null;
     if (publishOption === "schedule" && scheduleDate) {
-      const dateTime = new Date(`${scheduleDate}T${scheduleTime}`);
-      setScheduledTime(dateTime);
+      scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
+      setScheduledTime(scheduledDateTime);
     }
 
     try {
-      // In production, this would call the publishing API
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Prepare request body
+      const requestBody = {
+        content: {
+          text: finalContent?.text || "",
+          hashtags: finalContent?.hashtags || [],
+          platforms: enabledPlatforms.map((p) => p.platform),
+        },
+        visuals: visuals.map((v) => ({
+          platform: v.platform,
+          gammaUrl: v.gammaUrl,
+          generationId: v.generationId,
+        })),
+        publishOption,
+        scheduledTime: scheduledDateTime?.toISOString() || null,
+      };
+
+      console.log("[Step7Publish] Calling API with:", requestBody);
+
+      // Call the publish API
+      const response = await fetch("/api/create/publish", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+      console.log("[Step7Publish] API response:", data);
+
+      if (!response.ok) {
+        throw new Error(data.error || `API error: ${response.status}`);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Unknown error occurred");
+      }
+
+      // Store the created content IDs
+      setPublishedIds(data.contentIds || []);
       
-      // For now, just simulate success
+      // Show success
       setIsComplete(true);
-    } catch (error) {
-      console.error("Publishing failed:", error);
+    } catch (err) {
+      console.error("[Step7Publish] Publishing failed:", err);
+      setError(err instanceof Error ? err.message : "Publishing failed");
     } finally {
       setIsPublishing(false);
     }
@@ -303,6 +347,17 @@ export function Step7Publish() {
           ))}
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-red-800 dark:text-red-200">Publishing Failed</p>
+            <p className="text-sm text-red-600 dark:text-red-300 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* Publish Button */}
       <button

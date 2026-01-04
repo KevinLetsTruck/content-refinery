@@ -15,7 +15,9 @@ import {
   Upload,
   ArrowRight,
   Trash2,
+  Download,
 } from "lucide-react";
+import GammaImportModal from "@/components/GammaImportModal";
 
 interface Source {
   id: string;
@@ -42,6 +44,7 @@ export default function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [showGammaImport, setShowGammaImport] = useState(false);
 
   useEffect(() => {
     fetchSources();
@@ -111,6 +114,13 @@ export default function SourcesPage() {
               >
                 <RefreshCw className="h-4 w-4" />
                 Refresh
+              </button>
+              <button
+                onClick={() => setShowGammaImport(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#333333] text-[#888888] hover:text-white hover:border-[#FF4500] transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Import from Gamma
               </button>
               <Link
                 href="/ingest"
@@ -228,6 +238,17 @@ export default function SourcesPage() {
           )}
         </div>
       </main>
+
+      {/* Gamma Import Modal */}
+      {showGammaImport && (
+        <GammaImportModal
+          onClose={() => setShowGammaImport(false)}
+          onImported={() => {
+            setShowGammaImport(false);
+            fetchSources();
+          }}
+        />
+      )}
     </div>
   );
 }

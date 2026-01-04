@@ -117,12 +117,14 @@ model Extraction {
 model GeneratedContent {
   id              String    @id @default(uuid())
   extractionId    String?   @map("extraction_id")
-  platform        String    // twitter, instagram, facebook, linkedin, tiktok, youtube
-  text            String
+  platform        String    // twitter, instagram, facebook, linkedin, tiktok, youtube, gamma
+  text            String    @default("")
+  title           String?   // Title for imported/wizard content
+  contentType     String?   @map("content_type") // document, presentation, social_post, etc.
   hashtags        String[]
   mediaUrl        String?   @map("media_url")
   mediaGuidance   String?   @map("media_guidance")
-  status          String    @default("draft") // draft, pending_review, approved, scheduled, published, failed
+  status          String    @default("draft") // draft, pending_review, approved, scheduled, published, failed, ready
   scheduledFor    DateTime? @map("scheduled_for")
   publishedAt     DateTime? @map("published_at")
   platformPostId  String?   @map("platform_post_id")
@@ -133,10 +135,20 @@ model GeneratedContent {
   metadata        Json      @default("{}")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Gamma integration
+  gammaId         String?   @map("gamma_id")
+  gammaUrl        String?   @map("gamma_url")
+  
+  // Source tracking
+  source          String    @default("wizard") // wizard, imported, api
+  importedAt      DateTime? @map("imported_at")
 
   extraction  Extraction?      @relation(fields: [extractionId], references: [id], onDelete: Cascade)
   performance PostPerformance?
 
+  @@index([source])
+  @@index([gammaId])
   @@map("generated_content")
 }
 

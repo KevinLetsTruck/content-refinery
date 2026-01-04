@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN || "store-letstruck.myshopify.com";
+// Support both SHOPIFY_STORE (short name) and SHOPIFY_STORE_DOMAIN (full domain)
+const SHOPIFY_STORE_NAME = process.env.SHOPIFY_STORE || "store-letstruck";
+const SHOPIFY_STORE = process.env.SHOPIFY_STORE_DOMAIN || `${SHOPIFY_STORE_NAME}.myshopify.com`;
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
 export const dynamic = "force-dynamic";

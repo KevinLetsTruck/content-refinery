@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { 
-  generateImage, 
+  generateAndStoreImage, 
   createImagePrompt, 
-  getDimensionsForPlatform, 
-  isConfigured 
-} from "@/lib/images/cloudflare-ai";
-import { uploadToR2, getPublicUrl } from "@/lib/storage/r2";
+  isDalleAvailable,
+  getSizeForPlatform
+} from "@/lib/images/dalle";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // Allow up to 60s for image generation
@@ -19,7 +18,7 @@ interface GenerateRequest {
 
 /**
  * POST /api/images/generate
- * Generate a social media image using Cloudflare Workers AI
+ * Generate a social media image using DALL-E 3
  * Stores result in R2 and returns public URL
  */
 export async function POST(request: NextRequest) {
@@ -41,71 +40,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Cloudflare AI is configured
-    if (!isConfigured()) {
-      console.warn("[Images] Cloudflare AI not configured");
+    // Check if DALL-E is configured
+    if (!isDalleAvailable()) {
+      console.warn("[Images] DALL-E not configured");
       return NextResponse.json(
         { 
           error: "Image generation not configured",
-          message: "Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN" 
+          message: "Set OPENAI_API_KEY environment variable" 
         },
         { status: 503 }
       );
     }
 
-    console.log(`[Images] Generating image for ${platform}, type: ${contentType}`);
-
-    // Get dimensions for platform
-    const dimensions = getDimensionsForPlatform(platform);
+    console.log(`[Images] Generating DALL-E 3 image for ${platform}, type: ${contentType}`);
 
     // Create or use custom prompt
     const prompt = customPrompt || createImagePrompt(text, contentType, platform);
-    console.log(`[Images] Prompt: ${prompt.substring(0, 100)}...`);
+    console.log(`[Images] Prompt: ${prompt.substring(0, 150)}...`);
 
-    // Generate image
-    const result = await generateImage({
-      prompt,
-      width: dimensions.width,
-      height: dimensions.height,
+    // Generate image and upload to R2
+    const imageUrl = await generateAndStoreImage(prompt, platform);
+
+    console.log(`[Images] Successfully generated: ${imageUrl}`);
+
+    return NextResponse.json({
+      success: true,
+      imageUrl,
+      platform,
+      size: getSizeForPlatform(platform),
+      model: "dall-e-3",
     });
-
-    if (!result.success || !result.imageData) {
-      console.error("[Images] Generation failed:", result.error);
-      return NextResponse.json(
-        { error: result.error || "Image generation failed" },
-        { status: 500 }
-      );
-    }
-
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 8);
-    const filename = `social-images/${platform}/${timestamp}-${randomId}.png`;
-
-    console.log(`[Images] Uploading to R2: ${filename}`);
-
-    // Upload to R2
-    try {
-      await uploadToR2(filename, result.imageData, result.contentType);
-      const publicUrl = getPublicUrl(filename);
-
-      console.log(`[Images] Successfully uploaded: ${publicUrl}`);
-
-      return NextResponse.json({
-        success: true,
-        imageUrl: publicUrl,
-        filename,
-        platform,
-        dimensions,
-        prompt: prompt.substring(0, 200),
-      });
-    } catch (uploadError) {
-      console.error("[Images] R2 upload failed:", uploadError);
-      return NextResponse.json(
-        { error: "Failed to store image" },
-        { status: 500 }
-      );
-    }
   } catch (error) {
     console.error("[Images] Error:", error);
     return NextResponse.json(
@@ -121,9 +85,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   return NextResponse.json({
-    configured: isConfigured(),
-    model: "@cf/bytedance/stable-diffusion-xl-lightning",
+    configured: isDalleAvailable(),
+    model: "dall-e-3",
     storage: "cloudflare-r2",
   });
 }
-

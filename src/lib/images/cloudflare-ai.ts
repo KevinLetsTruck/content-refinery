@@ -103,52 +103,42 @@ export async function generateImage(options: ImageGenerationOptions): Promise<Im
 
 /**
  * Create a social media image prompt from content
- * Transforms the post text into an image generation prompt
+ * NOTE: AI image generators are BAD at text - so we generate mood/background images only
  */
 export function createImagePrompt(
   contentText: string,
   contentType: string,
   platform: string
 ): string {
-  // Base style for Let's Truck brand
-  const brandStyle = "professional health and wellness, trucking industry, clean modern design, bold typography, dark background with orange accents";
-  
   // Extract key concepts from the content
   const keywords = extractKeywords(contentText);
   
-  // Build prompt based on content type
-  let promptBase: string;
+  // Base style - NO TEXT, just atmospheric visuals
+  const baseStyle = "professional photography, cinematic lighting, high quality, 8k, sharp focus";
+  const noText = "no text, no words, no letters, no numbers, no labels, no watermarks";
   
-  switch (contentType) {
-    case "quote":
-      promptBase = `Inspirational quote card design, motivational, ${brandStyle}`;
-      break;
-    case "stat":
-      promptBase = `Infographic style, data visualization, statistics, ${brandStyle}`;
-      break;
-    case "tip":
-    case "protocol":
-      promptBase = `Educational health tip card, actionable advice, ${brandStyle}`;
-      break;
-    case "hot_take":
-    case "contrarian":
-      promptBase = `Bold statement graphic, attention-grabbing, ${brandStyle}`;
-      break;
-    case "story":
-    case "testimonial":
-      promptBase = `Transformation story graphic, before after concept, ${brandStyle}`;
-      break;
-    default:
-      promptBase = `Social media content card, health coaching, ${brandStyle}`;
+  // Build prompt based on content type - focus on MOOD not infographics
+  let scene: string;
+  
+  if (keywords.includes("truck") || keywords.includes("driver")) {
+    scene = "semi truck on open highway at golden hour, dramatic sky, american landscape";
+  } else if (keywords.includes("gut") || keywords.includes("candida") || keywords.includes("microbiome")) {
+    scene = "healthy organic food arrangement, fresh vegetables, clean eating, dark moody background";
+  } else if (keywords.includes("sleep") || keywords.includes("recovery") || keywords.includes("fatigue")) {
+    scene = "peaceful sunrise over mountain landscape, calm serene atmosphere, new beginning";
+  } else if (keywords.includes("energy") || keywords.includes("performance")) {
+    scene = "powerful semi truck engine, industrial strength, chrome and steel details";
+  } else if (keywords.includes("diet") || keywords.includes("nutrition") || keywords.includes("protein")) {
+    scene = "premium steak and eggs breakfast, rustic table, warm morning light";
+  } else if (keywords.includes("detox") || keywords.includes("inflammation")) {
+    scene = "clean water flowing over rocks, nature purification, fresh and clean";
+  } else {
+    // Default: trucking + health theme
+    scene = "semi truck at truck stop during beautiful sunset, americana vibes, freedom of the road";
   }
 
-  // Add platform-specific hints
-  const platformHint = platform === "instagram_story" || platform === "tiktok"
-    ? "vertical format, mobile-optimized"
-    : "square format, feed-optimized";
-
-  // Combine all elements
-  const prompt = `${promptBase}, ${platformHint}, featuring: ${keywords.slice(0, 5).join(", ")}`;
+  // Combine for final prompt
+  const prompt = `${scene}, ${baseStyle}, ${noText}`;
   
   return prompt;
 }

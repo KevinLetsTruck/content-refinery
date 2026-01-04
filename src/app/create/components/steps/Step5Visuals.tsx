@@ -318,19 +318,45 @@ export function Step5Visuals() {
                   </div>
                 )}
 
-                {visual?.status === "completed" && visual.gammaUrl && (
+                {visual?.status === "completed" && (visual.imageUrl || visual.gammaUrl) && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-                    <ImageIcon className="h-12 w-12 text-primary/40" />
-                    <p className="text-sm font-medium mt-3">Visual Ready</p>
-                    <a
-                      href={visual.gammaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-primary text-sm mt-2 hover:underline"
-                    >
-                      View in Gamma
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                    {visual.imageUrl ? (
+                      <>
+                        {/* Show actual image preview for CF AI images */}
+                        <img 
+                          src={visual.imageUrl} 
+                          alt={`${PLATFORM_NAMES[platform.platform]} visual`}
+                          className="absolute inset-0 w-full h-full object-cover opacity-50"
+                        />
+                        <div className="relative z-10 text-center">
+                          <Check className="h-12 w-12 text-green-500 mx-auto" />
+                          <p className="text-sm font-medium mt-3">Image Ready</p>
+                          <a
+                            href={visual.imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary text-sm mt-2 hover:underline"
+                          >
+                            View Image
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="h-12 w-12 text-primary/40" />
+                        <p className="text-sm font-medium mt-3">Visual Card Ready</p>
+                        <a
+                          href={visual.gammaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-primary text-sm mt-2 hover:underline"
+                        >
+                          View in Gamma
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -360,14 +386,14 @@ export function Step5Visuals() {
                   Regenerate
                 </button>
 
-                {visual?.gammaUrl && (
+                {(visual?.imageUrl || visual?.gammaUrl) && (
                   <a
-                    href={visual.gammaUrl}
+                    href={visual.imageUrl || visual.gammaUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-sm text-primary hover:underline"
                   >
-                    Open
+                    {visual.imageUrl ? "View Image" : "Open Gamma"}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}

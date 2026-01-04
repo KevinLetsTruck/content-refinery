@@ -416,3 +416,206 @@ model ContentInsight {
   @@index([isActive])
   @@map("content_insights")
 }
+
+// ============================================
+// CAMPAIGN SYSTEM
+// ============================================
+
+model Campaign {
+  id              String   @id @default(uuid())
+  
+  // Basic info
+  name            String
+  description     String?  @db.Text
+  
+  // Type and goal
+  campaignType    String   @map("campaign_type") // product_launch, educational_series, custom
+  goal            String   // email_signups, sales, awareness, engagement
+  
+  // Product/Topic
+  productName     String?  @map("product_name")
+  productUrl      String?  @map("product_url")
+  topic           String?
+  keyMessages     String[] @map("key_messages")
+  
+  // Timing
+  startDate       DateTime @map("start_date")
+  endDate         DateTime @map("end_date")
+  durationDays    Int      @map("duration_days")
+  
+  // Platforms
+  platforms       String[]
+  
+  // Content settings
+  postsPerDayTwitter   Int @default(1) @map("posts_per_day_twitter")
+  postsPerDayFacebook  Int @default(1) @map("posts_per_day_facebook")
+  postsPerDayInstagram Int @default(1) @map("posts_per_day_instagram")
+  youtubeShorts        Int @default(2) @map("youtube_shorts")
+  youtubeStandard      Int @default(0) @map("youtube_standard")
+  
+  // Strategy (AI-generated)
+  strategy        Json?
+  
+  // Status
+  status          String   @default("draft") // draft, generating, review, approved, active, completed, paused
+  
+  // Tracking
+  totalPosts      Int      @default(0) @map("total_posts")
+  publishedPosts  Int      @default(0) @map("published_posts")
+  totalVideos     Int      @default(0) @map("total_videos")
+  publishedVideos Int      @default(0) @map("published_videos")
+  
+  // Performance (aggregated)
+  totalImpressions   Int @default(0) @map("total_impressions")
+  totalEngagements   Int @default(0) @map("total_engagements")
+  totalClicks        Int @default(0) @map("total_clicks")
+  totalConversions   Int @default(0) @map("total_conversions")
+  engagementRate     Decimal? @map("engagement_rate") @db.Decimal(5, 4)
+  
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  launchedAt      DateTime? @map("launched_at")
+  completedAt     DateTime? @map("completed_at")
+  
+  // Relations
+  phases          CampaignPhase[]
+  posts           CampaignPost[]
+  videos          CampaignVideo[]
+  
+  @@index([status])
+  @@index([startDate])
+  @@index([campaignType])
+  @@map("campaigns")
+}
+
+model CampaignPhase {
+  id              String   @id @default(uuid())
+  campaignId      String   @map("campaign_id")
+  
+  // Phase info
+  name            String
+  orderIndex      Int      @map("order_index")
+  purpose         String   @db.Text
+  
+  // Timing
+  startDay        Int      @map("start_day")
+  endDay          Int      @map("end_day")
+  
+  // Content themes
+  themes          String[]
+  hooks           String[]
+  ctas            String[]
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  posts           CampaignPost[]
+  
+  @@index([campaignId])
+  @@map("campaign_phases")
+}
+
+model CampaignPost {
+  id              String   @id @default(uuid())
+  campaignId      String   @map("campaign_id")
+  phaseId         String?  @map("phase_id")
+  
+  // Content
+  platform        String
+  content         String   @db.Text
+  contentType     String   @default("post") @map("content_type") // post, thread, carousel, story, reel
+  hashtags        String[]
+  
+  // Scheduling
+  dayNumber       Int      @map("day_number")
+  scheduledFor    DateTime @map("scheduled_for")
+  optimalTime     Boolean  @default(true) @map("optimal_time")
+  
+  // Visual
+  visualType      String?  @map("visual_type") // gamma, dalle, stock, custom, none
+  visualPrompt    String?  @map("visual_prompt") @db.Text
+  visualUrl       String?  @map("visual_url")
+  visualStatus    String   @default("pending") @map("visual_status")
+  
+  // Publishing
+  status          String   @default("draft") // draft, scheduled, publishing, published, failed
+  platformPostId  String?  @map("platform_post_id")
+  publishedUrl    String?  @map("published_url")
+  publishedAt     DateTime? @map("published_at")
+  error           String?
+  
+  // Performance
+  impressions     Int      @default(0)
+  engagements     Int      @default(0)
+  clicks          Int      @default(0)
+  shares          Int      @default(0)
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  phase           CampaignPhase? @relation(fields: [phaseId], references: [id])
+  
+  @@index([campaignId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([platform])
+  @@map("campaign_posts")
+}
+
+model CampaignVideo {
+  id              String   @id @default(uuid())
+  campaignId      String   @map("campaign_id")
+  videoProjectId  String?  @map("video_project_id")
+  
+  // Video info
+  videoType       String   @map("video_type") // short, standard
+  title           String
+  purpose         String
+  scriptData      Json?    @map("script_data")
+  
+  // Scheduling
+  dayNumber       Int      @map("day_number")
+  scheduledFor    DateTime @map("scheduled_for")
+  
+  // Status
+  status          String   @default("pending") // pending, scripting, rendering, ready, published, failed
+  youtubeId       String?  @map("youtube_id")
+  youtubeUrl      String?  @map("youtube_url")
+  
+  // Performance
+  views           Int      @default(0)
+  likes           Int      @default(0)
+  comments        Int      @default(0)
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  
+  @@index([campaignId])
+  @@index([status])
+  @@map("campaign_videos")
+}
+
+model OptimalPostingTime {
+  id              String   @id @default(uuid())
+  
+  platform        String
+  dayOfWeek       Int      @map("day_of_week") // 0=Sunday, 6=Saturday
+  hour            Int      // 0-23 UTC
+  
+  // Performance data
+  avgEngagement   Decimal  @map("avg_engagement") @db.Decimal(8, 4)
+  avgImpressions  Int      @map("avg_impressions")
+  sampleSize      Int      @map("sample_size")
+  
+  // Confidence
+  confidence      Decimal  @db.Decimal(5, 4)
+  
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  @@unique([platform, dayOfWeek, hour])
+  @@index([platform])
+  @@map("optimal_posting_times")
+}

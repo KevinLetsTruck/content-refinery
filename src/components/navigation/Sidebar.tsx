@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Truck,
   BarChart3,
+  Megaphone,
 } from "lucide-react";
 
 interface NavItem {
@@ -48,6 +49,12 @@ const navigation: NavGroup[] = [
         href: "/queue",
         icon: <ListChecks className="h-5 w-5" />,
         // Badge will be dynamic
+      },
+      {
+        label: "Campaigns",
+        href: "/campaigns",
+        icon: <Megaphone className="h-5 w-5" />,
+        isNew: true,
       },
       {
         label: "Analytics",

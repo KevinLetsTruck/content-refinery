@@ -229,3 +229,203 @@ export async function generateBulkContent(
   );
   return results;
 }
+
+// ============================================
+// STRATEGIC CONTENT GENERATION
+// ============================================
+
+import { 
+  OBJECTIVE_CTAS, 
+  PILLAR_CONFIG, 
+  FORMULA_TEMPLATES,
+  PLATFORM_CONFIG,
+  ContentPillar,
+  ContentFormula,
+  BusinessObjective,
+  Platform as StrategyPlatform,
+  checkRedFlags,
+  scoreContent,
+  ContentScore,
+  getRandomCta,
+  getPillarHashtags,
+} from "@/lib/content/strategy";
+
+import { buildStrategicPrompt } from "@/lib/ai/prompts";
+
+export interface StrategicContentRequest {
+  sourceText: string;
+  platform: StrategyPlatform;
+  pillar: ContentPillar;
+  formula: ContentFormula;
+  objective: BusinessObjective;
+  ctaKeyword?: string;
+}
+
+export interface StrategicContentResult {
+  text: string;
+  hashtags: string[];
+  cta: string;
+  score: ContentScore;
+  formula: string;
+  pillar: string;
+  hookType?: string;
+}
+
+export async function generateStrategicContent(
+  request: StrategicContentRequest
+): Promise<StrategicContentResult> {
+  const anthropic = getAnthropicClient();
+  
+  const pillarConfig = PILLAR_CONFIG[request.pillar];
+  const formulaConfig = FORMULA_TEMPLATES[request.formula];
+  const platformConfig = PLATFORM_CONFIG[request.platform];
+  const ctas = OBJECTIVE_CTAS[request.objective].map(cta => 
+    cta.replace("{KEYWORD}", request.ctaKeyword || "GUIDE")
+  );
+  const hashtags = getPillarHashtags(request.pillar);
+  
+  const prompt = buildStrategicPrompt({
+    platform: request.platform,
+    pillar: pillarConfig.name,
+    pillarMessage: pillarConfig.keyMessage,
+    formula: formulaConfig.name,
+    formulaStructure: formulaConfig.structure,
+    objective: request.objective,
+    ctas,
+    hashtags,
+    sourceText: request.sourceText,
+    charLimit: platformConfig.charLimit,
+  });
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1000,
+    messages: [{ role: "user", content: prompt }],
+  });
+  
+  const content = response.content[0];
+  if (content.type !== "text") {
+    throw new Error("Unexpected response type");
+  }
+
+  let result: { text: string; hashtags: string[]; hookType?: string };
+  
+  try {
+    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No JSON object found in response");
+    }
+    result = JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    console.error("Failed to parse strategic content:", error);
+    result = {
+      text: request.sourceText,
+      hashtags: hashtags,
+    };
+  }
+  
+  // Score the generated content
+  const hasCta = result.text.includes("DM") || 
+                 result.text.toLowerCase().includes("link") || 
+                 result.text.toLowerCase().includes("bio") ||
+                 result.text.toLowerCase().includes("comment");
+  
+  const score = scoreContent(
+    result.text,
+    request.platform,
+    true, // Assume hook is present (AI was instructed)
+    hasCta,
+    request.pillar
+  );
+  
+  // Check red flags
+  const flagCheck = checkRedFlags(result.text);
+  if (!flagCheck.passed) {
+    score.issues.push(...flagCheck.flags);
+    score.passed = false;
+  }
+  
+  return {
+    text: result.text,
+    hashtags: result.hashtags || hashtags,
+    cta: getRandomCta(request.objective, request.ctaKeyword),
+    score,
+    formula: formulaConfig.name,
+    pillar: pillarConfig.name,
+    hookType: result.hookType,
+  };
+}
+
+export async function scoreContentWithAI(
+  text: string,
+  platform: StrategyPlatform
+): Promise<ContentScore> {
+  const anthropic = getAnthropicClient();
+  
+  const prompt = `
+Score this content for ${platform} on a 1-10 scale:
+
+Content:
+"${text}"
+
+Score each criterion:
+1. Hook Strength (first line stops scroll?) - 30% weight
+2. Value Density (every word earns place?) - 25% weight  
+3. Brand Voice (sounds like Kevin Rutherford?) - 20% weight
+4. CTA Clarity (clear next step?) - 15% weight
+5. Platform Fit (right length/style for ${platform}?) - 10% weight
+
+Return JSON:
+{
+  "hookStrength": number 1-10,
+  "valueDensity": number 1-10,
+  "brandVoice": number 1-10,
+  "ctaClarity": number 1-10,
+  "platformFit": number 1-10,
+  "issues": ["specific issues found"],
+  "suggestions": ["how to improve"]
+}
+`;
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 500,
+    messages: [{ role: "user", content: prompt }],
+  });
+  
+  const content = response.content[0];
+  if (content.type !== "text") {
+    throw new Error("Unexpected response type");
+  }
+
+  try {
+    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No JSON object found in response");
+    }
+    const result = JSON.parse(jsonMatch[0]);
+    
+    // Calculate weighted total
+    const totalScore = 
+      (result.hookStrength * 0.30) +
+      (result.valueDensity * 0.25) +
+      (result.brandVoice * 0.20) +
+      (result.ctaClarity * 0.15) +
+      (result.platformFit * 0.10);
+    
+    return {
+      hookStrength: result.hookStrength,
+      valueDensity: result.valueDensity,
+      brandVoice: result.brandVoice,
+      ctaClarity: result.ctaClarity,
+      platformFit: result.platformFit,
+      totalScore: Math.round(totalScore * 10) / 10,
+      passed: totalScore >= 7 && (!result.issues || result.issues.length === 0),
+      issues: result.issues || [],
+    };
+  } catch (error) {
+    console.error("Failed to parse AI score:", error);
+    // Fallback to basic scoring
+    return scoreContent(text, platform, true, true, null);
+  }
+}

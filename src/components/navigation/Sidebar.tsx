@@ -14,6 +14,7 @@ import {
   Truck,
   BarChart3,
   Megaphone,
+  Recycle,
 } from "lucide-react";
 
 interface NavItem {
@@ -81,6 +82,12 @@ const navigation: NavGroup[] = [
         label: "Products",
         href: "/products",
         icon: <ShoppingBag className="h-5 w-5" />,
+      },
+      {
+        label: "Evergreen",
+        href: "/evergreen",
+        icon: <Recycle className="h-5 w-5" />,
+        isNew: true,
       },
     ],
   },

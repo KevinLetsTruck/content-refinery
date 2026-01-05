@@ -143,12 +143,22 @@ model GeneratedContent {
   // Source tracking
   source          String    @default("wizard") // wizard, imported, api
   importedAt      DateTime? @map("imported_at")
+  
+  // Evergreen fields
+  isEvergreen       Boolean   @default(false) @map("is_evergreen")
+  evergreenScore    Float?    @map("evergreen_score") // Performance-based priority
+  lastResharedAt    DateTime? @map("last_reshared_at")
+  reshareCount      Int       @default(0) @map("reshare_count")
+  nextReshareDate   DateTime? @map("next_reshare_date")
+  evergreenPausedAt DateTime? @map("evergreen_paused_at") // Temporarily pause resharing
 
-  extraction  Extraction?      @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  extraction  Extraction?        @relation(fields: [extractionId], references: [id], onDelete: Cascade)
   performance PostPerformance?
+  reshares    EvergreenReshare[]
 
   @@index([source])
   @@index([gammaId])
+  @@index([isEvergreen])
   @@map("generated_content")
 }
 
@@ -630,4 +640,41 @@ model OptimalPostingTime {
   @@unique([platform, dayOfWeek, hour])
   @@index([platform])
   @@map("optimal_posting_times")
+}
+
+// ============================================
+// EVERGREEN CONTENT SYSTEM
+// ============================================
+
+// Track reshare history
+model EvergreenReshare {
+  id              String   @id @default(cuid())
+  contentId       String   @map("content_id")
+  resharedAt      DateTime @default(now()) @map("reshared_at")
+  platform        String
+  postId          String?  @map("post_id") // ID from social platform
+  impressions     Int?
+  engagements     Int?
+  
+  content         GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  
+  @@index([contentId])
+  @@index([resharedAt])
+  @@map("evergreen_reshares")
+}
+
+// Evergreen settings per platform
+model EvergreenSettings {
+  id                String   @id @default(cuid())
+  platform          String   @unique
+  enabled           Boolean  @default(true)
+  minDaysBetween    Int      @default(14) @map("min_days_between") // Min days before resharing same content
+  maxResharesPerDay Int      @default(2) @map("max_reshares_per_day")
+  preferredTimes    String[] @default([]) @map("preferred_times") // ["09:00", "14:00", "19:00"]
+  minEngagementRate Float?   @map("min_engagement_rate") // Only reshare if above this rate
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  @@map("evergreen_settings")
 }

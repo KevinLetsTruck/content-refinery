@@ -15,6 +15,7 @@ import {
   BarChart3,
   Megaphone,
   Recycle,
+  Wand2,
 } from "lucide-react";
 
 interface NavItem {
@@ -87,6 +88,12 @@ const navigation: NavGroup[] = [
         label: "Evergreen",
         href: "/evergreen",
         icon: <Recycle className="h-5 w-5" />,
+        isNew: true,
+      },
+      {
+        label: "Repurpose",
+        href: "/repurpose",
+        icon: <Wand2 className="h-5 w-5" />,
         isNew: true,
       },
     ],

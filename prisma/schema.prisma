@@ -151,14 +151,22 @@ model GeneratedContent {
   reshareCount      Int       @default(0) @map("reshare_count")
   nextReshareDate   DateTime? @map("next_reshare_date")
   evergreenPausedAt DateTime? @map("evergreen_paused_at") // Temporarily pause resharing
+  
+  // Repurposing relationships
+  parentContentId   String?            @map("parent_content_id")
+  parentContent     GeneratedContent?  @relation("ContentLineage", fields: [parentContentId], references: [id])
+  derivedContent    GeneratedContent[] @relation("ContentLineage")
+  repurposedFrom    String?            @map("repurposed_from") // e.g., "presentation", "thread"
 
-  extraction  Extraction?        @relation(fields: [extractionId], references: [id], onDelete: Cascade)
-  performance PostPerformance?
-  reshares    EvergreenReshare[]
+  extraction           Extraction?           @relation(fields: [extractionId], references: [id], onDelete: Cascade)
+  performance          PostPerformance?
+  reshares             EvergreenReshare[]
+  repurposeSuggestions RepurposeSuggestion[]
 
   @@index([source])
   @@index([gammaId])
   @@index([isEvergreen])
+  @@index([parentContentId])
   @@map("generated_content")
 }
 
@@ -677,4 +685,27 @@ model EvergreenSettings {
   updatedAt         DateTime @updatedAt @map("updated_at")
   
   @@map("evergreen_settings")
+}
+
+// ============================================
+// CONTENT REPURPOSING SYSTEM
+// ============================================
+
+// Track repurposing suggestions
+model RepurposeSuggestion {
+  id              String    @id @default(cuid())
+  contentId       String    @map("content_id")
+  targetFormat    String    @map("target_format") // thread, carousel, video_script, blog, etc.
+  reason          String    // Why this would work well
+  priority        Int       @default(50) // 0-100, higher = better match
+  status          String    @default("pending") // pending, accepted, dismissed, completed
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
+  
+  content         GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  
+  @@index([contentId])
+  @@index([status])
+  @@map("repurpose_suggestions")
 }

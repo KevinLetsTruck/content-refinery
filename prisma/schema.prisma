@@ -168,6 +168,7 @@ model GeneratedContent {
   reshares             EvergreenReshare[]
   repurposeSuggestions RepurposeSuggestion[]
   trackedLinks         TrackedLink[]
+  topics               ContentTopic[]
 
   @@index([source])
   @@index([gammaId])
@@ -429,26 +430,39 @@ model ContentInsight {
   // Scope
   platform        String    @default("all") // specific platform or "all"
   pillar          String?   // specific pillar or null for all
+  category        String?   // e.g., "gut_health", "sleep", "stress"
   
-  // Insight details
+  // Insight details (supports both old and new field naming)
   insightType     String    @map("insight_type") // top_formula, best_time, cta_winner, trend, recommendation
+  type            String?   // topic_performance, timing, format, engagement_pattern, content_gap, platform
   title           String    // Short title
   description     String    // Full insight text
+  recommendation  String?   // What to do about it
   data            Json?     // Supporting data
+  dataPoints      Json?     @map("data_points") // Evidence/stats backing this insight
   
   // Confidence/validity
-  sampleSize      Int       @map("sample_size")
-  confidenceScore Decimal   @map("confidence_score") @db.Decimal(5, 4)
+  sampleSize      Int       @default(0) @map("sample_size")
+  confidenceScore Decimal   @default(0.5) @map("confidence_score") @db.Decimal(5, 4)
+  confidence      Float     @default(0.5) // 0-1 confidence score
+  impact          String    @default("medium") // low, medium, high
+  
+  // Status tracking
+  status          String    @default("new") // new, viewed, acted_on, dismissed
+  actedOnAt       DateTime? @map("acted_on_at")
   
   // Expiration
   validFrom       DateTime  @default(now()) @map("valid_from")
   validUntil      DateTime? @map("valid_until")
+  expiresAt       DateTime? @map("expires_at")
   isActive        Boolean   @default(true) @map("is_active")
   
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
   
   @@index([insightType])
+  @@index([type])
+  @@index([status])
   @@index([isActive])
   @@map("content_insights")
 }
@@ -810,4 +824,45 @@ model ConversionEvent {
   @@index([utmCampaign])
   @@index([contentId])
   @@map("conversion_events")
+}
+
+// ============================================
+// AI CONTENT ADVISOR
+// ============================================
+
+// Track content topics for analysis
+model ContentTopic {
+  id              String   @id @default(cuid())
+  contentId       String   @map("content_id")
+  topic           String   // gut_health, sleep, stress, nutrition, exercise, etc.
+  confidence      Float    @default(0.8)
+  
+  content         GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  
+  @@unique([contentId, topic])
+  @@index([topic])
+  @@map("content_topics")
+}
+
+// Weekly advisor digest
+model AdvisorDigest {
+  id              String   @id @default(cuid())
+  weekStart       DateTime @unique @map("week_start")
+  weekEnd         DateTime @map("week_end")
+  
+  // Summary stats
+  postsAnalyzed   Int      @map("posts_analyzed")
+  totalEngagement Int      @map("total_engagement")
+  topTopic        String?  @map("top_topic")
+  topFormat       String?  @map("top_format")
+  
+  // AI-generated summary
+  summary         String   // Natural language summary
+  highlights      Json     // Key wins
+  improvements    Json     // Areas to improve
+  nextWeekPlan    Json     @map("next_week_plan") // Suggested content plan
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  @@map("advisor_digests")
 }

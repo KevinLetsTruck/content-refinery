@@ -16,6 +16,7 @@ import {
   Megaphone,
   Recycle,
   Wand2,
+  Brain,
 } from "lucide-react";
 
 interface NavItem {
@@ -64,10 +65,15 @@ const navigation: NavGroup[] = [
         icon: <BarChart3 className="h-5 w-5" />,
       },
       {
+        label: "AI Advisor",
+        href: "/advisor",
+        icon: <Brain className="h-5 w-5" />,
+        isNew: true,
+      },
+      {
         label: "Calendar",
         href: "/calendar",
         icon: <Calendar className="h-5 w-5" />,
-        isNew: true,
       },
     ],
   },

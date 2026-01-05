@@ -13,6 +13,7 @@ import {
   Trash2,
   Megaphone
 } from "lucide-react";
+import { Sidebar } from "@/components/navigation/Sidebar";
 
 interface Campaign {
   id: string;
@@ -86,26 +87,39 @@ export default function CampaignsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0D0D0D] text-white p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-700 rounded w-48 mb-8"></div>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-gray-800 rounded"></div>
-              ))}
+      <div className="flex min-h-screen bg-[#0D0D0D]">
+        <Sidebar />
+        <main className="flex-1 ml-64">
+          <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+          <div className="p-8 text-white">
+            <div className="max-w-6xl mx-auto">
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-700 rounded w-48 mb-8"></div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-24 bg-gray-800 rounded"></div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+    <div className="flex min-h-screen bg-[#0D0D0D]">
+      <Sidebar />
+      
+      <main className="flex-1 ml-64">
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+        
+        <div className="p-8 text-white">
+          <div className="max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">Campaigns</h1>
             <p className="text-gray-400 mt-1">Create and manage marketing campaigns</p>
@@ -207,7 +221,9 @@ export default function CampaignsPage() {
             ))}
           </div>
         )}
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

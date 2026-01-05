@@ -14,6 +14,7 @@ import {
   Box,
   RefreshCw,
 } from "lucide-react";
+import { Sidebar } from "@/components/navigation/Sidebar";
 
 interface ProductVariant {
   id: number;
@@ -149,10 +150,17 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
+    <div className="flex min-h-screen bg-[#0D0D0D]">
+      <Sidebar />
+      
+      <main className="flex-1 ml-64">
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+        
+        <div className="p-8 text-white">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-8">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
               <Package className="w-8 h-8 text-[#FF4500]" />
@@ -317,7 +325,9 @@ export default function ProductsPage() {
             ))}
           </div>
         )}
-      </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

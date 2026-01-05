@@ -27,6 +27,7 @@ import {
   ExternalLink,
   ChevronRight,
 } from "lucide-react";
+import { Sidebar } from "@/components/navigation/Sidebar";
 
 interface AnalyticsData {
   period: string;
@@ -139,20 +140,29 @@ export default function AnalyticsPage() {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#FF4500]" />
+      <div className="flex min-h-screen bg-[#0D0D0D]">
+        <Sidebar />
+        <main className="flex-1 ml-64 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#FF4500]" />
+        </main>
       </div>
     );
   }
   
   if (!data) {
     return (
-      <div className="min-h-screen bg-[#0D0D0D] p-8">
-        <div className="text-center py-12">
-          <BarChart3 className="h-12 w-12 text-[#666] mx-auto mb-4" />
-          <h2 className="text-white text-xl font-semibold">No analytics data yet</h2>
-          <p className="text-[#888] mt-2">Publish some content and check back later</p>
-        </div>
+      <div className="flex min-h-screen bg-[#0D0D0D]">
+        <Sidebar />
+        <main className="flex-1 ml-64">
+          <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+          <div className="p-8">
+            <div className="text-center py-12">
+              <BarChart3 className="h-12 w-12 text-[#666] mx-auto mb-4" />
+              <h2 className="text-white text-xl font-semibold">No analytics data yet</h2>
+              <p className="text-[#888] mt-2">Publish some content and check back later</p>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -171,9 +181,16 @@ export default function AnalyticsPage() {
   }));
   
   return (
-    <div className="min-h-screen bg-[#0D0D0D] p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+    <div className="flex min-h-screen bg-[#0D0D0D]">
+      <Sidebar />
+      
+      <main className="flex-1 ml-64">
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+        
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white">Analytics</h1>
           <p className="text-[#888] mt-1">Content performance insights</p>
@@ -476,7 +493,8 @@ export default function AnalyticsPage() {
             <ChevronRight className="h-4 w-4" />
           </a>
         </div>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

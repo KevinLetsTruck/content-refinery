@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Beaker,
   Play,
@@ -10,7 +11,9 @@ import {
   TrendingUp,
   RefreshCw,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
+import { Sidebar } from "@/components/navigation/Sidebar";
 
 interface ABTest {
   id: string;
@@ -89,13 +92,28 @@ export default function ABTestsPage() {
   };
   
   return (
-    <div className="min-h-screen bg-[#0D0D0D] p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">A/B Tests</h1>
-          <p className="text-[#888] mt-1">Experiment with content strategies</p>
-        </div>
+    <div className="flex min-h-screen bg-[#0D0D0D]">
+      <Sidebar />
+      
+      <main className="flex-1 ml-64">
+        {/* Orange accent line */}
+        <div className="h-1 bg-gradient-to-r from-[#FF4500] to-[#F4A300]" />
+        
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <Link
+                  href="/analytics"
+                  className="text-[#888] hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Link>
+                <h1 className="text-3xl font-bold text-white">A/B Tests</h1>
+              </div>
+              <p className="text-[#888] mt-1 ml-8">Experiment with content strategies</p>
+            </div>
         
         <div className="flex items-center gap-4">
           <select
@@ -118,12 +136,12 @@ export default function ABTestsPage() {
         </div>
       </div>
       
-      {/* Tests List */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[#FF4500]" />
-        </div>
-      ) : tests.length === 0 ? (
+          {/* Tests List */}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#FF4500]" />
+            </div>
+          ) : tests.length === 0 ? (
         <div className="text-center py-12 bg-[#1A1A1A] border border-[#333] rounded-xl">
           <Beaker className="h-12 w-12 text-[#666] mx-auto mb-4" />
           <h3 className="text-white font-semibold mb-2">No A/B tests yet</h3>
@@ -239,8 +257,10 @@ export default function ABTestsPage() {
               )}
             </div>
           ))}
+          </div>
+        )}
         </div>
-      )}
+      </main>
     </div>
   );
 }

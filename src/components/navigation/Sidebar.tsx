@@ -61,6 +61,12 @@ const navigation: NavGroup[] = [
         href: "/analytics",
         icon: <BarChart3 className="h-5 w-5" />,
       },
+      {
+        label: "Calendar",
+        href: "/calendar",
+        icon: <Calendar className="h-5 w-5" />,
+        isNew: true,
+      },
     ],
   },
   {
@@ -81,12 +87,6 @@ const navigation: NavGroup[] = [
   {
     title: "System",
     items: [
-      {
-        label: "Calendar",
-        href: "/calendar",
-        icon: <Calendar className="h-5 w-5" />,
-        badge: "soon",
-      },
       {
         label: "Settings",
         href: "/settings",

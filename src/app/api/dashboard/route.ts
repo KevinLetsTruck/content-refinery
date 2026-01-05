@@ -58,13 +58,13 @@ export async function GET() {
 
     try {
       const thisWeekPerf = await prisma.postPerformance.aggregate({
-        where: { collectedAt: { gte: startOfWeek } },
+        where: { publishedAt: { gte: startOfWeek } },
         _sum: { likes: true, comments: true, shares: true, impressions: true },
       });
 
       const lastWeekPerf = await prisma.postPerformance.aggregate({
         where: {
-          collectedAt: { gte: startOfLastWeek, lt: startOfWeek },
+          publishedAt: { gte: startOfLastWeek, lt: startOfWeek },
         },
         _sum: { likes: true, comments: true, shares: true },
       });
@@ -148,20 +148,20 @@ export async function GET() {
     try {
       const topPerformers = await prisma.postPerformance.findMany({
         where: {
-          collectedAt: { gte: startOfWeek },
+          publishedAt: { gte: startOfWeek },
         },
         orderBy: [{ likes: "desc" }, { comments: "desc" }],
         take: 5,
         include: {
-          content: true,
+          generatedContent: true,
         },
       });
 
       topPosts = topPerformers.map((perf) => ({
-        id: perf.contentId,
-        content: perf.content?.text || "",
+        id: perf.generatedContentId,
+        content: perf.generatedContent?.text || "",
         platform: perf.platform,
-        publishedAt: perf.content?.publishedAt?.toISOString() || null,
+        publishedAt: perf.generatedContent?.publishedAt?.toISOString() || null,
         impressions: perf.impressions || 0,
         engagements:
           (perf.likes || 0) + (perf.comments || 0) + (perf.shares || 0),

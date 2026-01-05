@@ -157,11 +157,17 @@ model GeneratedContent {
   parentContent     GeneratedContent?  @relation("ContentLineage", fields: [parentContentId], references: [id])
   derivedContent    GeneratedContent[] @relation("ContentLineage")
   repurposedFrom    String?            @map("repurposed_from") // e.g., "presentation", "thread"
+  
+  // Link tracking stats (denormalized)
+  totalClicks       Int      @default(0) @map("total_clicks")
+  totalConversions  Int      @default(0) @map("total_conversions")
+  totalRevenue      Float    @default(0) @map("total_revenue")
 
   extraction           Extraction?           @relation(fields: [extractionId], references: [id], onDelete: Cascade)
   performance          PostPerformance?
   reshares             EvergreenReshare[]
   repurposeSuggestions RepurposeSuggestion[]
+  trackedLinks         TrackedLink[]
 
   @@index([source])
   @@index([gammaId])
@@ -708,4 +714,100 @@ model RepurposeSuggestion {
   @@index([contentId])
   @@index([status])
   @@map("repurpose_suggestions")
+}
+
+// ============================================
+// LINK & CONVERSION TRACKING
+// ============================================
+
+// Trackable links with UTM parameters
+model TrackedLink {
+  id              String    @id @default(cuid())
+  shortCode       String    @unique @map("short_code") // e.g., "abc123"
+  destinationUrl  String    @map("destination_url")
+  
+  // UTM Parameters
+  utmSource       String?   @map("utm_source")      // e.g., "twitter"
+  utmMedium       String?   @map("utm_medium")      // e.g., "social"
+  utmCampaign     String?   @map("utm_campaign")    // e.g., "algae-dha-launch"
+  utmContent      String?   @map("utm_content")     // e.g., "post-1"
+  utmTerm         String?   @map("utm_term")
+  
+  // Relationships
+  contentId       String?   @map("content_id")
+  campaignId      String?   @map("campaign_id")
+  productId       String?   @map("product_id") // Shopify product ID
+  
+  // Stats (denormalized for quick access)
+  clickCount      Int       @default(0) @map("click_count")
+  uniqueClicks    Int       @default(0) @map("unique_clicks")
+  conversions     Int       @default(0)
+  revenue         Float     @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  expiresAt       DateTime? @map("expires_at")
+  
+  // Relations
+  content         GeneratedContent? @relation(fields: [contentId], references: [id])
+  clicks          LinkClick[]
+  
+  @@index([shortCode])
+  @@index([contentId])
+  @@index([campaignId])
+  @@map("tracked_links")
+}
+
+// Individual click events
+model LinkClick {
+  id            String    @id @default(cuid())
+  linkId        String    @map("link_id")
+  
+  // Click data
+  clickedAt     DateTime  @default(now()) @map("clicked_at")
+  ipHash        String?   @map("ip_hash") // Hashed for privacy
+  userAgent     String?   @map("user_agent")
+  referer       String?
+  country       String?
+  device        String?   // mobile, desktop, tablet
+  browser       String?
+  
+  // Conversion tracking
+  converted     Boolean   @default(false)
+  conversionAt  DateTime? @map("conversion_at")
+  orderId       String?   @map("order_id") // Shopify order ID
+  orderValue    Float?    @map("order_value")
+  
+  link          TrackedLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  
+  @@index([linkId])
+  @@index([clickedAt])
+  @@map("link_clicks")
+}
+
+// Conversion events from Shopify
+model ConversionEvent {
+  id              String   @id @default(cuid())
+  orderId         String   @unique @map("order_id")
+  orderValue      Float    @map("order_value")
+  
+  // Attribution
+  utmSource       String?  @map("utm_source")
+  utmMedium       String?  @map("utm_medium")
+  utmCampaign     String?  @map("utm_campaign")
+  utmContent      String?  @map("utm_content")
+  
+  // Link attribution
+  trackedLinkId   String?  @map("tracked_link_id")
+  contentId       String?  @map("content_id")
+  
+  // Order details
+  productIds      String[] @map("product_ids")
+  customerEmail   String?  @map("customer_email") // Hashed
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  @@index([utmCampaign])
+  @@index([contentId])
+  @@map("conversion_events")
 }

@@ -2,7 +2,13 @@
   "name": "Blood Sugar Mastery for Drivers",
   "slug": "blood-sugar-guide",
   "status": "draft",
-  "goal": "email_signup",
+  "goal": "full_funnel",
+  "goals_priority": [
+    "email_signup",
+    "audioroad_download",
+    "tribe_signup",
+    "product_sales"
+  ],
   "duration_days": 14,
   
   "lead_magnet": {
@@ -26,7 +32,8 @@
   },
   
   "landing_page": {
-    "url": "letstruck.com/free/blood-sugar-guide",
+    "url": "https://gamma.app/docs/ndjcssgq6p154xo",
+    "gamma_edit_url": "https://gamma.app/docs/ndjcssgq6p154xo",
     "headline": "Why You're Exhausted by 2pm (And What to Do About It)",
     "subheadline": "The free guide trucking companies don't want you to read",
     "benefits": [
@@ -45,9 +52,19 @@
     "thank_you_page": {
       "headline": "Your Guide Is On The Way!",
       "message": "Check your email in the next 5 minutes.",
-      "bonus_cta": "While you wait, download the AudioRoad app for daily health tips",
-      "app_store_link": "https://apps.apple.com/app/audioroad",
-      "play_store_link": "https://play.google.com/store/apps/details?id=com.audioroad"
+      "cta_sequence": [
+        {
+          "priority": 1,
+          "text": "While you wait, download the AudioRoad app for daily health tips",
+          "app_store_link": "https://apps.apple.com/app/audioroad",
+          "play_store_link": "https://play.google.com/store/apps/details?id=com.audioroad"
+        },
+        {
+          "priority": 2,
+          "text": "Ready to go deeper? Join the Let's Truck Tribe",
+          "link": "https://letstrucktribe.com"
+        }
+      ]
     }
   },
   
@@ -157,6 +174,8 @@
       "landing_page_visits": 500,
       "email_signups": 150,
       "app_downloads": 50,
+      "tribe_signups": 25,
+      "product_sales": 10,
       "conversion_rate_target": 0.30
     }
   },
@@ -166,13 +185,15 @@
       "type": "pdf",
       "name": "blood-sugar-guide.pdf",
       "generator": "gamma",
-      "status": "pending"
+      "status": "completed",
+      "gamma_url": "https://gamma.app/docs/uzipvug5gea0dud"
     },
     {
       "type": "landing_page",
       "name": "blood-sugar-landing",
       "generator": "gamma",
-      "status": "pending"
+      "status": "completed",
+      "gamma_url": "https://gamma.app/docs/ndjcssgq6p154xo"
     },
     {
       "type": "carousel",

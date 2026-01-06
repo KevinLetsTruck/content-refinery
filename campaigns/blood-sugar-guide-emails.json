@@ -74,13 +74,42 @@
         "text": "Share the Guide",
         "url": "{{landing_page_url}}"
       }
+    },
+    {
+      "sequence": 6,
+      "send_delay": "14 days",
+      "subject": "Want to go deeper?",
+      "preview_text": "The next level of driver health",
+      "from_name": "Kevin Rutherford",
+      
+      "body_html": "Hey {first_name},\n\nTwo weeks in. By now you've either:\n\nA) Made some changes and feeling better\nB) Still figuring it out\nC) Haven't started yet\n\nNo judgment on any of those. This stuff takes time.\n\nBut if you're in camp A — feeling the difference, wanting more — I want to tell you about something.\n\n**The Let's Truck Tribe.**\n\nIt's where the serious drivers hang out. The ones who are done with the BS and ready to take control of their health, wealth, and business.\n\nInside the Tribe:\n\n→ Deep-dive content you won't find anywhere else\n→ Direct access to me and the community\n→ Drivers helping drivers figure this out together\n→ Exclusive resources, protocols, and guides\n\nThe blood sugar guide was the introduction. The Tribe is the full curriculum.\n\n**[Check out the Let's Truck Tribe]({{tribe_link}})**\n\nNo pressure. The free content will keep coming either way. But if you want to accelerate — this is how.\n\n**Kevin**",
+      
+      "cta_button": {
+        "text": "Join the Tribe",
+        "url": "{{tribe_link}}"
+      }
+    },
+    {
+      "sequence": 7,
+      "send_delay": "21 days",
+      "subject": "3 weeks in — where are you?",
+      "preview_text": "A check-in and a question",
+      "from_name": "Kevin Rutherford",
+      
+      "body_html": "Hey {first_name},\n\nThree weeks since you grabbed the blood sugar guide.\n\nI've seen drivers completely transform in this time. Others take longer. Both are fine.\n\nBut here's what I know for sure: **the drivers who stick with this change their lives.**\n\nNot just their health — their energy, their mood, their focus, their relationships, their business.\n\nIt all starts with getting your metabolism right.\n\nSo here's my ask:\n\n**Where are you in the journey?**\n\n1. Crushing it — energy up, weight down, feeling great\n2. Making progress — some changes sticking, others hard\n3. Struggling — want to do it but life keeps getting in the way\n4. Haven't really started — still on the list of things to do\n\n**Hit reply with your number.** I read every response and it helps me know how to help.\n\nAnd remember:\n\n→ **[AudioRoad app]({{app_link}})** — daily health tips while you drive\n→ **[Let's Truck Tribe]({{tribe_link}})** — for drivers ready to go all-in\n→ **[Berberine]({{product_link}})** — if you want supplement support\n\nYou're not alone out here.\n\n**Kevin**",
+      
+      "cta_button": {
+        "text": "Join the Tribe",
+        "url": "{{tribe_link}}"
+      }
     }
   ],
   
   "variables": {
-    "download_link": "https://letstruck.com/downloads/blood-sugar-guide.pdf",
+    "download_link": "https://gamma.app/docs/uzipvug5gea0dud",
     "app_link": "https://letstruck.com/download",
     "product_link": "https://shop.letstruck.com/products/berberine",
-    "landing_page_url": "https://letstruck.com/free/blood-sugar-guide"
+    "landing_page_url": "https://gamma.app/docs/ndjcssgq6p154xo",
+    "tribe_link": "https://letstrucktribe.com"
   }
 }

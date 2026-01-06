@@ -171,7 +171,7 @@ export async function uploadVideo(options: VideoUploadOptions): Promise<VideoUpl
       "Content-Type": "video/*",
       "Content-Length": videoData.length.toString(),
     },
-    body: videoData,
+    body: new Uint8Array(videoData),
   });
 
   if (!uploadResponse.ok) {
@@ -241,7 +241,7 @@ async function uploadThumbnail(
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "image/jpeg",
       },
-      body: imageData,
+      body: new Uint8Array(imageData),
     }
   );
 

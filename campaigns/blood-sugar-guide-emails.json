@@ -1,0 +1,86 @@
+{
+  "campaign": "blood-sugar-guide",
+  "provider": "constant_contact",
+  "list_name": "Blood Sugar Guide Leads",
+  "tag": "blood-sugar-jan26",
+  
+  "emails": [
+    {
+      "sequence": 1,
+      "send_delay": "immediate",
+      "subject": "Your Blood Sugar Guide Is Here 🩸",
+      "preview_text": "Plus a 60-second trick that starts working today",
+      "from_name": "Kevin Rutherford",
+      
+      "body_html": "Hey {first_name},\n\nYour guide is ready.\n\n👉 **[Download: The Driver's Guide to Stable Blood Sugar]({{download_link}})**\n\nBefore you dive in, here's one thing you can do RIGHT NOW:\n\n**The 60-second hack:** After your next meal, take a 10-minute walk. Parking lot laps count. Studies show this cuts blood sugar spikes by 30%.\n\nNo equipment. No gym. Just move after you eat.\n\nTry it today and reply to let me know how it goes.\n\nTalk soon,\n\n**Kevin Rutherford**\nHost, Let's Truck\n\nP.S. Want daily health tips delivered to your phone? **[Download the AudioRoad app]({{app_link}})** — it's free and built specifically for drivers.",
+      
+      "cta_button": {
+        "text": "Download Your Guide",
+        "url": "{{download_link}}"
+      }
+    },
+    {
+      "sequence": 2,
+      "send_delay": "2 days",
+      "subject": "The #1 truck stop mistake (page 4 of your guide)",
+      "preview_text": "This one thing is spiking your blood sugar all day",
+      "from_name": "Kevin Rutherford",
+      
+      "body_html": "Hey {first_name},\n\nDid you check out the guide yet?\n\nIf not, no worries — but I want to highlight something important from page 4.\n\n**The #1 mistake:** Eating carbs first.\n\nWhen you start a meal with bread, hash browns, or fries, your blood sugar spikes FAST.\n\nBut here's the hack: **eat protein and fat FIRST.** Same exact meal, different order.\n\nThe result? Up to 40% lower blood sugar spike. Same food. Same taste. Different outcome.\n\nTomorrow at the truck stop, try this:\n1. Eat your eggs and bacon first\n2. Then have the toast (if you want it)\n\nSimple change. Big difference.\n\n👉 **[Re-download the guide if you need it]({{download_link}})**\n\nTalk soon,\n\n**Kevin**",
+      
+      "cta_button": {
+        "text": "Review the Guide",
+        "url": "{{download_link}}"
+      }
+    },
+    {
+      "sequence": 3,
+      "send_delay": "4 days",
+      "subject": "Are you making this breakfast error?",
+      "preview_text": "What I learned from testing 100 drivers",
+      "from_name": "Kevin Rutherford",
+      
+      "body_html": "Hey {first_name},\n\nQuick question: What did you have for breakfast today?\n\nI've talked to hundreds of drivers about their morning routines. The pattern is almost always the same:\n\n❌ Coffee with sugar or creamer\n❌ Donut, muffin, or pastry\n❌ Maybe some OJ\n\nBy 9am, they're crashing. Reaching for more caffeine. The cycle starts.\n\n**Here's what the drivers who feel great do instead:**\n\n✅ Black coffee (or with cream, no sugar)\n✅ Eggs — scrambled, fried, hard-boiled, whatever\n✅ Bacon or sausage\n✅ Skip the toast or have it LAST\n\nSame price. Same convenience. Completely different energy levels.\n\nI did a whole show on this recently. You can **[listen on the AudioRoad app]({{app_link}})** while you drive.\n\nTry the protein-first breakfast tomorrow. You'll feel the difference by 10am.\n\n**Kevin**\n\nP.S. The app has hundreds of episodes on driver health, wealth, and business. All free. **[Download here]({{app_link}})**.",
+      
+      "cta_button": {
+        "text": "Listen on AudioRoad",
+        "url": "{{app_link}}"
+      }
+    },
+    {
+      "sequence": 4,
+      "send_delay": "7 days",
+      "subject": "The supplement that actually works",
+      "preview_text": "I was skeptical too, until I saw the data",
+      "from_name": "Kevin Rutherford",
+      
+      "body_html": "Hey {first_name},\n\nYou've had the guide for a week now. How's it going?\n\nIf you've been following the basics — protein first, walking after meals, better truck stop choices — you're probably already feeling a difference.\n\nBut some drivers want to go further. They ask me: \"Kevin, is there anything else I can do?\"\n\nHere's what the research shows actually works for blood sugar:\n\n**Berberine** — This is the real deal. Studies show it's as effective as some medications for blood sugar control. I was skeptical until I saw the data.\n\nIt's not magic. It's not a replacement for eating right. But combined with the strategies in the guide, it can accelerate results.\n\n**[We carry a high-quality berberine in the Let's Truck shop]({{product_link}})**\n\nNo pressure. The diet changes alone will get you results. But if you want an extra edge, this is what I'd recommend.\n\nKeep going. You're doing the work.\n\n**Kevin**",
+      
+      "cta_button": {
+        "text": "Check Out Berberine",
+        "url": "{{product_link}}"
+      }
+    },
+    {
+      "sequence": 5,
+      "send_delay": "10 days",
+      "subject": "Quick question for you",
+      "preview_text": "How's the blood sugar journey going?",
+      "from_name": "Kevin Rutherford",
+      
+      "body_html": "Hey {first_name},\n\nIt's been 10 days since you grabbed the blood sugar guide.\n\nI'm curious — how's it going?\n\n- Have you tried eating protein first?\n- Taking walks after meals?\n- Making different choices at truck stops?\n\n**Hit reply and let me know.** Even just a few words. I read every response.\n\nWhy? Because your feedback helps me help other drivers. What's working. What's hard. What questions you still have.\n\nThis isn't a one-way broadcast. It's a community.\n\n4,000+ drivers are on this journey. You're not alone out here.\n\nTalk soon,\n\n**Kevin**\n\nP.S. If you're finding value in this, share the guide with a driver friend. **[Here's the link]({{landing_page_url}})**. Might be the best thing you do for them all year.",
+      
+      "cta_button": {
+        "text": "Share the Guide",
+        "url": "{{landing_page_url}}"
+      }
+    }
+  ],
+  
+  "variables": {
+    "download_link": "https://letstruck.com/downloads/blood-sugar-guide.pdf",
+    "app_link": "https://letstruck.com/download",
+    "product_link": "https://shop.letstruck.com/products/berberine",
+    "landing_page_url": "https://letstruck.com/free/blood-sugar-guide"
+  }
+}

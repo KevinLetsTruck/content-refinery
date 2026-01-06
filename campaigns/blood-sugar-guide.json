@@ -1,0 +1,223 @@
+{
+  "name": "Blood Sugar Mastery for Drivers",
+  "slug": "blood-sugar-guide",
+  "status": "draft",
+  "goal": "email_signup",
+  "duration_days": 14,
+  
+  "lead_magnet": {
+    "title": "The Driver's Guide to Stable Blood Sugar",
+    "subtitle": "Stop the Energy Crashes, Brain Fog, and Weight Gain That's Killing Your Miles",
+    "topic": "Blood sugar management for commercial truck drivers",
+    "target_audience": "Truck drivers and owner-operators who struggle with energy, focus, and weight",
+    "tone": "friendly, authoritative, practical, no-nonsense",
+    "num_pages": 12,
+    "sections": [
+      "Why Drivers Are 3x More Likely to Have Blood Sugar Problems",
+      "The Truck Stop Trap: Foods That Spike and Crash You",
+      "The 5 Warning Signs You're Already Pre-Diabetic",
+      "The Driver's Plate: What to Eat at Every Stop",
+      "Emergency Fixes: What to Do When You're Crashing",
+      "The 7-Day Blood Sugar Reset Protocol",
+      "Supplements That Actually Work (And Which Are Scams)",
+      "Your 30-Day Action Plan"
+    ],
+    "cta": "Download the AudioRoad app for daily health tips on the road"
+  },
+  
+  "landing_page": {
+    "url": "letstruck.com/free/blood-sugar-guide",
+    "headline": "Why You're Exhausted by 2pm (And What to Do About It)",
+    "subheadline": "The free guide trucking companies don't want you to read",
+    "benefits": [
+      "Discover why truck stop food is designed to make you crash",
+      "Learn the 5 warning signs you're pre-diabetic (most drivers miss #3)",
+      "Get the exact foods to order at Pilot, Love's, and TA",
+      "The 60-second trick to check your blood sugar without a test",
+      "A 7-day reset protocol that works while you're on the road"
+    ],
+    "cta_text": "Get My Free Guide",
+    "trust_elements": [
+      "Join 4,000+ drivers already improving their health",
+      "Created by Kevin Rutherford, host of Let's Truck",
+      "No spam, unsubscribe anytime"
+    ],
+    "thank_you_page": {
+      "headline": "Your Guide Is On The Way!",
+      "message": "Check your email in the next 5 minutes.",
+      "bonus_cta": "While you wait, download the AudioRoad app for daily health tips",
+      "app_store_link": "https://apps.apple.com/app/audioroad",
+      "play_store_link": "https://play.google.com/store/apps/details?id=com.audioroad"
+    }
+  },
+  
+  "email_sequence": {
+    "provider": "constant_contact",
+    "emails": [
+      {
+        "day": 0,
+        "subject": "Your Blood Sugar Guide Is Here 🩸",
+        "preview": "Plus a quick tip that works in 60 seconds",
+        "purpose": "deliver_lead_magnet",
+        "cta": "Download AudioRoad App"
+      },
+      {
+        "day": 2,
+        "subject": "The #1 truck stop mistake (page 4 of your guide)",
+        "preview": "This one thing is spiking your blood sugar",
+        "purpose": "engagement",
+        "cta": "Read the guide"
+      },
+      {
+        "day": 4,
+        "subject": "Are you making this breakfast error?",
+        "preview": "What I learned from testing 100 drivers",
+        "purpose": "education",
+        "cta": "Listen on AudioRoad"
+      },
+      {
+        "day": 7,
+        "subject": "The supplement that actually works",
+        "preview": "I was skeptical too, until I saw the data",
+        "purpose": "soft_sell",
+        "product_link": "shopify_berberine"
+      },
+      {
+        "day": 10,
+        "subject": "Quick question for you",
+        "preview": "How's the 7-day reset going?",
+        "purpose": "engagement",
+        "cta": "Reply to this email"
+      }
+    ]
+  },
+  
+  "social_campaign": {
+    "platforms": ["twitter", "facebook", "instagram", "linkedin"],
+    "phases": [
+      {
+        "name": "Problem Awareness",
+        "days": [1, 2, 3],
+        "themes": [
+          "Why drivers are exhausted by 2pm",
+          "The hidden blood sugar epidemic in trucking",
+          "Shocking stats about driver diabetes rates"
+        ]
+      },
+      {
+        "name": "Education",
+        "days": [4, 5, 6],
+        "themes": [
+          "How truck stop food is engineered against you",
+          "The blood sugar roller coaster explained",
+          "What your doctor isn't telling you"
+        ]
+      },
+      {
+        "name": "Solution Tease",
+        "days": [7, 8, 9],
+        "themes": [
+          "The simple fix I wish I knew 10 years ago",
+          "What to order at Pilot (exact items)",
+          "The 60-second blood sugar hack"
+        ]
+      },
+      {
+        "name": "Social Proof",
+        "days": [10, 11, 12],
+        "themes": [
+          "Driver testimonials and results",
+          "Before/after energy levels",
+          "What 4,000 drivers are doing differently"
+        ]
+      },
+      {
+        "name": "Urgency",
+        "days": [13, 14],
+        "themes": [
+          "Why waiting is costing you money",
+          "The compound effect of blood sugar damage",
+          "Last chance messaging"
+        ]
+      }
+    ],
+    "post_counts": {
+      "twitter": 28,
+      "facebook": 14,
+      "instagram": 14,
+      "linkedin": 7
+    }
+  },
+  
+  "tracking": {
+    "utm_source": "social",
+    "utm_medium": "{platform}",
+    "utm_campaign": "blood-sugar-guide-jan26",
+    "goals": {
+      "landing_page_visits": 500,
+      "email_signups": 150,
+      "app_downloads": 50,
+      "conversion_rate_target": 0.30
+    }
+  },
+  
+  "assets_needed": [
+    {
+      "type": "pdf",
+      "name": "blood-sugar-guide.pdf",
+      "generator": "gamma",
+      "status": "pending"
+    },
+    {
+      "type": "landing_page",
+      "name": "blood-sugar-landing",
+      "generator": "gamma",
+      "status": "pending"
+    },
+    {
+      "type": "carousel",
+      "name": "blood-sugar-carousel-instagram",
+      "generator": "gamma",
+      "platform": "instagram",
+      "status": "pending"
+    },
+    {
+      "type": "carousel",
+      "name": "blood-sugar-carousel-linkedin",
+      "generator": "gamma", 
+      "platform": "linkedin",
+      "status": "pending"
+    }
+  ],
+  
+  "content_hooks": {
+    "statistics": [
+      "Truck drivers are 3x more likely to develop Type 2 diabetes",
+      "69% of commercial drivers are obese vs 36% of the general population",
+      "The average trucker's meal spikes blood sugar 2x higher than normal",
+      "Pre-diabetes affects 1 in 3 drivers (most don't know it)"
+    ],
+    "pain_points": [
+      "Exhausted by 2pm every day",
+      "Brain fog that makes driving dangerous",
+      "Weight that won't come off no matter what",
+      "Energy drinks that stopped working",
+      "Waking up tired even after 8 hours",
+      "Mood swings and irritability on the road"
+    ],
+    "transformation_promises": [
+      "Stable energy from dawn to dusk",
+      "Mental clarity that makes miles fly by",
+      "Weight loss without dieting",
+      "No more afternoon crashes",
+      "Better sleep, better mornings",
+      "Feel 10 years younger behind the wheel"
+    ],
+    "objection_handlers": [
+      "I don't have time to cook → You don't need to, here's what to order",
+      "Healthy food is expensive → Actually saves you money, here's how",
+      "I've tried everything → This is different because it's designed for drivers",
+      "I'm too far gone → We've seen drivers reverse pre-diabetes in 30 days"
+    ]
+  }
+}

@@ -133,14 +133,15 @@ export async function GET(request: NextRequest) {
     const expiresIn = tokenData.expires_in; // seconds
 
     // Get user profile to find their URN (needed for posting)
-    const profileResponse = await fetch("https://api.linkedin.com/v2/userinfo", {
+    const profileResponse = await fetch("https://api.linkedin.com/v2/me", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
 
     const profileData = await profileResponse.json();
-    const userUrn = profileData.sub; // This is the person URN like "abc123def"
+    const userUrn = profileData.id; // This is the person ID
+    const userName = profileData.localizedFirstName ? `${profileData.localizedFirstName} ${profileData.localizedLastName || ''}`.trim() : null;
 
     // Calculate expiration date
     const expirationDate = new Date(Date.now() + expiresIn * 1000);
@@ -168,7 +169,7 @@ export async function GET(request: NextRequest) {
             <h1 style="margin: 0;">✅ LinkedIn Connected!</h1>
           </div>
           
-          <p>Successfully authorized <strong>${profileData.name || 'your account'}</strong>.</p>
+          <p>Successfully authorized <strong>${userName || 'your account'}</strong>.</p>
           
           <h2>Your Access Token</h2>
           <div class="token-box">

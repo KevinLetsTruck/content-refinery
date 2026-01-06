@@ -16,12 +16,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Scopes needed for posting
-  const scopes = [
-    "openid",
-    "profile", 
-    "w_member_social",  // Post on behalf of user
-  ].join(" ");
+  // Scopes needed for posting (w_member_social comes with "Share on LinkedIn" product)
+  const scopes = "w_member_social";
 
   // Generate state for CSRF protection
   const state = Math.random().toString(36).substring(7);

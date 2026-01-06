@@ -501,3 +501,5 @@ export function suggestFormula(contentType: string): ContentFormula {
   return typeToFormula[contentType] || "data_bomb";
 }
 
+
+

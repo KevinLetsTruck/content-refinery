@@ -13,6 +13,10 @@ import {
   MessageSquare,
   Image,
   Sparkles,
+  Wand2,
+  Link,
+  FileText,
+  X,
 } from "lucide-react";
 
 type CampaignType = "product_launch" | "educational_series" | "custom";
@@ -43,6 +47,21 @@ interface WizardState {
   youtubeStandard: number;
 }
 
+interface AutoGenerateResult {
+  summary: string;
+  keyFindings: string[];
+  campaign: {
+    name: string;
+    campaignType: CampaignType;
+    goal: CampaignGoal;
+    productName: string;
+    keyMessages: string[];
+    suggestedDuration: number;
+    angles: string[];
+    hooks: string[];
+  };
+}
+
 const STEPS = [
   { id: 1, name: "Type", icon: Target },
   { id: 2, name: "Details", icon: MessageSquare },
@@ -57,6 +76,13 @@ export default function CreateCampaignPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
+  
+  // Smart input state
+  const [showSmartInput, setShowSmartInput] = useState(true);
+  const [smartInput, setSmartInput] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AutoGenerateResult | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const [state, setState] = useState<WizardState>({
     campaignType: "product_launch",
@@ -81,6 +107,60 @@ export default function CreateCampaignPage() {
   const nextStep = () => setStep((s) => Math.min(s + 1, 7));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
+  // Smart Input Analysis
+  const analyzeInput = async () => {
+    if (!smartInput.trim()) return;
+    
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    setAnalysisResult(null);
+    
+    try {
+      const res = await fetch("/api/campaigns/auto-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input: smartInput }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to analyze");
+      }
+      
+      setAnalysisResult(data);
+    } catch (error) {
+      setAnalysisError(error instanceof Error ? error.message : "Analysis failed");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const applyAnalysisResult = () => {
+    if (!analysisResult) return;
+    
+    const { campaign } = analysisResult;
+    
+    updateState({
+      name: campaign.name,
+      campaignType: campaign.campaignType,
+      goal: campaign.goal,
+      productName: campaign.productName || "",
+      keyMessages: campaign.keyMessages.length > 0 
+        ? campaign.keyMessages 
+        : ["", "", ""],
+      durationDays: campaign.suggestedDuration || 10,
+    });
+    
+    setShowSmartInput(false);
+    setStep(1);
+  };
+
+  const skipSmartInput = () => {
+    setShowSmartInput(false);
+    setStep(1);
+  };
+
   const createCampaign = async () => {
     setGenerating(true);
     
@@ -97,7 +177,6 @@ export default function CreateCampaignPage() {
       const data = await res.json();
 
       if (data.success) {
-        // Poll for completion
         pollCampaignStatus(data.campaignId);
       } else {
         alert(data.error || "Failed to create campaign");
@@ -131,6 +210,234 @@ export default function CreateCampaignPage() {
     state.durationDays *
     (state.postsPerDay.twitter + state.postsPerDay.facebook + state.postsPerDay.instagram);
 
+  // Smart Input Screen
+  if (showSmartInput) {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] text-white">
+        {/* Header */}
+        <div className="border-b border-[#2A2A2A] p-4">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <button
+              onClick={() => router.push("/campaigns")}
+              className="flex items-center gap-2 text-gray-400 hover:text-white transition"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back to Campaigns
+            </button>
+            <h1 className="text-xl font-semibold">Create Campaign</h1>
+            <div className="w-24" />
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto p-8">
+          {/* Smart Input Section */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#FF4500] to-[#F4A300] mb-4">
+              <Wand2 className="w-8 h-8" />
+            </div>
+            <h2 className="text-3xl font-bold mb-2">AI Campaign Generator</h2>
+            <p className="text-gray-400 max-w-lg mx-auto">
+              Paste a URL with your instructions and AI will analyze the content, 
+              extract key points, and pre-fill your entire campaign.
+            </p>
+          </div>
+
+          {/* Input Area */}
+          <div className="bg-[#1A1A1A] rounded-xl border border-[#2A2A2A] p-6 mb-6">
+            <label className="block text-sm font-medium mb-3 text-gray-300">
+              Paste URL + Instructions
+            </label>
+            <textarea
+              value={smartInput}
+              onChange={(e) => setSmartInput(e.target.value)}
+              placeholder={`Example:
+Create a comprehensive report. If this is true compare it to today's conventional medicine view of cholesterol and why statins are so widely prescribed.
+__https://pmc.ncbi.nlm.nih.gov/articles/PMC10828184/__
+
+Or simply:
+https://example.com/article - Create an educational series about this topic`}
+              rows={6}
+              className="w-full p-4 bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg focus:border-[#FF4500] outline-none resize-none text-white placeholder-gray-500"
+            />
+            <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
+              <Link className="w-4 h-4" />
+              <span>Wrap URLs in __underscores__ or paste them directly</span>
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {analysisError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+              <p className="text-red-400 text-sm">{analysisError}</p>
+            </div>
+          )}
+
+          {/* Analysis Result */}
+          {analysisResult && (
+            <div className="bg-[#1A1A1A] rounded-xl border border-[#FF4500]/30 p-6 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-[#FF4500]" />
+                <h3 className="font-semibold text-lg">Analysis Complete</h3>
+              </div>
+              
+              {/* Summary */}
+              <div className="mb-4">
+                <div className="text-sm text-gray-400 mb-1">Summary</div>
+                <p className="text-gray-200">{analysisResult.summary}</p>
+              </div>
+              
+              {/* Key Findings */}
+              <div className="mb-4">
+                <div className="text-sm text-gray-400 mb-2">Key Findings</div>
+                <ul className="space-y-1">
+                  {analysisResult.keyFindings.map((finding, i) => (
+                    <li key={i} className="text-sm text-gray-300 flex items-start gap-2">
+                      <span className="text-[#FF4500] mt-1">•</span>
+                      {finding}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              {/* Suggested Campaign */}
+              <div className="bg-[#0D0D0D] rounded-lg p-4 border border-[#2A2A2A]">
+                <div className="text-sm text-gray-400 mb-2">Suggested Campaign</div>
+                <div className="font-semibold text-lg mb-2">{analysisResult.campaign.name}</div>
+                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                  <div>
+                    <span className="text-gray-500">Type:</span>{" "}
+                    <span className="capitalize">{analysisResult.campaign.campaignType.replace("_", " ")}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Duration:</span>{" "}
+                    {analysisResult.campaign.suggestedDuration} days
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Goal:</span>{" "}
+                    <span className="capitalize">{analysisResult.campaign.goal.replace("_", " ")}</span>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-gray-400 mb-2">Key Messages</div>
+                <ul className="space-y-1 mb-4">
+                  {analysisResult.campaign.keyMessages.map((msg, i) => (
+                    <li key={i} className="text-sm text-gray-300 flex items-start gap-2">
+                      <span className="text-[#F4A300]">{i + 1}.</span>
+                      {msg}
+                    </li>
+                  ))}
+                </ul>
+                
+                {analysisResult.campaign.hooks && analysisResult.campaign.hooks.length > 0 && (
+                  <>
+                    <div className="text-sm text-gray-400 mb-2">Content Hooks</div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResult.campaign.hooks.slice(0, 3).map((hook, i) => (
+                        <span 
+                          key={i} 
+                          className="px-3 py-1 bg-[#FF4500]/10 text-[#FF4500] rounded-full text-xs"
+                        >
+                          {hook}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={applyAnalysisResult}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg font-semibold transition"
+                >
+                  <Check className="w-5 h-5" />
+                  Use This Campaign
+                </button>
+                <button
+                  onClick={() => {
+                    setAnalysisResult(null);
+                    setSmartInput("");
+                  }}
+                  className="px-6 py-3 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-lg transition"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          {!analysisResult && (
+            <div className="flex gap-4">
+              <button
+                onClick={analyzeInput}
+                disabled={!smartInput.trim() || isAnalyzing}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-5 h-5" />
+                    Analyze & Generate
+                  </>
+                )}
+              </button>
+              <button
+                onClick={skipSmartInput}
+                className="px-6 py-4 text-gray-400 hover:text-white hover:bg-[#1A1A1A] rounded-lg transition"
+              >
+                Skip, create manually
+              </button>
+            </div>
+          )}
+
+          {/* Example Cards */}
+          {!analysisResult && !isAnalyzing && (
+            <div className="mt-12">
+              <h3 className="text-sm font-medium text-gray-500 mb-4">Example inputs:</h3>
+              <div className="grid gap-3">
+                {[
+                  {
+                    icon: FileText,
+                    title: "Research Article",
+                    example: "Create an educational series comparing this to mainstream advice\n__https://pubmed.ncbi.nlm.nih.gov/...__",
+                  },
+                  {
+                    icon: Link,
+                    title: "Product Page",
+                    example: "Launch campaign for this new supplement\nhttps://letstruck.com/products/new-item",
+                  },
+                  {
+                    icon: MessageSquare,
+                    title: "Blog Post",
+                    example: "Turn this into a 7-day awareness campaign focused on gut health\n__https://blog.example.com/article__",
+                  },
+                ].map((ex, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSmartInput(ex.example)}
+                    className="flex items-start gap-4 p-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-left hover:border-[#3A3A3A] transition"
+                  >
+                    <ex.icon className="w-5 h-5 text-[#F4A300] mt-0.5" />
+                    <div>
+                      <div className="font-medium text-sm">{ex.title}</div>
+                      <div className="text-xs text-gray-500 mt-1 whitespace-pre-line">{ex.example}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
       {/* Header */}
@@ -144,7 +451,13 @@ export default function CreateCampaignPage() {
             Back to Campaigns
           </button>
           <h1 className="text-xl font-semibold">Create Campaign</h1>
-          <div className="w-24" />
+          <button
+            onClick={() => setShowSmartInput(true)}
+            className="flex items-center gap-2 text-[#FF4500] hover:text-[#FF5722] transition text-sm"
+          >
+            <Wand2 className="w-4 h-4" />
+            AI Generate
+          </button>
         </div>
       </div>
 

@@ -1,0 +1,37 @@
+import { NextRequest, NextResponse } from "next/server";
+
+/**
+ * GET /api/auth/linkedin
+ * Initiates LinkedIn OAuth flow - redirects user to LinkedIn authorization page
+ */
+export async function GET(request: NextRequest) {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 
+    `${process.env.NEXT_PUBLIC_APP_URL || 'https://content-refinery-07dc.onrender.com'}/api/auth/linkedin/callback`;
+
+  if (!clientId) {
+    return NextResponse.json(
+      { error: "LINKEDIN_CLIENT_ID not configured" },
+      { status: 500 }
+    );
+  }
+
+  // Scopes needed for posting
+  const scopes = [
+    "openid",
+    "profile", 
+    "w_member_social",  // Post on behalf of user
+  ].join(" ");
+
+  // Generate state for CSRF protection
+  const state = Math.random().toString(36).substring(7);
+
+  const authUrl = new URL("https://www.linkedin.com/oauth/v2/authorization");
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("scope", scopes);
+  authUrl.searchParams.set("state", state);
+
+  return NextResponse.redirect(authUrl.toString());
+}

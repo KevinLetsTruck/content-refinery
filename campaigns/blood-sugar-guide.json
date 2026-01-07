@@ -32,8 +32,9 @@
   },
   
   "landing_page": {
-    "url": "https://gamma.app/docs/ndjcssgq6p154xo",
-    "gamma_edit_url": "https://gamma.app/docs/ndjcssgq6p154xo",
+    "url": "/lp/blood-sugar-guide",
+    "hosted": "internal",
+    "gamma_backup": "https://gamma.app/docs/ndjcssgq6p154xo",
     "headline": "Why You're Exhausted by 2pm (And What to Do About It)",
     "subheadline": "The free guide trucking companies don't want you to read",
     "benefits": [
@@ -186,7 +187,7 @@
       "name": "blood-sugar-guide.pdf",
       "generator": "gamma",
       "status": "completed",
-      "gamma_url": "https://gamma.app/docs/uzipvug5gea0dud"
+      "gamma_url": "https://gamma.app/docs/The-Drivers-Guide-to-Stable-Blood-Sugar-9neq3bnqh6fpl5i"
     },
     {
       "type": "landing_page",

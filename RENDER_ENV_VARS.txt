@@ -1,0 +1,12 @@
+# Constant Contact Environment Variables for Render
+# 
+# Go to: https://dashboard.render.com
+# Click on: content-refinery service
+# Click on: Environment (left sidebar)
+# Add each of these as Key/Value pairs:
+
+CONSTANT_CONTACT_CLIENT_ID=61ddc009-ceb5-4ff9-a9f9-7360361e0149
+CONSTANT_CONTACT_CLIENT_SECRET=wz6xiIrRiLgQoTXyInq4QA
+CONSTANT_CONTACT_REDIRECT_URI=https://content-refinery-07dc.onrender.com/api/auth/constantcontact/callback
+
+# Then click "Save Changes" and wait for redeploy

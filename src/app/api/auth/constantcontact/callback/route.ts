@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConstantContactClient } from "@/lib/constant-contact/client";
 
+// Base URL for redirects
+const getBaseUrl = () => {
+  return process.env.NEXT_PUBLIC_APP_URL || "https://content-refinery-07dc.onrender.com";
+};
+
 /**
  * GET /api/auth/constantcontact/callback
  * Handles the OAuth callback from Constant Contact
@@ -10,19 +15,20 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
+  const baseUrl = getBaseUrl();
 
   // Handle OAuth errors
   if (error) {
     console.error("[CC OAuth] Error:", error, errorDescription);
     return NextResponse.redirect(
-      new URL(`/admin/settings?cc_error=${encodeURIComponent(errorDescription || error)}`, request.url)
+      `${baseUrl}/admin/settings?cc_error=${encodeURIComponent(errorDescription || error)}`
     );
   }
 
   // Validate code
   if (!code) {
     return NextResponse.redirect(
-      new URL("/admin/settings?cc_error=No+authorization+code+received", request.url)
+      `${baseUrl}/admin/settings?cc_error=No+authorization+code+received`
     );
   }
 
@@ -35,12 +41,12 @@ export async function GET(request: NextRequest) {
 
     // Redirect to success page
     return NextResponse.redirect(
-      new URL("/admin/settings?cc_success=true", request.url)
+      `${baseUrl}/admin/settings?cc_success=true`
     );
   } catch (error) {
     console.error("[CC OAuth] Token exchange error:", error);
     return NextResponse.redirect(
-      new URL(`/admin/settings?cc_error=${encodeURIComponent("Failed to complete authentication")}`, request.url)
+      `${baseUrl}/admin/settings?cc_error=${encodeURIComponent("Failed to complete authentication")}`
     );
   }
 }

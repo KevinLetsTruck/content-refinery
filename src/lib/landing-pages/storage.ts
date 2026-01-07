@@ -53,7 +53,7 @@ const bloodSugarPage: LandingPageData = {
     ctas: [
       {
         text: "Download the AudioRoad App",
-        url: "https://letstruck.com/download",
+        url: "https://apps.apple.com/us/app/letstruck/id1613223362",
         style: "primary"
       },
       {
@@ -117,7 +117,7 @@ const ndkResetChallenge: LandingPageData & { challenge: any } = {
     ctas: [
       {
         text: "Download the AudioRoad App",
-        url: "https://letstruck.com/download",
+        url: "https://apps.apple.com/us/app/letstruck/id1613223362",
         style: "primary"
       },
       {

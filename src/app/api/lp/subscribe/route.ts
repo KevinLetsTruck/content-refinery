@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLandingPage, incrementConversions } from "@/lib/landing-pages/storage";
+import { getConstantContactClient } from "@/lib/constant-contact/client";
 
 interface SubscribeRequest {
   slug: string;
@@ -13,7 +14,7 @@ interface SubscribeRequest {
   utm_content?: string;
 }
 
-// In-memory store for subscribers (replace with database in production)
+// In-memory store for subscribers (backup/fallback)
 const subscribers: Array<{
   email: string;
   firstName?: string;
@@ -23,6 +24,7 @@ const subscribers: Array<{
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+  addedToCC: boolean;
 }> = [];
 
 export async function POST(request: NextRequest) {
@@ -55,7 +57,37 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Store subscriber locally
+    // Track conversion
+    incrementConversions(body.slug);
+    
+    // Try to add to Constant Contact
+    let addedToCC = false;
+    let ccError: string | null = null;
+    
+    try {
+      const ccClient = getConstantContactClient();
+      
+      if (ccClient.isAuthenticated() && page.constantContactListId) {
+        await ccClient.upsertContact({
+          email: body.email,
+          firstName: body.firstName,
+          lastName: body.lastName,
+          listIds: [page.constantContactListId],
+        });
+        addedToCC = true;
+        console.log(`[Subscribe] Added ${body.email} to CC list ${page.constantContactListId}`);
+      } else if (!ccClient.isAuthenticated()) {
+        console.log("[Subscribe] CC not authenticated, storing locally only");
+      } else if (!page.constantContactListId) {
+        console.log("[Subscribe] No CC list configured for this page");
+      }
+    } catch (error) {
+      ccError = error instanceof Error ? error.message : "CC error";
+      console.error("[Subscribe] Constant Contact error:", error);
+      // Don't fail the request if CC fails - we still have local storage
+    }
+    
+    // Store subscriber locally (backup)
     subscribers.push({
       email: body.email,
       firstName: body.firstName,
@@ -65,31 +97,21 @@ export async function POST(request: NextRequest) {
       utm_source: body.utm_source,
       utm_medium: body.utm_medium,
       utm_campaign: body.utm_campaign,
+      addedToCC,
     });
     
-    // Track conversion
-    incrementConversions(body.slug);
-    
-    // TODO: Add to Constant Contact when configured
-    // if (page.constantContactListId) {
-    //   await addToConstantContact({
-    //     email: body.email,
-    //     firstName: body.firstName,
-    //     lastName: body.lastName,
-    //     listId: page.constantContactListId,
-    //   });
-    // }
-    
-    console.log(`[Landing Page] New subscriber: ${body.email} for ${body.slug}`);
+    console.log(`[Subscribe] New subscriber: ${body.email} for ${body.slug} (CC: ${addedToCC})`);
     
     return NextResponse.json({
       success: true,
       message: "Subscription successful",
       downloadUrl: page.leadMagnet?.downloadUrl,
+      addedToCC,
+      ...(ccError && { ccWarning: "Email saved but Constant Contact sync failed" }),
     });
     
   } catch (error) {
-    console.error("[Landing Page] Subscription error:", error);
+    console.error("[Subscribe] Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -97,7 +119,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint to retrieve subscribers (admin only, add auth later)
+// GET endpoint to retrieve subscribers (admin only)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug");

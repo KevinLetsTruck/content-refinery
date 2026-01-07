@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { LandingPageData } from "@/lib/landing-pages/types";
+import { SmartAppLinks } from "@/lib/landing-pages/device-detection";
 
 interface Props {
   page: LandingPageData;
@@ -135,8 +136,23 @@ export function ChallengeTemplate({ page, tracking }: Props) {
             </ol>
           </div>
           
+          {/* Smart App Download - detects iOS/Android */}
+          <div className="mb-6">
+            <p className="text-purple-300 mb-4">Download the Let&apos;s Truck App:</p>
+            <div className="flex justify-center">
+              <SmartAppLinks
+                primaryClassName="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black font-bold px-6 py-4 rounded-lg transition-colors"
+                secondaryClassName="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-4 rounded-lg transition-colors border border-white/20"
+                showBothOnDesktop={true}
+              />
+            </div>
+          </div>
+          
+          {/* Other CTAs (Tribe, etc.) */}
           <div className="space-y-4">
-            {page.thankYou.ctas.map((cta, index) => (
+            {page.thankYou.ctas
+              .filter(cta => !cta.text.toLowerCase().includes("audioroad") && !cta.text.toLowerCase().includes("app"))
+              .map((cta, index) => (
               <a
                 key={index}
                 href={cta.url}

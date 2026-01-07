@@ -102,11 +102,11 @@ Secondary: linktr.ee or hub page with:
 | Property | URL |
 |----------|-----|
 | Email Signup | Via Constant Contact forms |
-| AudioRoad iOS | https://apps.apple.com/app/audioroad |
-| AudioRoad Android | https://play.google.com/store/apps/details?id=com.audioroad |
+| AudioRoad iOS | https://apps.apple.com/us/app/letstruck/id1613223362 |
+| AudioRoad Android | https://play.google.com/store/apps/details?id=com.letstruck.gauges&pli=1 |
 | Let's Truck Tribe | https://letstrucktribe.com |
 | Store | https://shop.letstruck.com (or Shopify URL) |
 
 ---
 
-*Updated: January 6, 2026*
+*Updated: January 7, 2026*

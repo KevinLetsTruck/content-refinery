@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getLandingPage, incrementViews } from "@/lib/landing-pages/storage";
 import { LeadMagnetTemplate } from "./templates/LeadMagnetTemplate";
 import { ChallengeTemplate } from "./templates/ChallengeTemplate";
+import { ProductLaunchTemplate } from "./templates/ProductLaunchTemplate";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -55,7 +56,7 @@ export default async function LandingPage({ params, searchParams }: Props) {
     case "challenge":
       return <ChallengeTemplate page={page} tracking={tracking} />;
     case "product_launch":
-      return <LeadMagnetTemplate page={page} tracking={tracking} />;
+      return <ProductLaunchTemplate page={page} tracking={tracking} />;
     default:
       return <LeadMagnetTemplate page={page} tracking={tracking} />;
   }

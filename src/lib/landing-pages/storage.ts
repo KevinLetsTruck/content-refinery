@@ -204,6 +204,188 @@ const ndkResetChallenge: LandingPageData & { challenge: any } = {
 
 landingPages.set("7-day-ndk-reset", ndkResetChallenge as LandingPageData);
 
+// Berberine Product Page
+const berberinePage: LandingPageData & { product: any } = {
+  slug: "berberine",
+  template: "product_launch",
+  status: "published",
+  
+  title: "Berberine Blood Sugar Support | Let's Truck Shop",
+  metaDescription: "Clinically-studied berberine for healthy blood sugar levels. Made for drivers, by drivers.",
+  
+  headline: "Take Control of Your Blood Sugar",
+  subheadline: "Clinically-studied berberine that works as hard as you do. No prescription required.",
+  
+  benefits: [
+    "Supports healthy blood sugar already in normal range",
+    "Promotes metabolic health and energy levels",
+    "Works synergistically with the NDK Protocol",
+    "Third-party tested for purity and potency"
+  ],
+  
+  trustElements: [
+    "500+ drivers using it",
+    "60-day money-back guarantee",
+    "Ships free over $50",
+    "Third-party tested"
+  ],
+  
+  testimonials: [
+    {
+      quote: "My A1C dropped from 6.2 to 5.4 in three months. Combined with NDK, this stuff actually works.",
+      author: "Mike T.",
+      role: "Owner-operator, 12 years OTR"
+    },
+    {
+      quote: "No more afternoon crashes. I take it before my biggest meal and my energy stays steady all day.",
+      author: "James R.",
+      role: "Regional driver"
+    },
+    {
+      quote: "My doctor was surprised at my numbers. I told him about berberine and NDK. He said keep doing whatever you're doing.",
+      author: "Carlos M.",
+      role: "Team driver"
+    }
+  ],
+  
+  ctaText: "Add to Cart",
+  
+  formFields: [],
+  
+  thankYou: {
+    headline: "Order Confirmed!",
+    message: "Your berberine is on its way.",
+    ctas: []
+  },
+  
+  utmCampaign: "berberine-launch",
+  
+  primaryColor: "#1e40af",
+  accentColor: "#f59e0b",
+  darkMode: false,
+  
+  createdAt: "2026-01-07T00:00:00Z",
+  updatedAt: "2026-01-07T00:00:00Z",
+  views: 0,
+  conversions: 0,
+  
+  // Product-specific fields
+  product: {
+    price: "$34.99",
+    originalPrice: "$44.99",
+    priceSubtext: "60 capsules • 30-day supply",
+    buyUrl: "https://shop.letstruck.com/products/berberine",
+    buyButtonText: "Add to Cart",
+    productImage: "", // Add product image URL
+    
+    problem: {
+      headline: "The Blood Sugar Struggle Is Real on the Road",
+      points: [
+        "You eat what's available at truck stops — and your body pays the price",
+        "Energy crashes hit hardest when you need to stay alert behind the wheel",
+        "Your doctor keeps warning you about your numbers, but nothing seems to work",
+        "Prescription options come with side effects that make driving harder",
+        "Diets fail because they don't account for life on the road"
+      ]
+    },
+    
+    solution: {
+      headline: "Ancient Wisdom Meets Modern Science",
+      description: "Berberine has been used for thousands of years in traditional medicine. Modern research shows it supports healthy blood sugar metabolism through multiple pathways — activating AMPK, supporting insulin sensitivity, and promoting healthy glucose uptake. Combined with the NDK Protocol, it's the one-two punch your metabolism needs."
+    },
+    
+    features: [
+      {
+        title: "500mg Per Capsule",
+        description: "Clinical-strength dosing. Most studies showing benefits used 500mg doses."
+      },
+      {
+        title: "97% Pure Berberine HCl",
+        description: "Extracted from Berberis aristata root. No fillers, no junk."
+      },
+      {
+        title: "Third-Party Tested",
+        description: "Every batch tested for purity, potency, and contaminants."
+      },
+      {
+        title: "No Prescription Needed",
+        description: "Natural supplement you can add to your routine today."
+      },
+      {
+        title: "Made in USA",
+        description: "Manufactured in a GMP-certified facility right here in America."
+      },
+      {
+        title: "Driver-Tested",
+        description: "Recommended by Kevin Rutherford and used by 500+ drivers in the Tribe."
+      }
+    ],
+    
+    specs: [
+      { label: "Berberine HCl", value: "500mg per capsule" },
+      { label: "Servings Per Container", value: "60 capsules" },
+      { label: "Suggested Use", value: "1 capsule with meals, 1-2x daily" },
+      { label: "Source", value: "Berberis aristata root extract" },
+      { label: "Other Ingredients", value: "Vegetable cellulose capsule" },
+      { label: "Allergens", value: "None" }
+    ],
+    
+    howItWorks: [
+      {
+        step: 1,
+        title: "Take With Your Biggest Meal",
+        description: "One capsule 15-30 minutes before eating helps prepare your body for glucose processing."
+      },
+      {
+        step: 2,
+        title: "Activates AMPK Pathway",
+        description: "Berberine activates your metabolic master switch, telling your body to use glucose for energy instead of storing it."
+      },
+      {
+        step: 3,
+        title: "Supports Steady Energy",
+        description: "Better glucose metabolism means fewer spikes and crashes. Stay alert when it matters most."
+      }
+    ],
+    
+    faq: [
+      {
+        question: "How is this different from metformin?",
+        answer: "Berberine is a natural compound that works through similar pathways as metformin but is available without a prescription. Some studies show comparable effects on blood sugar markers. Always consult your doctor before making changes to your health routine, especially if you're on medication."
+      },
+      {
+        question: "When will I notice results?",
+        answer: "Most people notice improved energy and fewer crashes within 1-2 weeks. Blood sugar marker improvements typically show up in lab work after 8-12 weeks of consistent use combined with dietary changes."
+      },
+      {
+        question: "Can I take this with other supplements?",
+        answer: "Yes, berberine works well alongside the NDK Protocol. It pairs especially well with magnesium and omega-3s. If you're on prescription medications, check with your doctor first."
+      },
+      {
+        question: "Why 500mg?",
+        answer: "Clinical studies showing blood sugar benefits typically used 500mg doses taken 2-3 times daily with meals. We use the clinically-studied dose so you know exactly what you're getting."
+      },
+      {
+        question: "Any side effects?",
+        answer: "Some people experience mild GI discomfort when starting. Taking with food minimizes this. Start with one capsule daily and work up to two if desired."
+      }
+    ],
+    
+    guarantee: {
+      title: "60-Day Money-Back Guarantee",
+      description: "Try it risk-free. If you don't notice a difference in your energy and how you feel, send it back for a full refund. No questions asked.",
+      duration: "60 days to decide"
+    },
+    
+    urgency: {
+      type: "limited_stock",
+      message: "Limited stock — next shipment arrives in 2 weeks"
+    }
+  }
+};
+
+landingPages.set("berberine", berberinePage as LandingPageData);
+
 export function getLandingPage(slug: string): LandingPageData | null {
   return landingPages.get(slug) || null;
 }

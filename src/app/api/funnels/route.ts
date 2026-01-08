@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listFunnels, getFunnelStats } from "@/lib/funnels/storage";
-import { buildFunnel } from "@/lib/funnels/funnel-builder";
-import { CreateFunnelInput } from "@/lib/funnels/types";
+import { listFunnels, listFunnelsByStatus } from "@/lib/funnels/storage";
+import { createFunnel } from "@/lib/funnels/funnel-builder";
+import { CreateFunnelInput, FunnelStatus } from "@/lib/funnels/types";
 
 /**
  * GET /api/funnels
@@ -10,24 +10,10 @@ import { CreateFunnelInput } from "@/lib/funnels/types";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const action = searchParams.get("action");
+    const status = searchParams.get("status") as FunnelStatus | null;
 
-    // Return stats if requested
-    if (action === "stats") {
-      const stats = getFunnelStats();
-      return NextResponse.json(stats);
-    }
-
-    // Apply optional filters
-    const status = searchParams.get("status") as any;
-    const type = searchParams.get("type") || undefined;
-    const limit = parseInt(searchParams.get("limit") || "50");
-
-    const funnels = listFunnels({
-      status,
-      type,
-      limit,
-    });
+    // Filter by status if provided
+    const funnels = status ? listFunnelsByStatus(status) : listFunnels();
 
     return NextResponse.json({
       total: funnels.length,
@@ -79,7 +65,7 @@ export async function POST(request: NextRequest) {
     console.log("[API] Creating funnel:", input.name);
 
     // Build the complete funnel (this generates all content)
-    const funnel = await buildFunnel(input);
+    const funnel = await createFunnel(input);
 
     return NextResponse.json({
       success: true,

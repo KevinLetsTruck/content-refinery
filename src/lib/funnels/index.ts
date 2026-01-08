@@ -1,32 +1,39 @@
 /**
- * Funnels Module
- * Central export for all funnel-related functionality
+ * Funnel Builder Module
+ * Central export for the funnel builder system
  */
 
 // Types
-export * from "./types";
+export type {
+  Funnel,
+  FunnelType,
+  FunnelStatus,
+  FunnelEmail,
+  FunnelPost,
+  CreateFunnelInput,
+} from "./types";
 
-// Storage
+// Main orchestrator
+export { createFunnel, slugify } from "./funnel-builder";
+
+// Storage operations
 export {
-  createFunnel,
+  createFunnel as saveFunnel,
   getFunnel,
   updateFunnel,
   listFunnels,
+  listFunnelsByStatus,
   deleteFunnel,
   updateFunnelStatus,
-  getFunnelStats,
 } from "./storage";
 
-// Lead Magnet
+// Individual generators (for direct use if needed)
 export {
   uploadLeadMagnet,
+  uploadLeadMagnetBuffer,
   generateLeadMagnetWithGamma,
-  validateLeadMagnetUrl,
 } from "./lead-magnet";
 
-// Builder
-export {
-  buildFunnel,
-  generateEmailSequence,
-  generateSocialPosts,
-} from "./funnel-builder";
+export { generateEmailSequence } from "./email-generator";
+
+export { generateSocialPosts } from "./social-generator";

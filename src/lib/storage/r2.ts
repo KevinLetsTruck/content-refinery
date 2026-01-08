@@ -37,13 +37,14 @@ function getR2Client(): S3Client {
  */
 export async function getPresignedUploadUrl(
   filename: string,
-  contentType: string
+  contentType: string,
+  folder: string = "uploads"
 ): Promise<{ uploadUrl: string; key: string; publicUrl: string }> {
   const client = getR2Client();
-  
+
   // Generate unique key
   const ext = filename.split(".").pop() || "bin";
-  const key = `uploads/${uuid()}.${ext}`;
+  const key = `${folder}/${uuid()}.${ext}`;
 
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET,

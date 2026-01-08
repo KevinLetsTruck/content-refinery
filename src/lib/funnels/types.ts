@@ -120,8 +120,4 @@ export interface CreateFunnelInput {
   postsPerDay: Record<string, number>;
   durationDays: number;
   startDate: string;
-
-  // Constant Contact
-  listId?: string;          // Existing list ID
-  listName?: string;        // Name for new list
 }

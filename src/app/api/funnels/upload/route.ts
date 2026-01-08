@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { uploadLeadMagnet } from "@/lib/funnels/lead-magnet";
+import { uploadLeadMagnetBuffer } from "@/lib/funnels/lead-magnet";
 
 /**
  * POST /api/funnels/upload
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     console.log(`[API] Uploading lead magnet: ${file.name} (${file.size} bytes)`);
 
     // Upload to R2
-    const result = await uploadLeadMagnet(buffer, file.name, funnelId);
+    const result = await uploadLeadMagnetBuffer(buffer, file.name, file.type, funnelId);
 
     return NextResponse.json({
       success: true,

@@ -386,6 +386,77 @@ const berberinePage: LandingPageData & { product: any } = {
 
 landingPages.set("berberine", berberinePage as LandingPageData);
 
+// The Great Nutrition Lie Campaign - Proper Human Diet Guide
+const nutritionLiePage: LandingPageData = {
+  slug: "nutrition-lie",
+  template: "lead_magnet",
+  status: "published",
+
+  title: "The Great Nutrition Lie: What They Don't Want Drivers to Know | Let's Truck",
+  metaDescription: "Free guide reveals the truth about nutrition for professional drivers. Stop following advice designed to keep you sick and tired.",
+
+  headline: "The Great Nutrition Lie",
+  subheadline: "What the food industry, big pharma, and even your doctor don't want professional drivers to know about eating right on the road",
+
+  benefits: [
+    "Why the 'heart healthy' diet advice is actually KILLING drivers",
+    "The 3 foods you've been told are healthy that are destroying your gut",
+    "How the food pyramid was designed by grain lobbyists, not scientists",
+    "The simple eating pattern that eliminates brain fog, crashes, and cravings",
+    "What to order at ANY truck stop that supports your health instead of wrecking it",
+    "The truth about supplements - which ones actually work and which are scams"
+  ],
+
+  trustElements: [
+    "4,000+ drivers in the Let's Truck Tribe",
+    "15+ years of trucking industry health expertise",
+    "Based on ancestral health science, not corporate propaganda",
+    "Created by Kevin Rutherford, FNTP - America's Trucking Health Coach"
+  ],
+
+  leadMagnet: {
+    title: "The Proper Human Diet Guide for Drivers",
+    description: "The no-BS roadmap to taking back your health. Stop following advice from people who have never spent a night in a truck.",
+    downloadUrl: "" // User will add PDF URL here
+  },
+
+  ctaText: "Get My Free Guide Now",
+  ctaSubtext: "Instant download. No spam. Unsubscribe anytime.",
+
+  formFields: ["email", "firstName"],
+  constantContactListId: "423c262c-ec19-11f0-8667-0242b4ca28b6",
+
+  thankYou: {
+    headline: "Your Guide Is Ready!",
+    message: "Check your email for the download link. While you wait, here's what to do next...",
+    ctas: [
+      {
+        text: "Join the Let's Truck Tribe",
+        url: "https://letstrucktribe.com",
+        style: "primary"
+      },
+      {
+        text: "Listen to Let's Truck Radio",
+        url: "https://letstruck.com/radio",
+        style: "secondary"
+      }
+    ]
+  },
+
+  utmCampaign: "nutrition-lie-guide-jan26",
+
+  primaryColor: "#dc2626", // Red - signals "warning/truth revealed"
+  accentColor: "#f59e0b", // Amber - Let's Truck brand
+  darkMode: true,
+
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  views: 0,
+  conversions: 0
+};
+
+landingPages.set("nutrition-lie", nutritionLiePage);
+
 export function getLandingPage(slug: string): LandingPageData | null {
   return landingPages.get(slug) || null;
 }

@@ -14,19 +14,44 @@ import {
   FileText,
   Layout,
   Share2,
+  Mail,
 } from "lucide-react";
 import Step1LeadMagnet from "./components/Step1LeadMagnet";
 import Step2Template from "./components/Step2Template";
 import Step3Review from "./components/Step3Review";
+import StepEmailSequence from "./components/StepEmailSequence";
 import { LANDING_PAGE_TEMPLATES } from "@/lib/landing-pages/templates";
+import { Product } from "@/lib/products/catalog";
 
 type CampaignGoal = "email_signups" | "sales" | "awareness" | "engagement";
 
 interface LeadMagnet {
   id: string;
   title: string;
+  slug?: string;
   description?: string | null;
   fileUrl: string;
+}
+
+interface EmailSequence {
+  id: string;
+  name: string;
+  sequenceLength: number;
+  productId?: string;
+  productName?: string;
+  productUrl?: string;
+  status: string;
+  emails: Array<{
+    id?: string;
+    order: number;
+    sendDelayDays: number;
+    subject: string;
+    preheader: string;
+    bodyHtml: string;
+    bodyText: string;
+    purpose: "value" | "engagement" | "soft_pitch" | "hard_pitch";
+    status?: string;
+  }>;
 }
 
 interface ExtractedData {
@@ -67,8 +92,9 @@ const STEPS = [
   { id: 3, name: "Content", icon: MessageSquare },
   { id: 4, name: "Schedule", icon: Calendar },
   { id: 5, name: "Platforms", icon: Share2 },
-  { id: 6, name: "Review", icon: Check },
-  { id: 7, name: "Generate", icon: Sparkles },
+  { id: 6, name: "Emails", icon: Mail },
+  { id: 7, name: "Review", icon: Check },
+  { id: 8, name: "Generate", icon: Sparkles },
 ];
 
 export default function CreateCampaignPage() {
@@ -86,6 +112,10 @@ export default function CreateCampaignPage() {
 
   // Generated landing page URL
   const [landingPageUrl, setLandingPageUrl] = useState<string | null>(null);
+
+  // Email sequence state (Step 6)
+  const [emailSequence, setEmailSequence] = useState<EmailSequence | null>(null);
+  const [emailProduct, setEmailProduct] = useState<Product | null>(null);
 
   const [state, setState] = useState<WizardState>({
     name: "",
@@ -105,8 +135,16 @@ export default function CreateCampaignPage() {
     setState((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const nextStep = () => setStep((s) => Math.min(s + 1, 7));
+  const nextStep = () => setStep((s) => Math.min(s + 1, 8));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
+
+  // Handle Step 6 email sequence generation
+  const handleEmailSequenceGenerated = useCallback((sequence: EmailSequence, product?: Product) => {
+    setEmailSequence(sequence);
+    if (product) {
+      setEmailProduct(product);
+    }
+  }, []);
 
   // Handle Step 1 selection
   const handleLeadMagnetSelect = (lm: LeadMagnet, data: ExtractedData) => {
@@ -177,6 +215,8 @@ export default function CreateCampaignPage() {
           // Include lead magnet reference
           leadMagnetId: selectedLeadMagnet.id,
           landingPageTemplate: selectedTemplate,
+          // Include email sequence if generated
+          emailSequenceId: emailSequence?.id,
         }),
       });
 
@@ -235,6 +275,9 @@ export default function CreateCampaignPage() {
       case 5:
         return state.platforms.length > 0;
       case 6:
+        // Email step - allow proceeding even without email sequence (it's optional)
+        return true;
+      case 7:
         return true;
       default:
         return true;
@@ -515,8 +558,32 @@ export default function CreateCampaignPage() {
           </div>
         )}
 
-        {/* Step 6: Review */}
-        {step === 6 && (
+        {/* Step 6: Email Sequence */}
+        {step === 6 && selectedLeadMagnet && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Email Nurture Sequence</h2>
+              <p className="text-gray-400">
+                Generate an automated email sequence to nurture leads after they download your lead magnet
+              </p>
+            </div>
+            <StepEmailSequence
+              leadMagnet={selectedLeadMagnet}
+              onSequenceGenerated={handleEmailSequenceGenerated}
+              initialSequence={emailSequence}
+            />
+            {!emailSequence && (
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <p className="text-sm text-blue-300">
+                  Email sequences are optional. You can skip this step and add emails later.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 7: Review */}
+        {step === 7 && (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold mb-2">Review Campaign</h2>
@@ -603,12 +670,36 @@ export default function CreateCampaignPage() {
                   A {templateName} landing page will be generated via Gamma API
                 </p>
               </div>
+
+              {/* Email Sequence Status */}
+              {emailSequence ? (
+                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-green-400" />
+                    <span className="font-medium text-green-400">Email Sequence</span>
+                  </div>
+                  <p className="text-sm text-gray-300 mt-1">
+                    {emailSequence.emails.length} emails will nurture leads after download
+                    {emailProduct && ` (promoting ${emailProduct.name})`}
+                  </p>
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-gray-400" />
+                    <span className="font-medium text-gray-400">Email Sequence</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">
+                    No email sequence configured
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Step 7: Generate */}
-        {step === 7 && (
+        {/* Step 8: Generate */}
+        {step === 8 && (
           <div className="space-y-6 text-center py-8">
             {generating ? (
               <>
@@ -654,6 +745,12 @@ export default function CreateCampaignPage() {
                       <Sparkles className="w-4 h-4 text-[#FF4500]" />
                       {state.youtubeShorts + state.youtubeStandard} video scripts
                     </li>
+                    {emailSequence && (
+                      <li className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-[#FF4500]" />
+                        {emailSequence.emails.length} nurture emails
+                      </li>
+                    )}
                   </ul>
                 </div>
                 <button
@@ -669,7 +766,7 @@ export default function CreateCampaignPage() {
         )}
 
         {/* Navigation */}
-        {step < 7 && (
+        {step < 8 && (
           <div className="flex justify-between mt-8 pt-8 border-t border-[#2A2A2A]">
             <button
               onClick={prevStep}
@@ -684,7 +781,7 @@ export default function CreateCampaignPage() {
               disabled={!canProceed()}
               className="flex items-center gap-2 px-6 py-2 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {step === 6 ? "Ready to Generate" : "Continue"}
+              {step === 7 ? "Ready to Generate" : "Continue"}
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>

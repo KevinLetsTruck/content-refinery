@@ -631,7 +631,7 @@ src/app/create/
 
 ## Campaign Wizard System
 
-The Campaign Wizard (`/campaigns/create`) provides a 7-step flow to create complete marketing campaigns from PDF lead magnets.
+The Campaign Wizard (`/campaigns/create`) provides an 8-step flow to create complete marketing campaigns from PDF lead magnets.
 
 ### Lead Magnet Library
 - **Model**: LeadMagnet (title, slug, fileUrl, extractedData, etc.)
@@ -654,21 +654,132 @@ The Campaign Wizard (`/campaigns/create`) provides a 7-step flow to create compl
 3. **Content** - Review and edit AI-extracted key messages and hooks
 4. **Schedule** - Set campaign start date and duration
 5. **Platforms** - Select social platforms and posting frequency
-6. **Review** - Final review of all settings
-7. **Generate** - Creates landing page via Gamma, then generates all campaign posts
+6. **Emails** - Generate AI nurture email sequence (optional)
+7. **Review** - Final review of all settings
+8. **Generate** - Creates landing page via Gamma, then generates all campaign posts
 
 ### Wizard Components
 ```
 src/app/campaigns/create/
-├── page.tsx                         # Main wizard with 7 steps
+├── page.tsx                         # Main wizard with 8 steps
 └── components/
     ├── Step1LeadMagnet.tsx         # Library browse + upload
     ├── Step2Template.tsx           # Template selection with AI recommendation
-    └── Step3Review.tsx             # Content review and editing
+    ├── Step3Review.tsx             # Content review and editing
+    └── StepEmailSequence.tsx       # Email nurture sequence generation
 ```
 
 ### Scripts
 - `npm run migrate:lead-magnets` - Import existing R2 PDFs into database
+
+---
+
+## Email Marketing System
+
+Complete email marketing integration with Constant Contact for lead nurturing.
+
+### Product Catalog
+- **File**: `src/lib/products/catalog.ts`
+- **Products**: 40+ products from store.letstruck.com mapped to lead magnets
+- **Categories**: supplement, food, equipment, testing, trucking, program
+- **API**: `GET /api/products` - List products with filtering
+  - `?leadMagnetSlug=xxx` - Get products recommended for a lead magnet
+  - `?kevinsDaily=true` - Get Kevin's daily stack only
+  - `?category=supplement` - Filter by category
+  - `?search=cardio` - Search products
+
+### AI Email Sequence Generator
+- **File**: `src/lib/email/sequence-generator.ts`
+- **Function**: `generateEmailSequence(input)` - Creates nurture sequences using Claude
+- **Sequence Lengths**:
+  - 3 emails: Day 2 value, Day 4 value, Day 7 soft pitch
+  - 5 emails: Day 2, 4, 7, 10, 14 (default)
+  - 7 emails: Day 2, 4, 6, 9, 12, 15, 21
+- **Email Purposes**:
+  - `value` - Pure education, no selling
+  - `engagement` - Build relationship, encourage replies
+  - `soft_pitch` - Mention product naturally within value content
+  - `hard_pitch` - Direct promotion with strong CTA
+
+### Email Templates
+- **File**: `src/lib/email/templates/lead-magnet-delivery.ts`
+- **Templates**:
+  - `generateLeadMagnetDeliveryEmail()` - Welcome email with download link
+  - `generateDownloadReminderEmail()` - 24-hour reminder if not downloaded
+- **Branding**: Dark theme (#0D0D0D), orange accent (#FF4500), Let's Truck header
+
+### Email Sequences API
+- `GET /api/email-sequences` - List all sequences
+- `POST /api/email-sequences` - Create new sequence (with AI generation)
+- `GET /api/email-sequences/[id]` - Get sequence with all emails
+- `PATCH /api/email-sequences/[id]` - Update sequence or regenerate email
+- `DELETE /api/email-sequences/[id]` - Delete sequence and emails
+- `PATCH /api/email-sequences/[id]/emails/[emailId]` - Update individual email
+
+### Email Lists API (Constant Contact)
+- `GET /api/email/lists` - Get all CC lists
+- `POST /api/email/lists` - Create new CC list
+
+### Database Models
+
+```prisma
+model EmailSequence {
+  id              String    @id @default(uuid())
+  name            String
+  campaignId      String?   @unique
+  leadMagnetId    String?
+  listId          String?   // Constant Contact list ID
+  sequenceLength  Int       @default(5)
+  productId       String?
+  productName     String?
+  productUrl      String?
+  status          String    @default("draft")  // draft, generating, active, paused, completed, failed
+  emails          Email[]
+  campaign        Campaign?
+  leadMagnet      LeadMagnet?
+}
+
+model Email {
+  id              String    @id @default(uuid())
+  sequenceId      String
+  order           Int       // 1-7
+  sendDelayDays   Int       // Days after sequence start
+  subject         String
+  preheader       String?
+  bodyHtml        String    @db.Text
+  bodyText        String?   @db.Text
+  purpose         String    // value, engagement, soft_pitch, hard_pitch
+  sendCount       Int       @default(0)
+  openCount       Int       @default(0)
+  clickCount      Int       @default(0)
+  status          String    @default("draft")
+  sequence        EmailSequence @relation(...)
+}
+```
+
+### Lead Tracking
+- **Model**: Lead (email, firstName, lastName, downloadToken, status, etc.)
+- **Download Tracking**: Token-based URLs for analytics
+- **Engagement Metrics**: emailOpens, emailClicks, lastEngagedAt
+
+### Usage Example
+
+```typescript
+// Generate email sequence for a lead magnet
+const response = await fetch("/api/email-sequences", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    leadMagnetId: "lead-magnet-uuid",
+    sequenceLength: 5,
+    productName: "Cardio Miracle",
+    productUrl: "https://store.letstruck.com/products/cardio-miracle"
+  })
+});
+
+const { sequence, recommendedProducts } = await response.json();
+// sequence.emails contains 5 AI-generated emails
+```
 
 ---
 
@@ -679,13 +790,13 @@ src/app/campaigns/create/
 - [x] ~~Processing Pipeline~~ ✅ DONE
 - [x] ~~Twitter Publishing~~ ✅ DONE
 - [x] ~~AudioRoad Integration~~ ✅ DONE
+- [x] ~~Email integration (AI nurture sequences, product catalog)~~ ✅ DONE
 - [ ] Instagram/Facebook publishing (Meta Business API)
 - [ ] LinkedIn publishing
 - [ ] Video clip extraction with AI scene detection
 - [ ] Audiogram generation with waveform visualization
 - [ ] A/B testing of content variations
 - [ ] Influencer/ambassador content coordination
-- [ ] Email integration (content → email snippets)
 - [ ] Community-generated content curation
 - [ ] Real-time trend response system
 - [ ] AI-assisted reply/comment management

@@ -532,7 +532,9 @@ model Campaign {
   phases          CampaignPhase[]
   posts           CampaignPost[]
   videos          CampaignVideo[]
-  
+  leads           Lead[]
+  emailSequence   EmailSequence?
+
   @@index([status])
   @@index([startDate])
   @@index([campaignType])
@@ -877,6 +879,7 @@ model LeadMagnet {
   // Basic info
   title           String
   description     String?   @db.Text
+  slug            String?   @unique // URL-friendly identifier
 
   // Categorization
   category        String?   // gut_health, sleep, stress, nutrition, etc.
@@ -904,8 +907,13 @@ model LeadMagnet {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
+  // Relations
+  leads           Lead[]
+  emailSequences  EmailSequence[]
+
   @@index([category])
   @@index([isActive])
+  @@index([slug])
   @@map("lead_magnets")
 }
 
@@ -925,6 +933,7 @@ model Lead {
   // Source tracking
   leadMagnetId    String?   @map("lead_magnet_id")
   landingPageSlug String?   @map("landing_page_slug")
+  campaignId      String?   @map("campaign_id")
   source          String?   // direct, social, email, etc.
   utmSource       String?   @map("utm_source")
   utmMedium       String?   @map("utm_medium")
@@ -935,12 +944,19 @@ model Lead {
   ccListIds       String[]  @map("cc_list_ids")
   ccSyncedAt      DateTime? @map("cc_synced_at")
 
-  // Email delivery tracking
-  emailSentAt     DateTime? @map("email_sent_at")
-  emailOpenedAt   DateTime? @map("email_opened_at")
+  // Download tracking
+  downloadToken   String?   @unique @map("download_token")
   downloadedAt    DateTime? @map("downloaded_at")
 
+  // Email engagement tracking
+  emailSentAt     DateTime? @map("email_sent_at")
+  emailOpenedAt   DateTime? @map("email_opened_at")
+  emailOpens      Int       @default(0) @map("email_opens")
+  emailClicks     Int       @default(0) @map("email_clicks")
+  lastEngagedAt   DateTime? @map("last_engaged_at")
+
   // Status
+  status          String    @default("subscribed") // subscribed, downloaded, engaged, converted
   isSubscribed    Boolean   @default(true) @map("is_subscribed")
   unsubscribedAt  DateTime? @map("unsubscribed_at")
 
@@ -948,9 +964,94 @@ model Lead {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
+  // Relations
+  leadMagnet      LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
+  campaign        Campaign?   @relation(fields: [campaignId], references: [id])
+
   @@unique([email, leadMagnetId])
   @@index([email])
   @@index([leadMagnetId])
+  @@index([campaignId])
   @@index([ccContactId])
+  @@index([status])
   @@map("leads")
+}
+
+// ============================================
+// EMAIL SEQUENCES - Automated email nurture flows
+// ============================================
+
+model EmailSequence {
+  id              String    @id @default(uuid())
+  name            String
+
+  // Relationships
+  campaignId      String?   @unique @map("campaign_id")
+  leadMagnetId    String?   @map("lead_magnet_id")
+  listId          String?   @map("list_id") // Constant Contact list ID
+
+  // Configuration
+  sequenceLength  Int       @default(5) @map("sequence_length")
+  productId       String?   @map("product_id") // Product to promote (from catalog)
+  productName     String?   @map("product_name")
+  productUrl      String?   @map("product_url")
+
+  // Status
+  status          String    @default("draft") // draft, active, paused, completed
+
+  // Stats
+  totalSent       Int       @default(0) @map("total_sent")
+  totalOpens      Int       @default(0) @map("total_opens")
+  totalClicks     Int       @default(0) @map("total_clicks")
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  campaign        Campaign?   @relation(fields: [campaignId], references: [id])
+  leadMagnet      LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
+  emails          Email[]
+
+  @@index([status])
+  @@index([leadMagnetId])
+  @@map("email_sequences")
+}
+
+model Email {
+  id              String    @id @default(uuid())
+  sequenceId      String    @map("sequence_id")
+
+  // Email details
+  order           Int       // Position in sequence (1, 2, 3...)
+  sendDelayDays   Int       @map("send_delay_days") // Days after signup to send
+  subject         String
+  preheader       String?
+  bodyHtml        String    @map("body_html") @db.Text
+  bodyText        String?   @map("body_text") @db.Text
+  purpose         String    // value, engagement, soft_pitch, hard_pitch
+
+  // Constant Contact integration
+  ccCampaignId    String?   @map("cc_campaign_id")
+
+  // Stats
+  sent            Int       @default(0)
+  opens           Int       @default(0)
+  clicks          Int       @default(0)
+
+  // Status
+  status          String    @default("draft") // draft, scheduled, sent, failed
+  scheduledFor    DateTime? @map("scheduled_for")
+  sentAt          DateTime? @map("sent_at")
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  sequence        EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@unique([sequenceId, order])
+  @@index([status])
+  @@map("emails")
 }

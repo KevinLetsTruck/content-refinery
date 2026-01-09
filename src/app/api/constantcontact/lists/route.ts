@@ -8,8 +8,9 @@ import { getConstantContactClient } from "@/lib/constant-contact/client";
 export async function GET() {
   try {
     const client = getConstantContactClient();
-    
-    if (!client.isAuthenticated()) {
+    const isAuth = await client.isAuthenticated();
+
+    if (!isAuth) {
       return NextResponse.json(
         { error: "Not connected to Constant Contact" },
         { status: 401 }
@@ -46,8 +47,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const client = getConstantContactClient();
-    
-    if (!client.isAuthenticated()) {
+    const isAuth = await client.isAuthenticated();
+
+    if (!isAuth) {
       return NextResponse.json(
         { error: "Not connected to Constant Contact" },
         { status: 401 }

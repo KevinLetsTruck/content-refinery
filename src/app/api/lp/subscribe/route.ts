@@ -66,8 +66,9 @@ export async function POST(request: NextRequest) {
     
     try {
       const ccClient = getConstantContactClient();
-      
-      if (ccClient.isAuthenticated() && page.constantContactListId) {
+      const isAuth = await ccClient.isAuthenticated();
+
+      if (isAuth && page.constantContactListId) {
         await ccClient.upsertContact({
           email: body.email,
           firstName: body.firstName,
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
         });
         addedToCC = true;
         console.log(`[Subscribe] Added ${body.email} to CC list ${page.constantContactListId}`);
-      } else if (!ccClient.isAuthenticated()) {
+      } else if (!isAuth) {
         console.log("[Subscribe] CC not authenticated, storing locally only");
       } else if (!page.constantContactListId) {
         console.log("[Subscribe] No CC list configured for this page");

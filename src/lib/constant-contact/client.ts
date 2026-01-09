@@ -1,7 +1,8 @@
 /**
  * Constant Contact API Client
- * 
+ *
  * Handles OAuth 2.0 authentication and API calls
+ * Supports both in-memory and database-backed token storage
  */
 
 import {
@@ -13,12 +14,61 @@ import {
   ContactList,
   CreateContactResponse,
 } from "./types";
+import prisma from "@/lib/db/prisma";
 
 const CC_AUTH_BASE = "https://authz.constantcontact.com/oauth2/default/v1";
 const CC_API_BASE = "https://api.cc.email/v3";
+const PLATFORM_KEY = "constant_contact";
 
-// In-memory token storage (replace with database in production)
+// In-memory token cache (backed by database)
 let storedTokens: StoredTokens | null = null;
+
+/**
+ * Load tokens from database into memory
+ */
+async function loadTokensFromDb(): Promise<StoredTokens | null> {
+  try {
+    const cred = await prisma.platformCredential.findUnique({
+      where: { platform: PLATFORM_KEY },
+    });
+
+    if (!cred) return null;
+
+    return {
+      accessToken: cred.accessToken,
+      refreshToken: cred.refreshToken || "",
+      expiresAt: cred.expiresAt?.getTime() || 0,
+    };
+  } catch (error) {
+    console.error("[CC] Failed to load tokens from database:", error);
+    return null;
+  }
+}
+
+/**
+ * Save tokens to database
+ */
+async function saveTokensToDb(tokens: StoredTokens): Promise<void> {
+  try {
+    await prisma.platformCredential.upsert({
+      where: { platform: PLATFORM_KEY },
+      update: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: new Date(tokens.expiresAt),
+      },
+      create: {
+        platform: PLATFORM_KEY,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: new Date(tokens.expiresAt),
+      },
+    });
+    console.log("[CC] Tokens saved to database");
+  } catch (error) {
+    console.error("[CC] Failed to save tokens to database:", error);
+  }
+}
 
 export class ConstantContactClient {
   private config: ConstantContactConfig;
@@ -76,9 +126,10 @@ export class ConstantContactClient {
       expiresAt: Date.now() + data.expires_in * 1000,
     };
 
-    // Store tokens
+    // Store tokens in memory and database
     storedTokens = tokens;
-    
+    await saveTokensToDb(tokens);
+
     return tokens;
   }
 
@@ -86,9 +137,16 @@ export class ConstantContactClient {
    * Refresh the access token
    */
   async refreshAccessToken(): Promise<StoredTokens> {
-    if (!storedTokens?.refreshToken) {
-      throw new Error("No refresh token available");
+    // Try to load from DB if not in memory
+    if (!storedTokens) {
+      storedTokens = await loadTokensFromDb();
     }
+
+    if (!storedTokens?.refreshToken) {
+      throw new Error("No refresh token available. Please complete OAuth flow first.");
+    }
+
+    console.log("[CC] Refreshing access token...");
 
     const credentials = Buffer.from(
       `${this.config.clientId}:${this.config.clientSecret}`
@@ -108,6 +166,7 @@ export class ConstantContactClient {
 
     if (!response.ok) {
       const error = await response.text();
+      console.error("[CC] Token refresh failed:", error);
       throw new Error(`Token refresh failed: ${error}`);
     }
 
@@ -119,8 +178,11 @@ export class ConstantContactClient {
       expiresAt: Date.now() + data.expires_in * 1000,
     };
 
+    // Store tokens in memory and database
     storedTokens = tokens;
-    
+    await saveTokensToDb(tokens);
+
+    console.log("[CC] Token refreshed successfully");
     return tokens;
   }
 
@@ -128,12 +190,18 @@ export class ConstantContactClient {
    * Get a valid access token, refreshing if necessary
    */
   async getValidToken(): Promise<string> {
+    // Try to load from DB if not in memory
+    if (!storedTokens) {
+      storedTokens = await loadTokensFromDb();
+    }
+
     if (!storedTokens) {
       throw new Error("Not authenticated. Please complete OAuth flow first.");
     }
 
     // Refresh if token expires in less than 5 minutes
     if (storedTokens.expiresAt < Date.now() + 5 * 60 * 1000) {
+      console.log("[CC] Token expiring soon, refreshing...");
       await this.refreshAccessToken();
     }
 
@@ -141,9 +209,13 @@ export class ConstantContactClient {
   }
 
   /**
-   * Check if client is authenticated
+   * Check if client is authenticated (async to check database)
    */
-  isAuthenticated(): boolean {
+  async isAuthenticated(): Promise<boolean> {
+    if (storedTokens) return true;
+
+    // Check database
+    storedTokens = await loadTokensFromDb();
     return storedTokens !== null;
   }
 
@@ -261,6 +333,39 @@ export class ConstantContactClient {
         list_memberships: [listId],
       }),
     });
+  }
+
+  /**
+   * Tag a contact with a specific tag
+   */
+  async tagContact(contactId: string, tagName: string): Promise<void> {
+    // First, get or create the tag
+    const tagsRes = await this.apiRequest<{ tags?: Array<{ tag_id: string; name: string }> }>(
+      "/contact_tags"
+    );
+
+    let tag = tagsRes.tags?.find((t) => t.name === tagName);
+
+    if (!tag) {
+      // Create the tag
+      tag = await this.apiRequest<{ tag_id: string; name: string }>("/contact_tags", {
+        method: "POST",
+        body: JSON.stringify({ name: tagName }),
+      });
+      console.log(`[CC] Created tag: ${tagName}`);
+    }
+
+    // Apply the tag to the contact
+    try {
+      await this.apiRequest(`/contacts/${contactId}/taggings`, {
+        method: "POST",
+        body: JSON.stringify({ tag_id: tag.tag_id }),
+      });
+      console.log(`[CC] Tagged contact ${contactId} with: ${tagName}`);
+    } catch (error) {
+      // Ignore if already tagged
+      console.log(`[CC] Tag already applied or error: ${tagName}`);
+    }
   }
 }
 

@@ -168,7 +168,8 @@ export async function createFunnel(input: CreateFunnelInput): Promise<Funnel> {
 
     try {
       const ccClient = getConstantContactClient();
-      if (ccClient.isAuthenticated()) {
+      const isAuth = await ccClient.isAuthenticated();
+      if (isAuth) {
         console.log(`[Funnel] Creating CC list: ${input.name}`);
         const list = await ccClient.createList(
           input.name,

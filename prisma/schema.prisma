@@ -908,3 +908,49 @@ model LeadMagnet {
   @@index([isActive])
   @@map("lead_magnets")
 }
+
+// ============================================
+// LEADS - Email subscribers from lead magnets
+// ============================================
+
+model Lead {
+  id              String    @id @default(uuid())
+
+  // Contact info
+  email           String
+  firstName       String?   @map("first_name")
+  lastName        String?   @map("last_name")
+  phone           String?
+
+  // Source tracking
+  leadMagnetId    String?   @map("lead_magnet_id")
+  landingPageSlug String?   @map("landing_page_slug")
+  source          String?   // direct, social, email, etc.
+  utmSource       String?   @map("utm_source")
+  utmMedium       String?   @map("utm_medium")
+  utmCampaign     String?   @map("utm_campaign")
+
+  // Constant Contact sync
+  ccContactId     String?   @map("cc_contact_id")
+  ccListIds       String[]  @map("cc_list_ids")
+  ccSyncedAt      DateTime? @map("cc_synced_at")
+
+  // Email delivery tracking
+  emailSentAt     DateTime? @map("email_sent_at")
+  emailOpenedAt   DateTime? @map("email_opened_at")
+  downloadedAt    DateTime? @map("downloaded_at")
+
+  // Status
+  isSubscribed    Boolean   @default(true) @map("is_subscribed")
+  unsubscribedAt  DateTime? @map("unsubscribed_at")
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([email, leadMagnetId])
+  @@index([email])
+  @@index([leadMagnetId])
+  @@index([ccContactId])
+  @@map("leads")
+}

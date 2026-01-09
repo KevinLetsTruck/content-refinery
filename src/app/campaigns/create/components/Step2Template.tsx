@@ -30,7 +30,7 @@ interface ExtractedData {
 }
 
 interface Props {
-  leadMagnet: { id: string; title: string; description?: string };
+  leadMagnet: { id: string; title: string; description?: string | null };
   extractedData: ExtractedData;
   onSelect: (templateId: string) => void;
   selectedTemplate?: string;

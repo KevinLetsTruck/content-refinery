@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -8,31 +8,42 @@ import {
   Check,
   Loader2,
   Rocket,
-  Target,
   Calendar,
   MessageSquare,
-  Image,
   Sparkles,
-  Wand2,
-  Link,
   FileText,
-  X,
+  Layout,
+  Share2,
 } from "lucide-react";
+import Step1LeadMagnet from "./components/Step1LeadMagnet";
+import Step2Template from "./components/Step2Template";
+import Step3Review from "./components/Step3Review";
+import { LANDING_PAGE_TEMPLATES } from "@/lib/landing-pages/templates";
 
-type CampaignType = "product_launch" | "educational_series" | "custom";
 type CampaignGoal = "email_signups" | "sales" | "awareness" | "engagement";
 
+interface LeadMagnet {
+  id: string;
+  title: string;
+  description?: string | null;
+  fileUrl: string;
+}
+
+interface ExtractedData {
+  title?: string;
+  subtitle?: string;
+  summary?: string;
+  keyMessages?: string[];
+  stats?: string[];
+  hooks?: string[];
+  chapters?: string[];
+}
+
 interface WizardState {
-  // Step 1: Type
-  campaignType: CampaignType;
-  // Step 2: Details
+  // Step 3: Content Review
   name: string;
-  goal: CampaignGoal;
-  productName: string;
-  productUrl: string;
-  topic: string;
-  // Step 3: Messages
   keyMessages: string[];
+  hooks: string[];
   // Step 4: Schedule
   startDate: string;
   durationDays: number;
@@ -45,29 +56,17 @@ interface WizardState {
   };
   youtubeShorts: number;
   youtubeStandard: number;
-}
-
-interface AutoGenerateResult {
-  summary: string;
-  keyFindings: string[];
-  campaign: {
-    name: string;
-    campaignType: CampaignType;
-    goal: CampaignGoal;
-    productName: string;
-    keyMessages: string[];
-    suggestedDuration: number;
-    angles: string[];
-    hooks: string[];
-  };
+  // Step 6 Review extras
+  goal: CampaignGoal;
+  productUrl: string;
 }
 
 const STEPS = [
-  { id: 1, name: "Type", icon: Target },
-  { id: 2, name: "Details", icon: MessageSquare },
-  { id: 3, name: "Messages", icon: MessageSquare },
+  { id: 1, name: "Lead Magnet", icon: FileText },
+  { id: 2, name: "Template", icon: Layout },
+  { id: 3, name: "Content", icon: MessageSquare },
   { id: 4, name: "Schedule", icon: Calendar },
-  { id: 5, name: "Platforms", icon: Image },
+  { id: 5, name: "Platforms", icon: Share2 },
   { id: 6, name: "Review", icon: Check },
   { id: 7, name: "Generate", icon: Sparkles },
 ];
@@ -76,101 +75,108 @@ export default function CreateCampaignPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
-  
-  // Smart input state
-  const [showSmartInput, setShowSmartInput] = useState(true);
-  const [smartInput, setSmartInput] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AutoGenerateResult | null>(null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [generationPhase, setGenerationPhase] = useState<"landing" | "posts">("landing");
+
+  // Lead magnet state (Step 1)
+  const [selectedLeadMagnet, setSelectedLeadMagnet] = useState<LeadMagnet | null>(null);
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+
+  // Template state (Step 2)
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+
+  // Generated landing page URL
+  const [landingPageUrl, setLandingPageUrl] = useState<string | null>(null);
 
   const [state, setState] = useState<WizardState>({
-    campaignType: "product_launch",
     name: "",
-    goal: "email_signups",
-    productName: "",
-    productUrl: "",
-    topic: "",
-    keyMessages: ["", "", ""],
+    keyMessages: [],
+    hooks: [],
     startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     durationDays: 10,
     platforms: ["twitter", "facebook", "instagram"],
     postsPerDay: { twitter: 1, facebook: 1, instagram: 1 },
     youtubeShorts: 2,
     youtubeStandard: 0,
+    goal: "email_signups",
+    productUrl: "",
   });
 
-  const updateState = (updates: Partial<WizardState>) => {
+  const updateState = useCallback((updates: Partial<WizardState>) => {
     setState((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   const nextStep = () => setStep((s) => Math.min(s + 1, 7));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
-  // Smart Input Analysis
-  const analyzeInput = async () => {
-    if (!smartInput.trim()) return;
-    
-    setIsAnalyzing(true);
-    setAnalysisError(null);
-    setAnalysisResult(null);
-    
-    try {
-      const res = await fetch("/api/campaigns/auto-generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: smartInput }),
-      });
-      
-      const data = await res.json();
-      
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to analyze");
-      }
-      
-      setAnalysisResult(data);
-    } catch (error) {
-      setAnalysisError(error instanceof Error ? error.message : "Analysis failed");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const applyAnalysisResult = () => {
-    if (!analysisResult) return;
-    
-    const { campaign } = analysisResult;
-    
+  // Handle Step 1 selection
+  const handleLeadMagnetSelect = (lm: LeadMagnet, data: ExtractedData) => {
+    setSelectedLeadMagnet(lm);
+    setExtractedData(data);
+    // Pre-fill name from lead magnet
     updateState({
-      name: campaign.name,
-      campaignType: campaign.campaignType,
-      goal: campaign.goal,
-      productName: campaign.productName || "",
-      keyMessages: campaign.keyMessages.length > 0 
-        ? campaign.keyMessages 
-        : ["", "", ""],
-      durationDays: campaign.suggestedDuration || 10,
+      name: `${lm.title} Campaign`,
+      keyMessages: data.keyMessages || [],
+      hooks: data.hooks || [],
     });
-    
-    setShowSmartInput(false);
-    setStep(1);
+    nextStep();
   };
 
-  const skipSmartInput = () => {
-    setShowSmartInput(false);
-    setStep(1);
+  // Handle Step 2 selection
+  const handleTemplateSelect = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    nextStep();
   };
+
+  // Handle Step 3 content review updates
+  const handleContentUpdate = useCallback((data: { name: string; keyMessages: string[]; hooks: string[] }) => {
+    updateState(data);
+  }, [updateState]);
 
   const createCampaign = async () => {
+    if (!selectedLeadMagnet || !selectedTemplate) return;
+
     setGenerating(true);
-    
+    setGenerationPhase("landing");
+
     try {
+      // Phase 1: Generate landing page
+      const landingRes = await fetch("/api/landing-pages/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadMagnetId: selectedLeadMagnet.id,
+          template: selectedTemplate,
+          title: extractedData?.title || selectedLeadMagnet.title,
+          keyMessages: state.keyMessages.filter((m) => m.trim()),
+        }),
+      });
+
+      const landingData = await landingRes.json();
+      let gammaUrl = landingData.gammaUrl || landingData.url || "";
+      setLandingPageUrl(gammaUrl);
+
+      // Phase 2: Create campaign
+      setGenerationPhase("posts");
+
       const res = await fetch("/api/campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...state,
+          name: state.name,
+          campaignType: "product_launch",
+          goal: state.goal,
+          productName: selectedLeadMagnet.title,
+          productUrl: gammaUrl || state.productUrl,
           keyMessages: state.keyMessages.filter((m) => m.trim()),
+          startDate: state.startDate,
+          durationDays: state.durationDays,
+          platforms: state.platforms,
+          postsPerDay: state.postsPerDay,
+          youtubeShorts: state.youtubeShorts,
+          youtubeStandard: state.youtubeStandard,
+          // Include lead magnet reference
+          leadMagnetId: selectedLeadMagnet.id,
+          landingPageTemplate: selectedTemplate,
         }),
       });
 
@@ -193,7 +199,7 @@ export default function CreateCampaignPage() {
     const checkStatus = async () => {
       const res = await fetch(`/api/campaigns/${id}`);
       const data = await res.json();
-      
+
       if (data.campaign?.status === "review") {
         router.push(`/campaigns/${id}`);
       } else if (data.campaign?.status === "generating") {
@@ -202,7 +208,7 @@ export default function CreateCampaignPage() {
         setGenerating(false);
       }
     };
-    
+
     checkStatus();
   };
 
@@ -210,233 +216,30 @@ export default function CreateCampaignPage() {
     state.durationDays *
     (state.postsPerDay.twitter + state.postsPerDay.facebook + state.postsPerDay.instagram);
 
-  // Smart Input Screen
-  if (showSmartInput) {
-    return (
-      <div className="min-h-screen bg-[#0D0D0D] text-white">
-        {/* Header */}
-        <div className="border-b border-[#2A2A2A] p-4">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <button
-              onClick={() => router.push("/campaigns")}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Campaigns
-            </button>
-            <h1 className="text-xl font-semibold">Create Campaign</h1>
-            <div className="w-24" />
-          </div>
-        </div>
+  // Get template name for display
+  const templateName = selectedTemplate
+    ? LANDING_PAGE_TEMPLATES[selectedTemplate]?.name || selectedTemplate
+    : "";
 
-        <div className="max-w-3xl mx-auto p-8">
-          {/* Smart Input Section */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#FF4500] to-[#F4A300] mb-4">
-              <Wand2 className="w-8 h-8" />
-            </div>
-            <h2 className="text-3xl font-bold mb-2">AI Campaign Generator</h2>
-            <p className="text-gray-400 max-w-lg mx-auto">
-              Paste a URL with your instructions and AI will analyze the content, 
-              extract key points, and pre-fill your entire campaign.
-            </p>
-          </div>
-
-          {/* Input Area */}
-          <div className="bg-[#1A1A1A] rounded-xl border border-[#2A2A2A] p-6 mb-6">
-            <label className="block text-sm font-medium mb-3 text-gray-300">
-              Paste URL + Instructions
-            </label>
-            <textarea
-              value={smartInput}
-              onChange={(e) => setSmartInput(e.target.value)}
-              placeholder={`Example:
-Create a comprehensive report. If this is true compare it to today's conventional medicine view of cholesterol and why statins are so widely prescribed.
-__https://pmc.ncbi.nlm.nih.gov/articles/PMC10828184/__
-
-Or simply:
-https://example.com/article - Create an educational series about this topic`}
-              rows={6}
-              className="w-full p-4 bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg focus:border-[#FF4500] outline-none resize-none text-white placeholder-gray-500"
-            />
-            <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
-              <Link className="w-4 h-4" />
-              <span>Wrap URLs in __underscores__ or paste them directly</span>
-            </div>
-          </div>
-
-          {/* Error Message */}
-          {analysisError && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
-              <p className="text-red-400 text-sm">{analysisError}</p>
-            </div>
-          )}
-
-          {/* Analysis Result */}
-          {analysisResult && (
-            <div className="bg-[#1A1A1A] rounded-xl border border-[#FF4500]/30 p-6 mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-[#FF4500]" />
-                <h3 className="font-semibold text-lg">Analysis Complete</h3>
-              </div>
-              
-              {/* Summary */}
-              <div className="mb-4">
-                <div className="text-sm text-gray-400 mb-1">Summary</div>
-                <p className="text-gray-200">{analysisResult.summary}</p>
-              </div>
-              
-              {/* Key Findings */}
-              <div className="mb-4">
-                <div className="text-sm text-gray-400 mb-2">Key Findings</div>
-                <ul className="space-y-1">
-                  {analysisResult.keyFindings.map((finding, i) => (
-                    <li key={i} className="text-sm text-gray-300 flex items-start gap-2">
-                      <span className="text-[#FF4500] mt-1">•</span>
-                      {finding}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              
-              {/* Suggested Campaign */}
-              <div className="bg-[#0D0D0D] rounded-lg p-4 border border-[#2A2A2A]">
-                <div className="text-sm text-gray-400 mb-2">Suggested Campaign</div>
-                <div className="font-semibold text-lg mb-2">{analysisResult.campaign.name}</div>
-                <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                  <div>
-                    <span className="text-gray-500">Type:</span>{" "}
-                    <span className="capitalize">{analysisResult.campaign.campaignType.replace("_", " ")}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Duration:</span>{" "}
-                    {analysisResult.campaign.suggestedDuration} days
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Goal:</span>{" "}
-                    <span className="capitalize">{analysisResult.campaign.goal.replace("_", " ")}</span>
-                  </div>
-                </div>
-                
-                <div className="text-sm text-gray-400 mb-2">Key Messages</div>
-                <ul className="space-y-1 mb-4">
-                  {analysisResult.campaign.keyMessages.map((msg, i) => (
-                    <li key={i} className="text-sm text-gray-300 flex items-start gap-2">
-                      <span className="text-[#F4A300]">{i + 1}.</span>
-                      {msg}
-                    </li>
-                  ))}
-                </ul>
-                
-                {analysisResult.campaign.hooks && analysisResult.campaign.hooks.length > 0 && (
-                  <>
-                    <div className="text-sm text-gray-400 mb-2">Content Hooks</div>
-                    <div className="flex flex-wrap gap-2">
-                      {analysisResult.campaign.hooks.slice(0, 3).map((hook, i) => (
-                        <span 
-                          key={i} 
-                          className="px-3 py-1 bg-[#FF4500]/10 text-[#FF4500] rounded-full text-xs"
-                        >
-                          {hook}
-                        </span>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={applyAnalysisResult}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg font-semibold transition"
-                >
-                  <Check className="w-5 h-5" />
-                  Use This Campaign
-                </button>
-                <button
-                  onClick={() => {
-                    setAnalysisResult(null);
-                    setSmartInput("");
-                  }}
-                  className="px-6 py-3 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-lg transition"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          {!analysisResult && (
-            <div className="flex gap-4">
-              <button
-                onClick={analyzeInput}
-                disabled={!smartInput.trim() || isAnalyzing}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="w-5 h-5" />
-                    Analyze & Generate
-                  </>
-                )}
-              </button>
-              <button
-                onClick={skipSmartInput}
-                className="px-6 py-4 text-gray-400 hover:text-white hover:bg-[#1A1A1A] rounded-lg transition"
-              >
-                Skip, create manually
-              </button>
-            </div>
-          )}
-
-          {/* Example Cards */}
-          {!analysisResult && !isAnalyzing && (
-            <div className="mt-12">
-              <h3 className="text-sm font-medium text-gray-500 mb-4">Example inputs:</h3>
-              <div className="grid gap-3">
-                {[
-                  {
-                    icon: FileText,
-                    title: "Research Article",
-                    example: "Create an educational series comparing this to mainstream advice\n__https://pubmed.ncbi.nlm.nih.gov/...__",
-                  },
-                  {
-                    icon: Link,
-                    title: "Product Page",
-                    example: "Launch campaign for this new supplement\nhttps://letstruck.com/products/new-item",
-                  },
-                  {
-                    icon: MessageSquare,
-                    title: "Blog Post",
-                    example: "Turn this into a 7-day awareness campaign focused on gut health\n__https://blog.example.com/article__",
-                  },
-                ].map((ex, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSmartInput(ex.example)}
-                    className="flex items-start gap-4 p-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg text-left hover:border-[#3A3A3A] transition"
-                  >
-                    <ex.icon className="w-5 h-5 text-[#F4A300] mt-0.5" />
-                    <div>
-                      <div className="font-medium text-sm">{ex.title}</div>
-                      <div className="text-xs text-gray-500 mt-1 whitespace-pre-line">{ex.example}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // Check if can proceed to next step
+  const canProceed = () => {
+    switch (step) {
+      case 1:
+        return !!selectedLeadMagnet;
+      case 2:
+        return !!selectedTemplate;
+      case 3:
+        return state.name.trim().length > 0;
+      case 4:
+        return true;
+      case 5:
+        return state.platforms.length > 0;
+      case 6:
+        return true;
+      default:
+        return true;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
@@ -451,13 +254,7 @@ https://example.com/article - Create an educational series about this topic`}
             Back to Campaigns
           </button>
           <h1 className="text-xl font-semibold">Create Campaign</h1>
-          <button
-            onClick={() => setShowSmartInput(true)}
-            className="flex items-center gap-2 text-[#FF4500] hover:text-[#FF5722] transition text-sm"
-          >
-            <Wand2 className="w-4 h-4" />
-            AI Generate
-          </button>
+          <div className="w-24" />
         </div>
       </div>
 
@@ -468,7 +265,7 @@ https://example.com/article - Create an educational series about this topic`}
             const Icon = s.icon;
             const isComplete = step > s.id;
             const isCurrent = step === s.id;
-            
+
             return (
               <div key={s.id} className="flex items-center">
                 <div
@@ -501,169 +298,55 @@ https://example.com/article - Create an educational series about this topic`}
 
       {/* Content */}
       <div className="max-w-2xl mx-auto p-8">
-        {/* Step 1: Campaign Type */}
+        {/* Step 1: Select Lead Magnet */}
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Choose Campaign Type</h2>
+              <h2 className="text-2xl font-bold mb-2">Select Lead Magnet</h2>
               <p className="text-gray-400">
-                Select the type of campaign you want to create
+                Choose an existing PDF or upload a new one to base your campaign on
               </p>
             </div>
-
-            <div className="space-y-4">
-              {[
-                {
-                  id: "product_launch",
-                  name: "Product Launch",
-                  desc: "Tease → Announce → Educate → Social Proof → Urgency",
-                  duration: "10-14 days",
-                },
-                {
-                  id: "educational_series",
-                  name: "Educational Series",
-                  desc: "Hook → Foundation → Deep Dives → Integration → CTA",
-                  duration: "5-7 days",
-                },
-                {
-                  id: "custom",
-                  name: "Custom Campaign",
-                  desc: "Define your own phases and structure",
-                  duration: "Flexible",
-                },
-              ].map((type) => (
-                <button
-                  key={type.id}
-                  onClick={() => updateState({ campaignType: type.id as CampaignType })}
-                  className={`w-full p-4 rounded-lg border text-left transition ${
-                    state.campaignType === type.id
-                      ? "border-[#FF4500] bg-[#FF4500]/10"
-                      : "border-[#2A2A2A] hover:border-[#3A3A3A]"
-                  }`}
-                >
-                  <div className="font-semibold">{type.name}</div>
-                  <div className="text-sm text-gray-400 mt-1">{type.desc}</div>
-                  <div className="text-xs text-[#F4A300] mt-2">
-                    Typical duration: {type.duration}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <Step1LeadMagnet
+              onSelect={handleLeadMagnetSelect}
+              selectedId={selectedLeadMagnet?.id}
+            />
           </div>
         )}
 
-        {/* Step 2: Details */}
-        {step === 2 && (
+        {/* Step 2: Choose Template */}
+        {step === 2 && selectedLeadMagnet && extractedData && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Campaign Details</h2>
+              <h2 className="text-2xl font-bold mb-2">Choose Landing Page Template</h2>
               <p className="text-gray-400">
-                Tell us about your campaign
+                Select a template that best fits your campaign goals
               </p>
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Campaign Name *
-                </label>
-                <input
-                  type="text"
-                  value={state.name}
-                  onChange={(e) => updateState({ name: e.target.value })}
-                  placeholder="e.g., 7-Day Gut Reset Challenge Launch"
-                  className="w-full p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg focus:border-[#FF4500] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Goal *</label>
-                <select
-                  value={state.goal}
-                  onChange={(e) => updateState({ goal: e.target.value as CampaignGoal })}
-                  className="w-full p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg focus:border-[#FF4500] outline-none"
-                >
-                  <option value="email_signups">Email Signups</option>
-                  <option value="sales">Sales / Purchases</option>
-                  <option value="awareness">Brand Awareness</option>
-                  <option value="engagement">Engagement</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Product Name
-                </label>
-                <input
-                  type="text"
-                  value={state.productName}
-                  onChange={(e) => updateState({ productName: e.target.value })}
-                  placeholder="e.g., Gut Reset Challenge"
-                  className="w-full p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg focus:border-[#FF4500] outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  CTA URL
-                </label>
-                <input
-                  type="url"
-                  value={state.productUrl}
-                  onChange={(e) => updateState({ productUrl: e.target.value })}
-                  placeholder="https://letstruck.com/gut-reset"
-                  className="w-full p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg focus:border-[#FF4500] outline-none"
-                />
-              </div>
-            </div>
+            <Step2Template
+              leadMagnet={selectedLeadMagnet}
+              extractedData={extractedData}
+              onSelect={handleTemplateSelect}
+              selectedTemplate={selectedTemplate || undefined}
+            />
           </div>
         )}
 
-        {/* Step 3: Key Messages */}
-        {step === 3 && (
+        {/* Step 3: Review Content */}
+        {step === 3 && selectedLeadMagnet && extractedData && selectedTemplate && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Key Messages</h2>
+              <h2 className="text-2xl font-bold mb-2">Review & Edit Content</h2>
               <p className="text-gray-400">
-                What are the main points you want to communicate?
+                Review AI-extracted content and make any adjustments
               </p>
             </div>
-
-            <div className="space-y-4">
-              {state.keyMessages.map((msg, i) => (
-                <div key={i}>
-                  <label className="block text-sm font-medium mb-2">
-                    Message {i + 1}
-                  </label>
-                  <input
-                    type="text"
-                    value={msg}
-                    onChange={(e) => {
-                      const newMessages = [...state.keyMessages];
-                      newMessages[i] = e.target.value;
-                      updateState({ keyMessages: newMessages });
-                    }}
-                    placeholder={
-                      i === 0
-                        ? "e.g., 70% of drivers have Candida overgrowth"
-                        : i === 1
-                        ? "e.g., Free 7-day protocol included"
-                        : "e.g., No supplements required to start"
-                    }
-                    className="w-full p-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg focus:border-[#FF4500] outline-none"
-                  />
-                </div>
-              ))}
-              
-              <button
-                onClick={() =>
-                  updateState({ keyMessages: [...state.keyMessages, ""] })
-                }
-                className="text-[#FF4500] text-sm hover:underline"
-              >
-                + Add another message
-              </button>
-            </div>
+            <Step3Review
+              leadMagnet={selectedLeadMagnet}
+              extractedData={extractedData}
+              template={selectedTemplate}
+              onUpdate={handleContentUpdate}
+            />
           </div>
         )}
 
@@ -758,7 +441,7 @@ https://example.com/article - Create an educational series about this topic`}
                     />
                     <span className="capitalize font-medium">{platform}</span>
                   </div>
-                  
+
                   {state.platforms.includes(platform) && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-400">Posts/day:</span>
@@ -843,60 +526,83 @@ https://example.com/article - Create an educational series about this topic`}
             </div>
 
             <div className="space-y-4">
+              {/* Campaign Name */}
               <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
                 <div className="text-sm text-gray-400">Campaign Name</div>
                 <div className="font-semibold">{state.name || "Untitled Campaign"}</div>
               </div>
 
+              {/* Lead Magnet & Template */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
-                  <div className="text-sm text-gray-400">Type</div>
-                  <div className="font-semibold capitalize">
-                    {state.campaignType.replace("_", " ")}
+                  <div className="text-sm text-gray-400">Lead Magnet</div>
+                  <div className="font-semibold truncate">
+                    {selectedLeadMagnet?.title || "Not selected"}
                   </div>
                 </div>
                 <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
-                  <div className="text-sm text-gray-400">Goal</div>
-                  <div className="font-semibold capitalize">
-                    {state.goal.replace("_", " ")}
-                  </div>
+                  <div className="text-sm text-gray-400">Landing Page</div>
+                  <div className="font-semibold">{templateName || "Not selected"}</div>
                 </div>
               </div>
 
+              {/* Duration */}
               <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
                 <div className="text-sm text-gray-400">Duration</div>
                 <div className="font-semibold">
-                  {state.durationDays} days ({new Date(state.startDate).toLocaleDateString()} - {new Date(
+                  {state.durationDays} days ({new Date(state.startDate).toLocaleDateString()} -{" "}
+                  {new Date(
                     new Date(state.startDate).getTime() +
                       (state.durationDays - 1) * 24 * 60 * 60 * 1000
                   ).toLocaleDateString()})
                 </div>
               </div>
 
+              {/* Content Stats */}
               <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
                 <div className="text-sm text-gray-400">Content to Generate</div>
                 <div className="font-semibold">
-                  {totalPosts} social posts + {state.youtubeShorts + state.youtubeStandard} videos
+                  1 landing page + {totalPosts} social posts + {state.youtubeShorts + state.youtubeStandard} videos
                 </div>
                 <div className="text-sm text-gray-500 mt-1">
                   Platforms: {state.platforms.join(", ")}
                 </div>
               </div>
 
+              {/* Key Messages Count */}
               {state.keyMessages.filter((m) => m.trim()).length > 0 && (
                 <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
-                  <div className="text-sm text-gray-400 mb-2">Key Messages</div>
+                  <div className="text-sm text-gray-400 mb-2">
+                    Key Messages ({state.keyMessages.filter((m) => m.trim()).length})
+                  </div>
                   <ul className="space-y-1">
                     {state.keyMessages
                       .filter((m) => m.trim())
+                      .slice(0, 3)
                       .map((msg, i) => (
-                        <li key={i} className="text-sm">
+                        <li key={i} className="text-sm truncate">
                           • {msg}
                         </li>
                       ))}
+                    {state.keyMessages.filter((m) => m.trim()).length > 3 && (
+                      <li className="text-sm text-gray-500">
+                        + {state.keyMessages.filter((m) => m.trim()).length - 3} more
+                      </li>
+                    )}
                   </ul>
                 </div>
               )}
+
+              {/* Landing Page Status */}
+              <div className="p-4 bg-[#FF4500]/10 border border-[#FF4500]/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Layout className="w-5 h-5 text-[#FF4500]" />
+                  <span className="font-medium text-[#FF4500]">Landing Page</span>
+                </div>
+                <p className="text-sm text-gray-300 mt-1">
+                  A {templateName} landing page will be generated via Gamma API
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -907,10 +613,21 @@ https://example.com/article - Create an educational series about this topic`}
             {generating ? (
               <>
                 <Loader2 className="w-16 h-16 mx-auto text-[#FF4500] animate-spin" />
-                <h2 className="text-2xl font-bold">Generating Your Campaign</h2>
+                <h2 className="text-2xl font-bold">
+                  {generationPhase === "landing"
+                    ? "Creating Landing Page..."
+                    : "Generating Posts..."}
+                </h2>
                 <p className="text-gray-400">
-                  AI is creating {totalPosts} posts and {state.youtubeShorts + state.youtubeStandard} video scripts...
+                  {generationPhase === "landing"
+                    ? "AI is building your landing page with Gamma..."
+                    : `AI is creating ${totalPosts} posts and ${state.youtubeShorts + state.youtubeStandard} video scripts...`}
                 </p>
+                {landingPageUrl && (
+                  <p className="text-sm text-green-400">
+                    Landing page created successfully
+                  </p>
+                )}
                 <p className="text-sm text-gray-500">
                   This usually takes 30-60 seconds
                 </p>
@@ -920,8 +637,25 @@ https://example.com/article - Create an educational series about this topic`}
                 <Rocket className="w-16 h-16 mx-auto text-[#FF4500]" />
                 <h2 className="text-2xl font-bold">Ready to Generate!</h2>
                 <p className="text-gray-400">
-                  Click below to generate all your campaign content with AI
+                  Click below to generate your landing page and all campaign content
                 </p>
+                <div className="bg-[#1A1A1A] rounded-lg p-4 text-left max-w-md mx-auto border border-[#2A2A2A]">
+                  <div className="text-sm text-gray-400 mb-2">Will create:</div>
+                  <ul className="space-y-1 text-sm">
+                    <li className="flex items-center gap-2">
+                      <Layout className="w-4 h-4 text-[#FF4500]" />
+                      1 {templateName} landing page
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-[#FF4500]" />
+                      {totalPosts} social media posts
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#FF4500]" />
+                      {state.youtubeShorts + state.youtubeStandard} video scripts
+                    </li>
+                  </ul>
+                </div>
                 <button
                   onClick={createCampaign}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg text-lg font-semibold transition"
@@ -947,7 +681,7 @@ https://example.com/article - Create an educational series about this topic`}
             </button>
             <button
               onClick={nextStep}
-              disabled={step === 2 && !state.name}
+              disabled={!canProceed()}
               className="flex items-center gap-2 px-6 py-2 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               {step === 6 ? "Ready to Generate" : "Continue"}
@@ -959,5 +693,3 @@ https://example.com/article - Create an educational series about this topic`}
     </div>
   );
 }
-
-

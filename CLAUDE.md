@@ -4,6 +4,12 @@
 
 **IMPORTANT**: Always push changes directly to the `main` branch for automatic deployment to Render. Do not use feature branches unless specifically requested. The Render service auto-deploys on commits to `main`.
 
+**BUILD MONITORING**: After pushing to main, always check the Render build status. If a build fails:
+1. Check Render logs using `mcp__render__list_deploys` and `mcp__render__get_deploy` tools
+2. Check service logs using `mcp__render__list_logs` to identify the error
+3. Fix the issue immediately and push another commit to main
+4. Verify the new build succeeds before moving on
+
 ## What Is This Project?
 
 Content Refinery is an automated social media content engine for Let's Truck Health Coaching, founded by Kevin Rutherford, FNTP. It transforms 15+ hours of weekly podcast content into platform-optimized social media posts.

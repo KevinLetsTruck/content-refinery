@@ -6,9 +6,9 @@ export const runtime = 'nodejs';
 
 const anthropic = new Anthropic();
 
-const EXTRACTION_PROMPT = `You are analyzing a PDF guide for Let's Truck, a health coaching brand for professional truck drivers.
+const EXTRACTION_PROMPT = `You are analyzing content from a PDF guide for Let's Truck, a health coaching brand for professional truck drivers.
 
-Extract the following and return ONLY valid JSON:
+Based on the text content provided below, extract the following and return ONLY valid JSON:
 
 {
   "title": "Main title of the guide",
@@ -20,7 +20,10 @@ Extract the following and return ONLY valid JSON:
   "chapters": ["Main sections/chapters of the guide"]
 }
 
-Focus on content that would make compelling social media posts for truck drivers.`;
+Focus on content that would make compelling social media posts for truck drivers.
+
+PDF CONTENT:
+`;
 
 interface ExtractedData {
   title: string;
@@ -30,6 +33,63 @@ interface ExtractedData {
   stats: string[];
   hooks: string[];
   chapters: string[];
+}
+
+/**
+ * Simple PDF text extraction using regex patterns
+ * This is a basic approach that works for text-based PDFs
+ */
+function extractTextFromPdfBuffer(buffer: Buffer): string {
+  const pdfString = buffer.toString('latin1');
+
+  // Extract text streams from PDF
+  const textMatches: string[] = [];
+
+  // Pattern 1: BT...ET blocks (text blocks)
+  const btEtRegex = /BT\s*([\s\S]*?)\s*ET/g;
+  let match;
+  while ((match = btEtRegex.exec(pdfString)) !== null) {
+    const block = match[1];
+    // Extract text within parentheses (literal strings)
+    const textRegex = /\(([^)]*)\)/g;
+    let textMatch;
+    while ((textMatch = textRegex.exec(block)) !== null) {
+      const text = textMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '')
+        .replace(/\\\(/g, '(')
+        .replace(/\\\)/g, ')')
+        .replace(/\\\\/g, '\\');
+      if (text.trim()) {
+        textMatches.push(text);
+      }
+    }
+  }
+
+  // Pattern 2: Look for stream content with readable text
+  const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+  while ((match = streamRegex.exec(pdfString)) !== null) {
+    const content = match[1];
+    // Extract readable ASCII text
+    const readableText = content.replace(/[^\x20-\x7E\n\r]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (readableText.length > 50) {
+      // Only include substantial text blocks
+      textMatches.push(readableText);
+    }
+  }
+
+  // Combine and clean up
+  let fullText = textMatches.join('\n');
+
+  // Clean up common PDF artifacts
+  fullText = fullText
+    .replace(/\s+/g, ' ')
+    .replace(/\n\s*\n/g, '\n\n')
+    .trim();
+
+  return fullText || "Unable to extract text from PDF. The PDF may be image-based or encrypted.";
 }
 
 /**
@@ -61,9 +121,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let base64Data: string;
-    let mediaType: string = "application/pdf";
-    let leadMagnet: { id: string } | null = null;
+    let pdfBuffer: Buffer;
+    let leadMagnet: { id: string; title: string } | null = null;
 
     // Get PDF data based on input type
     if (leadMagnetId) {
@@ -86,8 +145,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      leadMagnet = { id: lm.id };
-      mediaType = lm.fileType || "application/pdf";
+      leadMagnet = { id: lm.id, title: lm.title };
 
       // Fetch the PDF from the URL
       console.log(`[Lead Magnet Extract] Fetching PDF from: ${lm.fileUrl}`);
@@ -100,8 +158,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const pdfBuffer = await pdfResponse.arrayBuffer();
-      base64Data = Buffer.from(pdfBuffer).toString("base64");
+      const arrayBuffer = await pdfResponse.arrayBuffer();
+      pdfBuffer = Buffer.from(arrayBuffer);
 
     } else if (pdfUrl) {
       // Fetch PDF from provided URL
@@ -115,46 +173,34 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Try to get content type from response
-      const contentType = pdfResponse.headers.get("content-type");
-      if (contentType) {
-        mediaType = contentType.split(";")[0].trim();
-      }
-
-      const pdfBuffer = await pdfResponse.arrayBuffer();
-      base64Data = Buffer.from(pdfBuffer).toString("base64");
+      const arrayBuffer = await pdfResponse.arrayBuffer();
+      pdfBuffer = Buffer.from(arrayBuffer);
 
     } else {
       // Use provided base64 data
-      base64Data = pdfBase64;
-      if (body.mediaType) {
-        mediaType = body.mediaType;
-      }
+      pdfBuffer = Buffer.from(pdfBase64, 'base64');
     }
 
-    console.log(`[Lead Magnet Extract] Calling Claude API with ${mediaType} document`);
+    // Extract text from PDF
+    console.log(`[Lead Magnet Extract] Extracting text from PDF (${pdfBuffer.length} bytes)`);
+    const pdfText = extractTextFromPdfBuffer(pdfBuffer);
 
-    // Call Claude API with the PDF as a document
+    // Truncate if too long (Claude has context limits)
+    const maxChars = 100000;
+    const truncatedText = pdfText.length > maxChars
+      ? pdfText.substring(0, maxChars) + "\n\n[Content truncated...]"
+      : pdfText;
+
+    console.log(`[Lead Magnet Extract] Extracted ${pdfText.length} chars, sending to Claude`);
+
+    // Call Claude API with the extracted text
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,
       messages: [
         {
           role: "user",
-          content: [
-            {
-              type: "document",
-              source: {
-                type: "base64",
-                media_type: mediaType as "application/pdf",
-                data: base64Data,
-              },
-            },
-            {
-              type: "text",
-              text: EXTRACTION_PROMPT,
-            },
-          ],
+          content: EXTRACTION_PROMPT + truncatedText,
         },
       ],
     });

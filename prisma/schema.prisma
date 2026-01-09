@@ -863,6 +863,48 @@ model AdvisorDigest {
   nextWeekPlan    Json     @map("next_week_plan") // Suggested content plan
   
   createdAt       DateTime @default(now()) @map("created_at")
-  
+
   @@map("advisor_digests")
+}
+
+// ============================================
+// LEAD MAGNETS - Standalone lead magnet library
+// ============================================
+
+model LeadMagnet {
+  id              String    @id @default(uuid())
+
+  // Basic info
+  title           String
+  description     String?   @db.Text
+
+  // Categorization
+  category        String?   // gut_health, sleep, stress, nutrition, etc.
+  tags            String[]
+
+  // File storage
+  fileUrl         String    @map("file_url")
+  storageKey      String?   @map("storage_key") // R2 key for deletion
+  fileName        String?   @map("file_name")
+  fileType        String?   @map("file_type") // application/pdf, image/png, etc.
+  fileSizeBytes   BigInt?   @map("file_size_bytes")
+
+  // AI extracted content
+  extractedText   String?   @map("extracted_text") @db.Text
+  extractedData   Json?     @map("extracted_data") // Structured data extracted from the lead magnet
+
+  // Usage tracking
+  downloadCount   Int       @default(0) @map("download_count")
+  usedInFunnels   Int       @default(0) @map("used_in_funnels")
+
+  // Status
+  isActive        Boolean   @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([isActive])
+  @@map("lead_magnets")
 }

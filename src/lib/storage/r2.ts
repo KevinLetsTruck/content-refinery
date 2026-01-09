@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuid } from "uuid";
 
@@ -148,8 +148,22 @@ export function getPublicUrl(key: string): string {
   if (R2_PUBLIC_URL) {
     return `${R2_PUBLIC_URL}/${key}`;
   }
-  
+
   // Otherwise use the default R2 URL format
   // Note: This requires public access to be enabled on the bucket
   return `https://pub-${R2_ACCOUNT_ID}.r2.dev/${key}`;
+}
+
+/**
+ * Delete a file from R2
+ */
+export async function deleteFromR2(key: string): Promise<void> {
+  const client = getR2Client();
+
+  const command = new DeleteObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+  });
+
+  await client.send(command);
 }

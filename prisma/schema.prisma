@@ -879,7 +879,7 @@ model LeadMagnet {
   // Basic info
   title           String
   description     String?   @db.Text
-  slug            String?   @unique // URL-friendly identifier
+  slug            String?   // URL-friendly identifier (uniqueness enforced at app level)
 
   // Categorization
   category        String?   // gut_health, sleep, stress, nutrition, etc.
@@ -945,7 +945,7 @@ model Lead {
   ccSyncedAt      DateTime? @map("cc_synced_at")
 
   // Download tracking
-  downloadToken   String?   @unique @map("download_token")
+  downloadToken   String?   @map("download_token") // Unique per lead, enforced at app level
   downloadedAt    DateTime? @map("downloaded_at")
 
   // Email engagement tracking

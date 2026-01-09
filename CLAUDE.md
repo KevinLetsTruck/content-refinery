@@ -1,5 +1,9 @@
 # CLAUDE.md - Project Knowledge Base
 
+## Deployment Rules
+
+**IMPORTANT**: Always push changes directly to the `main` branch for automatic deployment to Render. Do not use feature branches unless specifically requested. The Render service auto-deploys on commits to `main`.
+
 ## What Is This Project?
 
 Content Refinery is an automated social media content engine for Let's Truck Health Coaching, founded by Kevin Rutherford, FNTP. It transforms 15+ hours of weekly podcast content into platform-optimized social media posts.

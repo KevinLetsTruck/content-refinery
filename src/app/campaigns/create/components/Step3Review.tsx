@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
   Plus,
@@ -12,6 +12,7 @@ import {
   Video,
   Mail,
   FileText,
+  Loader2,
 } from "lucide-react";
 import { LANDING_PAGE_TEMPLATES } from "@/lib/landing-pages/templates";
 
@@ -43,13 +44,27 @@ export default function Step3Review({
     `${leadMagnet.title} Campaign`
   );
   const [keyMessages, setKeyMessages] = useState<string[]>(
-    extractedData.keyMessages || []
+    extractedData?.keyMessages || []
   );
-  const [hooks, setHooks] = useState<string[]>(extractedData.hooks || []);
+  const [hooks, setHooks] = useState<string[]>(extractedData?.hooks || []);
   const [newHook, setNewHook] = useState("");
+
+  // AI suggestion states
+  const [suggestingMessages, setSuggestingMessages] = useState(false);
+  const [suggestingHooks, setSuggestingHooks] = useState(false);
 
   // Get template config
   const templateConfig = LANDING_PAGE_TEMPLATES[template];
+
+  // Sync state when extractedData changes (e.g., when lead magnet is re-selected)
+  useEffect(() => {
+    if (extractedData?.keyMessages && extractedData.keyMessages.length > 0) {
+      setKeyMessages(extractedData.keyMessages);
+    }
+    if (extractedData?.hooks && extractedData.hooks.length > 0) {
+      setHooks(extractedData.hooks);
+    }
+  }, [extractedData]);
 
   // Call onUpdate whenever state changes
   useEffect(() => {
@@ -59,6 +74,66 @@ export default function Step3Review({
       hooks,
     });
   }, [campaignName, keyMessages, hooks, onUpdate]);
+
+  // AI Suggest handler for key messages
+  const handleSuggestMessages = useCallback(async () => {
+    // First try to use existing extractedData
+    if (extractedData?.keyMessages && extractedData.keyMessages.length > 0) {
+      setKeyMessages(extractedData.keyMessages);
+      return;
+    }
+
+    // Otherwise, call the API to extract
+    setSuggestingMessages(true);
+    try {
+      const response = await fetch("/api/lead-magnets/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadMagnetId: leadMagnet.id }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.extractedData?.keyMessages) {
+          setKeyMessages(data.extractedData.keyMessages);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to suggest messages:", error);
+    } finally {
+      setSuggestingMessages(false);
+    }
+  }, [extractedData, leadMagnet.id]);
+
+  // AI Suggest handler for hooks
+  const handleSuggestHooks = useCallback(async () => {
+    // First try to use existing extractedData
+    if (extractedData?.hooks && extractedData.hooks.length > 0) {
+      setHooks(extractedData.hooks);
+      return;
+    }
+
+    // Otherwise, call the API to extract
+    setSuggestingHooks(true);
+    try {
+      const response = await fetch("/api/lead-magnets/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadMagnetId: leadMagnet.id }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.extractedData?.hooks) {
+          setHooks(data.extractedData.hooks);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to suggest hooks:", error);
+    } finally {
+      setSuggestingHooks(false);
+    }
+  }, [extractedData, leadMagnet.id]);
 
   // Key messages handlers
   const updateKeyMessage = (index: number, value: string) => {
@@ -131,13 +206,27 @@ export default function Step3Review({
               {keyMessages.filter((m) => m.trim()).length} messages
             </span>
           </div>
-          <button
-            onClick={addKeyMessage}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[#2A2A2A] hover:bg-[#3A3A3A] text-gray-300 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSuggestMessages}
+              disabled={suggestingMessages}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[#FF4500]/10 text-[#FF4500] rounded-lg hover:bg-[#FF4500]/20 disabled:opacity-50 transition-colors"
+            >
+              {suggestingMessages ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              AI Suggest
+            </button>
+            <button
+              onClick={addKeyMessage}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[#2A2A2A] hover:bg-[#3A3A3A] text-gray-300 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          </div>
         </div>
 
         <p className="text-sm text-gray-500 mb-4">
@@ -174,12 +263,26 @@ export default function Step3Review({
 
       {/* Editable Hooks */}
       <div className="p-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl">
-        <div className="flex items-center gap-2 mb-4">
-          <Zap className="w-5 h-5 text-[#FF4500]" />
-          <h3 className="font-semibold text-white">Attention Hooks</h3>
-          <span className="px-2 py-0.5 text-xs rounded-full bg-[#2A2A2A] text-gray-400">
-            {hooks.length} hooks
-          </span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-[#FF4500]" />
+            <h3 className="font-semibold text-white">Attention Hooks</h3>
+            <span className="px-2 py-0.5 text-xs rounded-full bg-[#2A2A2A] text-gray-400">
+              {hooks.length} hooks
+            </span>
+          </div>
+          <button
+            onClick={handleSuggestHooks}
+            disabled={suggestingHooks}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-[#FF4500]/10 text-[#FF4500] rounded-lg hover:bg-[#FF4500]/20 disabled:opacity-50 transition-colors"
+          >
+            {suggestingHooks ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            AI Suggest
+          </button>
         </div>
 
         <p className="text-sm text-gray-500 mb-4">

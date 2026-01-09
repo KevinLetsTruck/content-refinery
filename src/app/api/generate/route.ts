@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { generateBulkContent, Platform } from "@/lib/ai/claude";
+import { generateBulkContent, Platform, ContentType } from "@/lib/ai/claude";
+
+// Type for generated content that we'll collect
+interface GeneratedContentRecord {
+  id: string;
+  extractionId: string | null;
+  platform: string;
+  text: string | null;
+  hashtags: string[];
+  mediaGuidance: string | null;
+  status: string;
+  createdAt: Date;
+}
 
 // POST /api/generate - Generate platform content from an extraction
 export async function POST(request: NextRequest) {
@@ -52,7 +64,7 @@ export async function POST(request: NextRequest) {
     console.log(`Generating content for extraction ${extractionId}...`);
     const generatedContent = await generateBulkContent(
       {
-        type: extraction.type as any,
+        type: extraction.type as ContentType,
         text: extraction.text,
         startTime: extraction.startTime ? Number(extraction.startTime) : undefined,
         endTime: extraction.endTime ? Number(extraction.endTime) : undefined,
@@ -62,24 +74,22 @@ export async function POST(request: NextRequest) {
       products
     );
 
-    // Save generated content
-    const savedContent = await prisma.generatedContent.createMany({
-      data: generatedContent.map((content) => ({
-        extractionId,
-        platform: content.platform,
-        text: content.text,
-        hashtags: content.hashtags || [],
-        mediaGuidance: content.mediaGuidance,
-        status: "pending_review",
-      })),
-    });
-
-    // Fetch created content
-    const createdContent = await prisma.generatedContent.findMany({
-      where: { extractionId },
-      orderBy: { createdAt: "desc" },
-      take: targetPlatforms.length,
-    });
+    // Save generated content individually to get back the created records
+    // (createMany doesn't return the created records in Prisma)
+    const createdContent: GeneratedContentRecord[] = [];
+    for (const content of generatedContent) {
+      const saved = await prisma.generatedContent.create({
+        data: {
+          extractionId,
+          platform: content.platform,
+          text: content.text,
+          hashtags: content.hashtags || [],
+          mediaGuidance: content.mediaGuidance,
+          status: "pending_review",
+        },
+      });
+      createdContent.push(saved);
+    }
 
     // Mark extraction as used
     await prisma.extraction.update({
@@ -144,7 +154,7 @@ export async function PUT(request: NextRequest) {
     );
 
     let totalGenerated = 0;
-    const allContent: any[] = [];
+    const allContent: GeneratedContentRecord[] = [];
 
     // Generate for each extraction
     for (const extraction of extractions) {
@@ -154,7 +164,7 @@ export async function PUT(request: NextRequest) {
 
       const generatedContent = await generateBulkContent(
         {
-          type: extraction.type as any,
+          type: extraction.type as ContentType,
           text: extraction.text,
           startTime: extraction.startTime ? Number(extraction.startTime) : undefined,
           endTime: extraction.endTime ? Number(extraction.endTime) : undefined,

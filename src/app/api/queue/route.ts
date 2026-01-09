@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
     
     const platform = searchParams.get("platform");
     const status = searchParams.get("status") || "pending";
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const limitParam = searchParams.get("limit");
+    // Guard against NaN from parseInt
+    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10) || 50) : 50;
 
     // Map status to database values
     const statusMap: Record<string, string[]> = {

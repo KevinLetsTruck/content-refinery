@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getBaseUrl } from "@/lib/config";
 
 /**
  * GET /api/auth/youtube
@@ -6,8 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function GET(request: NextRequest) {
   const clientId = process.env.YOUTUBE_CLIENT_ID;
-  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || 
-    `${process.env.NEXT_PUBLIC_APP_URL || 'https://content-refinery-07dc.onrender.com'}/api/auth/youtube/callback`;
+  const baseUrl = getBaseUrl();
+  const redirectUri = process.env.YOUTUBE_REDIRECT_URI || `${baseUrl}/api/auth/youtube/callback`;
 
   if (!clientId) {
     return NextResponse.json(

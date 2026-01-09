@@ -31,10 +31,10 @@ export async function markAsEvergreen(
   let evergreenScore = 50; // Default score
   if (content.performance) {
     const perf = content.performance;
-    const engagementRate =
-      perf.impressions > 0
-        ? ((perf.likes + perf.comments + perf.shares) / perf.impressions) * 100
-        : 0;
+    // Guard against division by zero
+    const impressions = perf.impressions || 0;
+    const engagements = (perf.likes || 0) + (perf.comments || 0) + (perf.shares || 0);
+    const engagementRate = impressions > 0 ? (engagements / impressions) * 100 : 0;
     evergreenScore = Math.min(100, engagementRate * 10 + (perf.likes || 0) * 0.1);
   }
 
@@ -209,11 +209,10 @@ export async function updateEvergreenScores(): Promise<number> {
     // Original performance contribution
     if (content.performance) {
       const perf = content.performance;
-      const engagementRate =
-        perf.impressions > 0
-          ? ((perf.likes + perf.comments + perf.shares) / perf.impressions) *
-            100
-          : 0;
+      // Guard against division by zero
+      const impressions = perf.impressions || 0;
+      const engagements = (perf.likes || 0) + (perf.comments || 0) + (perf.shares || 0);
+      const engagementRate = impressions > 0 ? (engagements / impressions) * 100 : 0;
       score += engagementRate * 5;
     }
 
@@ -301,6 +300,7 @@ function getNextAvailableTime(preferredTimes: string[], index: number): Date {
 
   return today;
 }
+
 
 
 

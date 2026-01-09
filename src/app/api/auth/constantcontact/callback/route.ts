@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getConstantContactClient } from "@/lib/constant-contact/client";
-
-// Base URL for redirects
-const getBaseUrl = () => {
-  return process.env.NEXT_PUBLIC_APP_URL || "https://content-refinery-07dc.onrender.com";
-};
+import { getBaseUrl } from "@/lib/config";
 
 /**
  * GET /api/auth/constantcontact/callback

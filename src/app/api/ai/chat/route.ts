@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import { BRAND_TERMINOLOGY_RULES, BRAND_VOICE_CHARACTERISTICS } from "@/lib/gamma/brand-rules";
+import { parseAndValidate } from "@/lib/utils/api";
 
 const anthropic = new Anthropic();
+
+// Request validation schema
+const ChatRequestSchema = z.object({
+  message: z.string().min(1, "Message is required"),
+  context: z.object({
+    currentStep: z.number().optional(),
+    sourceContent: z.string().optional(),
+    selectedContentId: z.string().optional(),
+    contentOptions: z.array(z.object({
+      id: z.string(),
+      text: z.string(),
+    })).optional(),
+  }).optional(),
+});
 
 const SYSTEM_PROMPT = `You are an AI assistant helping Kevin Rutherford create social media content for Let's Truck Health Coaching. You specialize in content for professional drivers.
 
@@ -22,15 +38,11 @@ You are direct, helpful, and speak with Kevin's voice - no-BS, pro-driver, anti-
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { message, context } = body;
+    // Parse and validate request
+    const { data, error } = await parseAndValidate(request, ChatRequestSchema);
+    if (error || !data) return error ?? NextResponse.json({ error: "Invalid request" }, { status: 400 });
 
-    if (!message) {
-      return NextResponse.json(
-        { error: "message is required" },
-        { status: 400 }
-      );
-    }
+    const { message, context } = data;
 
     // Build context for the AI
     let contextInfo = "";
@@ -42,7 +54,7 @@ export async function POST(request: NextRequest) {
         contextInfo += `\nTheir content idea: "${context.sourceContent}"`;
       }
       if (context.selectedContentId && context.contentOptions) {
-        const selected = context.contentOptions.find((o: any) => o.id === context.selectedContentId);
+        const selected = context.contentOptions.find((o) => o.id === context.selectedContentId);
         if (selected) {
           contextInfo += `\nThey selected this content: "${selected.text}"`;
         }
@@ -61,9 +73,9 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    // Extract text from response
-    const textBlock = response.content.find((block) => block.type === "text");
-    const aiMessage = textBlock ? textBlock.text : "I'm here to help!";
+    // Extract text from response with proper type narrowing
+    const textBlock = response.content.find((block): block is Anthropic.TextBlock => block.type === "text");
+    const aiMessage = textBlock?.text ?? "I'm here to help!";
 
     // Generate suggestions based on the response
     const suggestions = generateSuggestions(context?.currentStep, message);

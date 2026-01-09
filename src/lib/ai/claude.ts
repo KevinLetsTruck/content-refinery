@@ -1,12 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { extractJsonFromText } from "@/lib/utils/api";
 
 function getAnthropicClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  
+
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY environment variable is not set");
   }
-  
+
   return new Anthropic({ apiKey });
 }
 
@@ -108,17 +109,14 @@ Return JSON array of extractions, sorted by confidence descending.`,
     throw new Error("Unexpected response type");
   }
 
-  try {
-    // Extract JSON from the response
-    const jsonMatch = content.text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      throw new Error("No JSON array found in response");
-    }
-    return JSON.parse(jsonMatch[0]);
-  } catch (error) {
+  // Use robust JSON extraction
+  const { data, error } = extractJsonFromText<Extraction[]>(content.text, "array");
+  if (error) {
     console.error("Failed to parse extractions:", error);
     return [];
   }
+
+  return data ?? [];
 }
 
 export async function generatePlatformContent(
@@ -197,24 +195,22 @@ Return JSON with:
     ],
   });
 
-  const content = response.content[0];
-  if (content.type !== "text") {
+  const responseContent = response.content[0];
+  if (responseContent.type !== "text") {
     throw new Error("Unexpected response type");
   }
 
-  try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON object found in response");
-    }
-    return JSON.parse(jsonMatch[0]);
-  } catch (error) {
+  // Use robust JSON extraction
+  const { data, error } = extractJsonFromText<GeneratedContent>(responseContent.text, "object");
+  if (error) {
     console.error("Failed to parse generated content:", error);
     return {
       platform,
       text: extraction.text,
     };
   }
+
+  return data ?? { platform, text: extraction.text };
 }
 
 export async function generateBulkContent(
@@ -303,25 +299,25 @@ export async function generateStrategicContent(
     messages: [{ role: "user", content: prompt }],
   });
   
-  const content = response.content[0];
-  if (content.type !== "text") {
+  const strategicContent = response.content[0];
+  if (strategicContent.type !== "text") {
     throw new Error("Unexpected response type");
   }
 
-  let result: { text: string; hashtags: string[]; hookType?: string };
-  
-  try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON object found in response");
-    }
-    result = JSON.parse(jsonMatch[0]);
-  } catch (error) {
-    console.error("Failed to parse strategic content:", error);
-    result = {
-      text: request.sourceText,
-      hashtags: hashtags,
-    };
+  // Use robust JSON extraction
+  const { data: parsedResult, error: parseError } = extractJsonFromText<{
+    text: string;
+    hashtags: string[];
+    hookType?: string;
+  }>(strategicContent.text, "object");
+
+  const result = parsedResult ?? {
+    text: request.sourceText,
+    hashtags: hashtags,
+  };
+
+  if (parseError) {
+    console.error("Failed to parse strategic content:", parseError);
   }
   
   // Score the generated content
@@ -393,39 +389,49 @@ Return JSON:
     messages: [{ role: "user", content: prompt }],
   });
   
-  const content = response.content[0];
-  if (content.type !== "text") {
+  const scoreContent_ = response.content[0];
+  if (scoreContent_.type !== "text") {
     throw new Error("Unexpected response type");
   }
 
-  try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON object found in response");
-    }
-    const result = JSON.parse(jsonMatch[0]);
-    
-    // Calculate weighted total
-    const totalScore = 
-      (result.hookStrength * 0.30) +
-      (result.valueDensity * 0.25) +
-      (result.brandVoice * 0.20) +
-      (result.ctaClarity * 0.15) +
-      (result.platformFit * 0.10);
-    
-    return {
-      hookStrength: result.hookStrength,
-      valueDensity: result.valueDensity,
-      brandVoice: result.brandVoice,
-      ctaClarity: result.ctaClarity,
-      platformFit: result.platformFit,
-      totalScore: Math.round(totalScore * 10) / 10,
-      passed: totalScore >= 7 && (!result.issues || result.issues.length === 0),
-      issues: result.issues || [],
-    };
-  } catch (error) {
-    console.error("Failed to parse AI score:", error);
+  // Use robust JSON extraction
+  interface AIScoreResult {
+    hookStrength: number;
+    valueDensity: number;
+    brandVoice: number;
+    ctaClarity: number;
+    platformFit: number;
+    issues?: string[];
+    suggestions?: string[];
+  }
+
+  const { data: scoreResult, error: scoreError } = extractJsonFromText<AIScoreResult>(
+    scoreContent_.text,
+    "object"
+  );
+
+  if (scoreError || !scoreResult) {
+    console.error("Failed to parse AI score:", scoreError);
     // Fallback to basic scoring
     return scoreContent(text, platform, true, true, null);
   }
+
+  // Calculate weighted total
+  const totalScore =
+    scoreResult.hookStrength * 0.3 +
+    scoreResult.valueDensity * 0.25 +
+    scoreResult.brandVoice * 0.2 +
+    scoreResult.ctaClarity * 0.15 +
+    scoreResult.platformFit * 0.1;
+
+  return {
+    hookStrength: scoreResult.hookStrength,
+    valueDensity: scoreResult.valueDensity,
+    brandVoice: scoreResult.brandVoice,
+    ctaClarity: scoreResult.ctaClarity,
+    platformFit: scoreResult.platformFit,
+    totalScore: Math.round(totalScore * 10) / 10,
+    passed: totalScore >= 7 && (!scoreResult.issues || scoreResult.issues.length === 0),
+    issues: scoreResult.issues || [],
+  };
 }

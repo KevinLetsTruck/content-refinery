@@ -629,6 +629,49 @@ src/app/create/
 
 ---
 
+## Campaign Wizard System
+
+The Campaign Wizard (`/campaigns/create`) provides a 7-step flow to create complete marketing campaigns from PDF lead magnets.
+
+### Lead Magnet Library
+- **Model**: LeadMagnet (title, slug, fileUrl, extractedData, etc.)
+- **API**:
+  - `GET /api/lead-magnets` - List all lead magnets
+  - `POST /api/lead-magnets` - Upload new lead magnet (multipart form)
+  - `GET /api/lead-magnets/[id]` - Get single lead magnet
+  - `PATCH /api/lead-magnets/[id]` - Update lead magnet
+  - `DELETE /api/lead-magnets/[id]` - Delete lead magnet and R2 file
+- **Extraction**: `POST /api/lead-magnets/extract` - AI reads PDF and extracts key messages, stats, hooks
+
+### Landing Page Generation
+- **Model**: LandingPage (template, gammaUrl, etc.)
+- **Templates**: lead_magnet, challenge, waitlist, product_launch (defined in `src/lib/landing-pages/templates.ts`)
+- **API**: `POST /api/landing-pages/generate` - Calls Gamma API to create landing page
+
+### Wizard Flow
+1. **Lead Magnet** - Select existing PDF or upload new one
+2. **Template** - Choose landing page template (AI recommends based on content)
+3. **Content** - Review and edit AI-extracted key messages and hooks
+4. **Schedule** - Set campaign start date and duration
+5. **Platforms** - Select social platforms and posting frequency
+6. **Review** - Final review of all settings
+7. **Generate** - Creates landing page via Gamma, then generates all campaign posts
+
+### Wizard Components
+```
+src/app/campaigns/create/
+├── page.tsx                         # Main wizard with 7 steps
+└── components/
+    ├── Step1LeadMagnet.tsx         # Library browse + upload
+    ├── Step2Template.tsx           # Template selection with AI recommendation
+    └── Step3Review.tsx             # Content review and editing
+```
+
+### Scripts
+- `npm run migrate:lead-magnets` - Import existing R2 PDFs into database
+
+---
+
 ## Future Enhancements (Backlog)
 
 - [x] ~~Gamma API integration~~ ✅ DONE

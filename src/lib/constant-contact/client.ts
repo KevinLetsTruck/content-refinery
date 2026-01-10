@@ -90,7 +90,7 @@ export class ConstantContactClient {
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
       response_type: "code",
-      scope: "contact_data offline_access",
+      scope: "contact_data campaign_data offline_access",
       state: state || crypto.randomUUID(),
     });
 

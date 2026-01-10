@@ -202,48 +202,100 @@ export function withErrorHandler<T>(
 // ============================================
 
 /**
+ * Find matching bracket in string, handling nested brackets
+ */
+function findMatchingBracket(text: string, startIndex: number, openBracket: string, closeBracket: string): number {
+  let depth = 1;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = startIndex + 1; i < text.length; i++) {
+    const char = text[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+
+    if (char === '"' && !escapeNext) {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === openBracket) depth++;
+    if (char === closeBracket) depth--;
+
+    if (depth === 0) return i;
+  }
+
+  return -1;
+}
+
+/**
  * Extract JSON from AI response text
  * Handles cases where JSON is wrapped in markdown code blocks or text
+ * Properly handles nested braces in HTML/CSS content
  */
 export function extractJsonFromText<T>(
   text: string,
   type: "object" | "array" = "object"
 ): { data: T | null; error: string | null } {
-  // Try to find JSON in the text
-  const patterns = type === "array"
-    ? [
-        /```json\s*(\[[\s\S]*?\])\s*```/,  // JSON in markdown code block
-        /```\s*(\[[\s\S]*?\])\s*```/,       // In generic code block
-        /(\[[\s\S]*\])/,                     // Raw JSON array
-      ]
-    : [
-        /```json\s*(\{[\s\S]*?\})\s*```/,  // JSON in markdown code block
-        /```\s*(\{[\s\S]*?\})\s*```/,       // In generic code block
-        /(\{[\s\S]*\})/,                     // Raw JSON object
-      ];
+  const openBracket = type === "array" ? "[" : "{";
+  const closeBracket = type === "array" ? "]" : "}";
 
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        return { data: parsed as T, error: null };
-      } catch {
-        // Try next pattern
-        continue;
-      }
+  // First, try to extract from markdown code blocks
+  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (codeBlockMatch) {
+    const codeContent = codeBlockMatch[1].trim();
+    try {
+      const parsed = JSON.parse(codeContent);
+      return { data: parsed as T, error: null };
+    } catch {
+      // Code block content wasn't valid JSON, continue searching
     }
   }
 
-  // Last resort: try parsing the entire text
-  try {
-    const parsed = JSON.parse(text);
-    return { data: parsed as T, error: null };
-  } catch {
+  // Find the first open bracket
+  const startIndex = text.indexOf(openBracket);
+  if (startIndex === -1) {
     return {
       data: null,
       error: `No valid JSON ${type} found in response`
     };
+  }
+
+  // Find the matching close bracket
+  const endIndex = findMatchingBracket(text, startIndex, openBracket, closeBracket);
+  if (endIndex === -1) {
+    return {
+      data: null,
+      error: `No valid JSON ${type} found in response - unmatched brackets`
+    };
+  }
+
+  const jsonString = text.substring(startIndex, endIndex + 1);
+
+  try {
+    const parsed = JSON.parse(jsonString);
+    return { data: parsed as T, error: null };
+  } catch (e) {
+    // Try one more time with the raw text
+    try {
+      const parsed = JSON.parse(text);
+      return { data: parsed as T, error: null };
+    } catch {
+      return {
+        data: null,
+        error: `No valid JSON ${type} found in response`
+      };
+    }
   }
 }
 

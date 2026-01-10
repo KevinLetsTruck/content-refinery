@@ -473,10 +473,18 @@ export default function CreateCampaignPage() {
                         if (e.target.checked) {
                           updateState({
                             platforms: [...state.platforms, platform],
+                            postsPerDay: {
+                              ...state.postsPerDay,
+                              [platform]: 1, // Set to 1 when enabling
+                            },
                           });
                         } else {
                           updateState({
                             platforms: state.platforms.filter((p) => p !== platform),
+                            postsPerDay: {
+                              ...state.postsPerDay,
+                              [platform]: 0, // Set to 0 when disabling
+                            },
                           });
                         }
                       }}

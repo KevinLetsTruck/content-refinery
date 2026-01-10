@@ -76,11 +76,11 @@ export async function generateCampaignStrategy(
     };
   });
 
-  // Calculate total posts needed
+  // Calculate total posts needed (only for enabled platforms)
   const totalPosts = input.durationDays * (
-    input.postsPerDay.twitter + 
-    input.postsPerDay.facebook + 
-    input.postsPerDay.instagram
+    (input.platforms.includes("twitter") ? input.postsPerDay.twitter : 0) +
+    (input.platforms.includes("facebook") ? input.postsPerDay.facebook : 0) +
+    (input.platforms.includes("instagram") ? input.postsPerDay.instagram : 0)
   );
 
   const userPrompt = `Create a complete ${input.campaignType.replace("_", " ")} campaign.
@@ -99,12 +99,13 @@ ${phases.map(p => `- ${p.name} (Days ${p.startDay}-${p.endDay}): ${p.purpose}`).
 
 CONTENT REQUIREMENTS:
 - Platforms: ${input.platforms.join(", ")}
-- Twitter posts: ${input.postsPerDay.twitter} per day = ${input.durationDays * input.postsPerDay.twitter} total
-- Facebook posts: ${input.postsPerDay.facebook} per day = ${input.durationDays * input.postsPerDay.facebook} total
-- Instagram posts: ${input.postsPerDay.instagram} per day = ${input.durationDays * input.postsPerDay.instagram} total
+${input.platforms.includes("twitter") ? `- Twitter posts: ${input.postsPerDay.twitter} per day = ${input.durationDays * input.postsPerDay.twitter} total` : "- Twitter: NOT INCLUDED"}
+${input.platforms.includes("facebook") ? `- Facebook posts: ${input.postsPerDay.facebook} per day = ${input.durationDays * input.postsPerDay.facebook} total` : "- Facebook: NOT INCLUDED"}
+${input.platforms.includes("instagram") ? `- Instagram posts: ${input.postsPerDay.instagram} per day = ${input.durationDays * input.postsPerDay.instagram} total` : "- Instagram: NOT INCLUDED"}
 - YouTube Shorts: ${input.youtubeShorts} total (spread throughout campaign)
 - YouTube Standard videos: ${input.youtubeStandard} total
 - TOTAL POSTS NEEDED: ${totalPosts}
+- IMPORTANT: Only generate posts for the platforms listed above that are INCLUDED. Do NOT generate posts for platforms marked as "NOT INCLUDED".
 
 CRITICAL REQUIREMENTS:
 1. Twitter posts MUST be under 280 characters including hashtags

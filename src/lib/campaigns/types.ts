@@ -42,6 +42,7 @@ export interface CreateCampaignInput {
   };
   youtubeShorts: number;
   youtubeStandard: number;
+  generateImages?: boolean; // Auto-generate images using DALL-E
 }
 
 // AI-generated strategy

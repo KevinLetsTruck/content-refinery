@@ -78,11 +78,27 @@ interface SelectedPost {
   visualPrompt?: string;
 }
 
+interface SelectedVideo {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  time: string;
+  dayNumber: number;
+  phase: string;
+  scriptData?: {
+    hook?: string;
+    body?: string;
+    cta?: string;
+  };
+}
+
 export default function CampaignCalendarPage() {
   const params = useParams();
   const [data, setData] = useState<CalendarData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
   const [editedContent, setEditedContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -112,6 +128,36 @@ export default function CampaignCalendarPage() {
     });
     setEditedContent(post.content);
     setCopied(false);
+  };
+
+  const handleVideoClick = async (video: { id: string; title: string; type: string; status: string; time: string }, day: CalendarDay) => {
+    // Fetch full video details including script
+    try {
+      const res = await fetch(`/api/campaigns/${params.id}/videos/${video.id}`);
+      if (res.ok) {
+        const videoData = await res.json();
+        setSelectedVideo({
+          ...video,
+          dayNumber: day.dayNumber,
+          phase: day.phase,
+          scriptData: videoData.video?.scriptData || videoData.scriptData,
+        });
+      } else {
+        // Fallback if API doesn't exist yet
+        setSelectedVideo({
+          ...video,
+          dayNumber: day.dayNumber,
+          phase: day.phase,
+        });
+      }
+    } catch {
+      // Fallback if API call fails
+      setSelectedVideo({
+        ...video,
+        dayNumber: day.dayNumber,
+        phase: day.phase,
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -364,7 +410,9 @@ export default function CampaignCalendarPage() {
                       {day.videos.map((video) => (
                         <div
                           key={video.id}
-                          className="flex items-center gap-1 text-xs p-1 bg-red-900/20 text-red-400 rounded"
+                          onClick={() => handleVideoClick(video, day)}
+                          className="flex items-center gap-1 text-xs p-1 bg-red-900/20 text-red-400 rounded cursor-pointer hover:opacity-80 hover:ring-1 hover:ring-white/30 transition"
+                          title="Click to view video script"
                         >
                           <span className="font-medium">YT</span>
                           <span className="text-gray-400 truncate">
@@ -516,6 +564,116 @@ export default function CampaignCalendarPage() {
                   Save Changes
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Detail Modal */}
+      {selectedVideo && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1A1A1A] rounded-xl border border-[#2A2A2A] w-full max-w-2xl max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[#2A2A2A]">
+              <div className="flex items-center gap-3">
+                <span className="px-2 py-1 rounded text-sm font-medium text-red-400 bg-red-900/30">
+                  YouTube {selectedVideo.type === "short" ? "Short" : "Video"}
+                </span>
+                <span className="text-gray-400 text-sm">
+                  Day {selectedVideo.dayNumber} • {selectedVideo.phase}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="p-1 hover:bg-[#2A2A2A] rounded transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
+              {/* Video Title */}
+              <div>
+                <label className="text-sm font-medium text-gray-400 mb-1 block">Title</label>
+                <div className="p-3 bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg">
+                  {selectedVideo.title || "Untitled Video"}
+                </div>
+              </div>
+
+              {/* Video Script */}
+              {selectedVideo.scriptData && (
+                <div className="space-y-3">
+                  <label className="text-sm font-medium text-gray-400">Video Script</label>
+
+                  {/* Hook */}
+                  {selectedVideo.scriptData.hook && (
+                    <div className="bg-[#0D0D0D] rounded-lg border border-[#2A2A2A] overflow-hidden">
+                      <div className="px-3 py-2 bg-red-900/20 border-b border-[#2A2A2A]">
+                        <span className="text-xs font-medium text-red-400 uppercase tracking-wide">Hook (First 3 Seconds)</span>
+                      </div>
+                      <div className="p-3 text-sm">
+                        {selectedVideo.scriptData.hook}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Body */}
+                  {selectedVideo.scriptData.body && (
+                    <div className="bg-[#0D0D0D] rounded-lg border border-[#2A2A2A] overflow-hidden">
+                      <div className="px-3 py-2 bg-blue-900/20 border-b border-[#2A2A2A]">
+                        <span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Body</span>
+                      </div>
+                      <div className="p-3 text-sm whitespace-pre-wrap">
+                        {selectedVideo.scriptData.body}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CTA */}
+                  {selectedVideo.scriptData.cta && (
+                    <div className="bg-[#0D0D0D] rounded-lg border border-[#2A2A2A] overflow-hidden">
+                      <div className="px-3 py-2 bg-green-900/20 border-b border-[#2A2A2A]">
+                        <span className="text-xs font-medium text-green-400 uppercase tracking-wide">Call to Action</span>
+                      </div>
+                      <div className="p-3 text-sm">
+                        {selectedVideo.scriptData.cta}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!selectedVideo.scriptData && (
+                <div className="p-4 bg-[#0D0D0D] rounded-lg border border-[#2A2A2A] text-center text-gray-500">
+                  No script data available for this video
+                </div>
+              )}
+
+              {/* Video Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-[#0D0D0D] p-3 rounded-lg">
+                  <div className="text-gray-500 mb-1">Video Type</div>
+                  <div>{selectedVideo.type === "short" ? "YouTube Short (< 60s)" : "Standard Video"}</div>
+                </div>
+                <div className="bg-[#0D0D0D] p-3 rounded-lg">
+                  <div className="text-gray-500 mb-1">Status</div>
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(selectedVideo.status)}
+                    <span className="capitalize">{selectedVideo.status}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end p-4 border-t border-[#2A2A2A]">
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="px-4 py-2 bg-[#2A2A2A] hover:bg-[#3A3A3A] rounded-lg transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

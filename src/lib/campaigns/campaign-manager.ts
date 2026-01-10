@@ -1,6 +1,11 @@
 import prisma from "@/lib/db/prisma";
 import { generateCampaignStrategy } from "./strategy-generator";
 import { CreateCampaignInput } from "./types";
+import {
+  generateAndStoreImage,
+  createImagePrompt,
+  isDalleAvailable
+} from "@/lib/images/dalle";
 
 /**
  * Create a new campaign and generate all content
@@ -92,12 +97,14 @@ async function generateCampaignContent(
 
     // Create posts
     const startDate = new Date(input.startDate);
+    const createdPosts: Array<{ id: string; platform: string; content: string; visualPrompt: string | null }> = [];
+
     for (const post of strategy.posts) {
       const scheduledDate = new Date(startDate);
       scheduledDate.setDate(scheduledDate.getDate() + post.dayNumber - 1);
       scheduledDate.setHours(9, 0, 0, 0); // Default time, will be optimized later
 
-      await prisma.campaignPost.create({
+      const createdPost = await prisma.campaignPost.create({
         data: {
           campaignId,
           phaseId: phaseMap.get(post.phase) || null,
@@ -110,7 +117,15 @@ async function generateCampaignContent(
           visualType: post.visualType,
           visualPrompt: post.visualPrompt,
           status: "draft",
+          visualStatus: input.generateImages ? "pending" : "pending",
         },
+      });
+
+      createdPosts.push({
+        id: createdPost.id,
+        platform: post.platform,
+        content: post.content,
+        visualPrompt: post.visualPrompt,
       });
     }
 
@@ -132,6 +147,63 @@ async function generateCampaignContent(
           status: "pending",
         },
       });
+    }
+
+    // Generate images if requested
+    if (input.generateImages && isDalleAvailable()) {
+      console.log(`[Campaign] Starting image generation for ${createdPosts.length} posts`);
+
+      // Generate images in batches to avoid rate limits
+      const BATCH_SIZE = 3;
+      const DELAY_BETWEEN_BATCHES = 2000; // 2 seconds
+
+      for (let i = 0; i < createdPosts.length; i += BATCH_SIZE) {
+        const batch = createdPosts.slice(i, i + BATCH_SIZE);
+
+        await Promise.all(
+          batch.map(async (post) => {
+            try {
+              // Mark as generating
+              await prisma.campaignPost.update({
+                where: { id: post.id },
+                data: { visualStatus: "generating" },
+              });
+
+              // Use custom prompt if available, otherwise generate from content
+              const prompt = post.visualPrompt || createImagePrompt(post.content, "educational", post.platform);
+
+              const imageUrl = await generateAndStoreImage(prompt, post.platform);
+
+              // Update post with generated image
+              await prisma.campaignPost.update({
+                where: { id: post.id },
+                data: {
+                  visualUrl: imageUrl,
+                  visualStatus: "ready",
+                },
+              });
+
+              console.log(`[Campaign] Generated image for post ${post.id}`);
+            } catch (error) {
+              console.error(`[Campaign] Failed to generate image for post ${post.id}:`, error);
+
+              await prisma.campaignPost.update({
+                where: { id: post.id },
+                data: { visualStatus: "error" },
+              });
+            }
+          })
+        );
+
+        // Add delay between batches to avoid rate limits
+        if (i + BATCH_SIZE < createdPosts.length) {
+          await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+        }
+      }
+
+      console.log(`[Campaign] Image generation complete for ${campaignId}`);
+    } else if (input.generateImages && !isDalleAvailable()) {
+      console.warn(`[Campaign] Image generation requested but DALL-E is not configured`);
     }
 
     // Update campaign status and counts

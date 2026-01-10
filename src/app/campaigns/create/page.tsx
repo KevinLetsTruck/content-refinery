@@ -15,6 +15,7 @@ import {
   Layout,
   Share2,
   Mail,
+  Image,
 } from "lucide-react";
 import Step1LeadMagnet from "./components/Step1LeadMagnet";
 import Step2Template from "./components/Step2Template";
@@ -81,6 +82,7 @@ interface WizardState {
   };
   youtubeShorts: number;
   youtubeStandard: number;
+  generateImages: boolean; // Auto-generate images with DALL-E
   // Step 6 Review extras
   goal: CampaignGoal;
   productUrl: string;
@@ -127,6 +129,7 @@ export default function CreateCampaignPage() {
     postsPerDay: { twitter: 1, facebook: 1, instagram: 1 },
     youtubeShorts: 2,
     youtubeStandard: 0,
+    generateImages: true, // Default to generating images
     goal: "email_signups",
     productUrl: "",
   });
@@ -212,6 +215,7 @@ export default function CreateCampaignPage() {
           postsPerDay: state.postsPerDay,
           youtubeShorts: state.youtubeShorts,
           youtubeStandard: state.youtubeStandard,
+          generateImages: state.generateImages, // Auto-generate images with DALL-E
           // Include lead magnet reference
           leadMagnetId: selectedLeadMagnet.id,
           landingPageTemplate: selectedTemplate,
@@ -555,10 +559,43 @@ export default function CreateCampaignPage() {
                 </div>
               </div>
 
+              {/* Auto-generate images option */}
+              <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={state.generateImages}
+                      onChange={(e) => updateState({ generateImages: e.target.checked })}
+                      className="w-5 h-5 accent-[#FF4500]"
+                    />
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        <Image className="w-4 h-4 text-[#FF4500]" />
+                        Auto-generate images
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Create AI images for each post using DALL-E 3
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {state.generateImages && (
+                  <div className="mt-3 p-3 bg-[#0D0D0D] rounded text-sm">
+                    <div className="text-gray-300">
+                      <span className="text-[#FF4500] font-medium">{totalPosts} images</span> will be auto-generated
+                    </div>
+                    <div className="text-gray-500 text-xs mt-1">
+                      This may take 1-2 minutes longer during generation
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="p-4 bg-[#FF4500]/10 border border-[#FF4500]/30 rounded-lg">
                 <div className="text-[#F4A300] font-medium">Content Summary</div>
                 <div className="mt-2 text-sm">
-                  {totalPosts} social posts + {state.youtubeShorts + state.youtubeStandard} videos
+                  {totalPosts} social posts{state.generateImages ? ` (with images)` : ""} + {state.youtubeShorts + state.youtubeStandard} videos
                   over {state.durationDays} days
                 </div>
               </div>
@@ -637,7 +674,7 @@ export default function CreateCampaignPage() {
               <div className="p-4 bg-[#1A1A1A] rounded-lg border border-[#2A2A2A]">
                 <div className="text-sm text-gray-400">Content to Generate</div>
                 <div className="font-semibold">
-                  1 landing page + {totalPosts} social posts + {state.youtubeShorts + state.youtubeStandard} videos
+                  1 landing page + {totalPosts} social posts{state.generateImages ? ` + ${totalPosts} AI images` : ""} + {state.youtubeShorts + state.youtubeStandard} videos
                 </div>
                 <div className="text-sm text-gray-500 mt-1">
                   Platforms: {state.platforms.join(", ")}
@@ -720,7 +757,7 @@ export default function CreateCampaignPage() {
                 <p className="text-gray-400">
                   {generationPhase === "landing"
                     ? "AI is building your landing page with Gamma..."
-                    : `AI is creating ${totalPosts} posts and ${state.youtubeShorts + state.youtubeStandard} video scripts...`}
+                    : `AI is creating ${totalPosts} posts${state.generateImages ? ` and ${totalPosts} images` : ""} and ${state.youtubeShorts + state.youtubeStandard} video scripts...`}
                 </p>
                 {landingPageUrl && (
                   <p className="text-sm text-green-400">
@@ -728,7 +765,9 @@ export default function CreateCampaignPage() {
                   </p>
                 )}
                 <p className="text-sm text-gray-500">
-                  This usually takes 30-60 seconds
+                  {state.generateImages
+                    ? "This may take 2-3 minutes with image generation"
+                    : "This usually takes 30-60 seconds"}
                 </p>
               </>
             ) : (
@@ -749,6 +788,12 @@ export default function CreateCampaignPage() {
                       <MessageSquare className="w-4 h-4 text-[#FF4500]" />
                       {totalPosts} social media posts
                     </li>
+                    {state.generateImages && (
+                      <li className="flex items-center gap-2">
+                        <Image className="w-4 h-4 text-[#FF4500]" />
+                        {totalPosts} AI-generated images
+                      </li>
+                    )}
                     <li className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[#FF4500]" />
                       {state.youtubeShorts + state.youtubeStandard} video scripts

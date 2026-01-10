@@ -119,12 +119,13 @@ export function createImagePrompt(
   const keywords = extractKeywords(contentText);
   
   // Brand style - DALL-E understands natural language well
+  // CRITICAL: Emphatic no-text instruction - DALL-E often ignores single mentions
   const brandStyle = `
-    Professional, cinematic photography style.
+    Professional, cinematic photography style. Pure visual imagery only.
     Color palette: Deep blacks, rich oranges (#FF6B35), warm earth tones.
     Mood: Powerful, authentic, no-nonsense.
     Theme: Professional truck drivers, health, freedom of the open road.
-    NO TEXT OR WORDS IN THE IMAGE.
+    CRITICAL: Absolutely NO text, NO words, NO letters, NO numbers, NO labels, NO signs, NO banners, NO titles, NO captions anywhere in the image. This is a text-free photograph only.
   `.trim();
 
   // Build scene based on content keywords
@@ -149,9 +150,9 @@ export function createImagePrompt(
     scene = "Majestic semi-truck parked at a scenic overlook during sunset, American heartland, freedom and independence of the open road";
   }
 
-  // Combine for final prompt
-  const prompt = `${scene}. ${brandStyle}`;
-  
+  // Combine for final prompt - repeat no-text instruction at start and end for emphasis
+  const prompt = `Create a photograph with NO TEXT whatsoever: ${scene}. ${brandStyle} Remember: This image must contain absolutely zero text, letters, words, or writing of any kind.`;
+
   return prompt;
 }
 

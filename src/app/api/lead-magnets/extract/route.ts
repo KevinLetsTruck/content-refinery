@@ -42,7 +42,9 @@ interface ExtractedData {
  */
 async function extractTextFromPdfBuffer(buffer: Buffer): Promise<string> {
   try {
-    const { text } = await extractText(buffer, { mergePages: true });
+    // Convert Buffer to Uint8Array for unpdf compatibility
+    const uint8Array = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    const { text } = await extractText(uint8Array, { mergePages: true });
 
     // Clean up the extracted text
     const cleanedText = (text || "")

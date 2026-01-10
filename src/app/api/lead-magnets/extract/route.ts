@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import prisma from "@/lib/db/prisma";
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require("pdf-parse");
 
 export const runtime = 'nodejs';
 
@@ -36,60 +38,28 @@ interface ExtractedData {
 }
 
 /**
- * Simple PDF text extraction using regex patterns
- * This is a basic approach that works for text-based PDFs
+ * Extract text from PDF buffer using pdf-parse library
  */
-function extractTextFromPdfBuffer(buffer: Buffer): string {
-  const pdfString = buffer.toString('latin1');
+async function extractTextFromPdfBuffer(buffer: Buffer): Promise<string> {
+  try {
+    const data = await pdfParse(buffer);
+    const text = data.text || "";
 
-  // Extract text streams from PDF
-  const textMatches: string[] = [];
-
-  // Pattern 1: BT...ET blocks (text blocks)
-  const btEtRegex = /BT\s*([\s\S]*?)\s*ET/g;
-  let match;
-  while ((match = btEtRegex.exec(pdfString)) !== null) {
-    const block = match[1];
-    // Extract text within parentheses (literal strings)
-    const textRegex = /\(([^)]*)\)/g;
-    let textMatch;
-    while ((textMatch = textRegex.exec(block)) !== null) {
-      const text = textMatch[1]
-        .replace(/\\n/g, '\n')
-        .replace(/\\r/g, '')
-        .replace(/\\\(/g, '(')
-        .replace(/\\\)/g, ')')
-        .replace(/\\\\/g, '\\');
-      if (text.trim()) {
-        textMatches.push(text);
-      }
-    }
-  }
-
-  // Pattern 2: Look for stream content with readable text
-  const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
-  while ((match = streamRegex.exec(pdfString)) !== null) {
-    const content = match[1];
-    // Extract readable ASCII text
-    const readableText = content.replace(/[^\x20-\x7E\n\r]/g, ' ')
+    // Clean up the extracted text
+    const cleanedText = text
       .replace(/\s+/g, ' ')
+      .replace(/\n\s*\n/g, '\n\n')
       .trim();
-    if (readableText.length > 50) {
-      // Only include substantial text blocks
-      textMatches.push(readableText);
+
+    if (!cleanedText || cleanedText.length < 100) {
+      return "Unable to extract meaningful text from PDF. The PDF may be image-based or encrypted.";
     }
+
+    return cleanedText;
+  } catch (error) {
+    console.error("[PDF Parse] Error extracting text:", error);
+    return "Failed to parse PDF. The file may be corrupted or use an unsupported format.";
   }
-
-  // Combine and clean up
-  let fullText = textMatches.join('\n');
-
-  // Clean up common PDF artifacts
-  fullText = fullText
-    .replace(/\s+/g, ' ')
-    .replace(/\n\s*\n/g, '\n\n')
-    .trim();
-
-  return fullText || "Unable to extract text from PDF. The PDF may be image-based or encrypted.";
 }
 
 /**
@@ -183,7 +153,7 @@ export async function POST(request: NextRequest) {
 
     // Extract text from PDF
     console.log(`[Lead Magnet Extract] Extracting text from PDF (${pdfBuffer.length} bytes)`);
-    const pdfText = extractTextFromPdfBuffer(pdfBuffer);
+    const pdfText = await extractTextFromPdfBuffer(pdfBuffer);
 
     // Truncate if too long (Claude has context limits)
     const maxChars = 100000;

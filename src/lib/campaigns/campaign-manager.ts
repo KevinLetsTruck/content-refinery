@@ -173,6 +173,13 @@ export async function getCampaign(campaignId: string) {
       videos: {
         orderBy: { dayNumber: "asc" },
       },
+      emailSequence: {
+        include: {
+          emails: {
+            orderBy: { order: "asc" },
+          },
+        },
+      },
     },
   });
 }

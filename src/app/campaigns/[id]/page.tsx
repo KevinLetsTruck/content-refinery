@@ -15,7 +15,29 @@ import {
   Loader2,
   Rocket,
   Edit,
+  Mail,
+  Upload,
+  ExternalLink,
 } from "lucide-react";
+
+interface EmailDetail {
+  id: string;
+  order: number;
+  subject: string;
+  preheader: string | null;
+  purpose: string;
+  sendDelayDays: number;
+  ccCampaignId: string | null;
+  status: string;
+}
+
+interface EmailSequenceDetail {
+  id: string;
+  name: string;
+  status: string;
+  sequenceLength: number;
+  emails: EmailDetail[];
+}
 
 interface CampaignDetail {
   id: string;
@@ -50,6 +72,7 @@ interface CampaignDetail {
     dayNumber: number;
     scheduledFor: string;
   }>;
+  emailSequence: EmailSequenceDetail | null;
 }
 
 export default function CampaignDetailPage() {
@@ -58,6 +81,12 @@ export default function CampaignDetailPage() {
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    success: boolean;
+    summary?: { created: number; updated: number; skipped: number; failed: number };
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchCampaign();
@@ -82,7 +111,7 @@ export default function CampaignDetailPage() {
         method: "POST",
       });
       const data = await res.json();
-      
+
       if (data.success || data.error === undefined) {
         await fetchCampaign();
       } else {
@@ -92,6 +121,45 @@ export default function CampaignDetailPage() {
       console.error(`Failed to ${action}:`, error);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const syncEmailsToCC = async (overwrite = false) => {
+    if (!campaign?.emailSequence) return;
+
+    setSyncLoading(true);
+    setSyncResult(null);
+
+    try {
+      const res = await fetch(`/api/email-sequences/${campaign.emailSequence.id}/sync-to-cc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overwrite }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSyncResult({
+          success: data.success,
+          summary: data.summary,
+        });
+        // Refresh campaign to get updated ccCampaignId values
+        await fetchCampaign();
+      } else {
+        setSyncResult({
+          success: false,
+          error: data.error || "Sync failed",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to sync to CC:", error);
+      setSyncResult({
+        success: false,
+        error: "Network error - please try again",
+      });
+    } finally {
+      setSyncLoading(false);
     }
   };
 
@@ -320,6 +388,109 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
+        {/* Email Sequence Section */}
+        {campaign.emailSequence && (
+          <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-6 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Mail className="w-5 h-5 text-[#FF4500]" />
+                <h2 className="text-lg font-semibold">Email Nurture Sequence</h2>
+                <span className="px-2 py-0.5 bg-[#2A2A2A] text-gray-400 text-xs rounded">
+                  {campaign.emailSequence.emails.length} emails
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {campaign.emailSequence.emails.some(e => e.ccCampaignId) && (
+                  <span className="text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded">
+                    Synced to CC
+                  </span>
+                )}
+                <button
+                  onClick={() => syncEmailsToCC(false)}
+                  disabled={syncLoading}
+                  className="flex items-center gap-2 px-3 py-2 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg text-sm transition disabled:opacity-50"
+                >
+                  {syncLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  Sync to Constant Contact
+                </button>
+              </div>
+            </div>
+
+            {/* Sync Result Message */}
+            {syncResult && (
+              <div
+                className={`mb-4 p-3 rounded-lg text-sm ${
+                  syncResult.success
+                    ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                    : "bg-red-500/10 border border-red-500/30 text-red-400"
+                }`}
+              >
+                {syncResult.success ? (
+                  <>
+                    Successfully synced to Constant Contact!
+                    {syncResult.summary && (
+                      <span className="ml-2 text-gray-400">
+                        ({syncResult.summary.created} created, {syncResult.summary.skipped} skipped)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  syncResult.error
+                )}
+              </div>
+            )}
+
+            {/* Email List */}
+            <div className="space-y-3">
+              {campaign.emailSequence.emails.map((email) => (
+                <div
+                  key={email.id}
+                  className="flex items-center gap-4 p-3 bg-[#0D0D0D] rounded-lg"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#FF4500]/20 text-[#FF4500] flex items-center justify-center text-sm font-bold">
+                    {email.order}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{email.subject}</div>
+                    <div className="text-sm text-gray-400">
+                      Day {email.sendDelayDays} • {email.purpose.replace("_", " ")}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {email.ccCampaignId ? (
+                      <span className="flex items-center gap-1 text-xs text-green-400 bg-green-400/10 px-2 py-1 rounded">
+                        <CheckCircle className="w-3 h-3" />
+                        CC
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-500 bg-[#2A2A2A] px-2 py-1 rounded">
+                        Draft
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Resync Option */}
+            {campaign.emailSequence.emails.some(e => e.ccCampaignId) && (
+              <div className="mt-4 pt-4 border-t border-[#2A2A2A]">
+                <button
+                  onClick={() => syncEmailsToCC(true)}
+                  disabled={syncLoading}
+                  className="text-sm text-gray-400 hover:text-white transition"
+                >
+                  Overwrite existing campaigns in CC
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Recent Posts Preview */}
         <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-6">
           <div className="flex items-center justify-between mb-4">
@@ -331,7 +502,7 @@ export default function CampaignDetailPage() {
               View All in Calendar →
             </Link>
           </div>
-          
+
           <div className="space-y-3">
             {campaign.posts.slice(0, 5).map((post) => (
               <div

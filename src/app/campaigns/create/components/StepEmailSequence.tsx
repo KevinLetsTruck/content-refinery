@@ -13,6 +13,9 @@ import {
   Calendar,
   Edit3,
   Eye,
+  Upload,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { Product } from "@/lib/products/catalog";
 
@@ -26,6 +29,7 @@ interface Email {
   bodyText: string;
   purpose: "value" | "engagement" | "soft_pitch" | "hard_pitch";
   status?: string;
+  ccCampaignId?: string;
 }
 
 interface EmailSequence {
@@ -79,6 +83,12 @@ export default function StepEmailSequence({
   const [expandedEmail, setExpandedEmail] = useState<number | null>(null);
   const [previewEmail, setPreviewEmail] = useState<Email | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{
+    success: boolean;
+    synced: number;
+    total: number;
+  } | null>(null);
 
   // Fetch recommended products on mount
   useEffect(() => {
@@ -166,6 +176,51 @@ export default function StepEmailSequence({
 
   const toggleEmailExpand = (order: number) => {
     setExpandedEmail(expandedEmail === order ? null : order);
+  };
+
+  const syncToConstantContact = async () => {
+    if (!sequence) return;
+
+    setIsSyncing(true);
+    setSyncStatus(null);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/email-sequences/${sequence.id}/sync-to-cc`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ overwrite: false }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to sync to Constant Contact");
+      }
+
+      setSyncStatus({
+        success: data.success,
+        synced: data.summary.created + data.summary.updated,
+        total: data.summary.total,
+      });
+
+      // Refresh sequence to get updated ccCampaignIds
+      const refreshResponse = await fetch(`/api/email-sequences/${sequence.id}`);
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        setSequence(refreshData.sequence);
+      }
+    } catch (err) {
+      console.error("Error syncing to CC:", err);
+      setError(err instanceof Error ? err.message : "Failed to sync to Constant Contact");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const getSyncedCount = () => {
+    if (!sequence) return 0;
+    return sequence.emails.filter(e => e.ccCampaignId).length;
   };
 
   return (
@@ -335,6 +390,12 @@ export default function StepEmailSequence({
                             <Calendar className="w-3 h-3" />
                             Day {email.sendDelayDays}
                           </span>
+                          {email.ccCampaignId && (
+                            <span className="px-2 py-0.5 text-xs rounded-full border bg-green-500/20 text-green-400 border-green-500/30 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              CC
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -392,17 +453,80 @@ export default function StepEmailSequence({
             })}
           </div>
 
-          {/* Regenerate All Button */}
-          <button
-            onClick={() => {
-              setSequence(null);
-              setError(null);
-            }}
-            className="w-full flex items-center justify-center gap-2 py-3 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-lg transition"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Start Over
-          </button>
+          {/* Sync Status */}
+          {syncStatus && (
+            <div className={`p-4 rounded-lg border ${
+              syncStatus.success
+                ? "bg-green-500/10 border-green-500/30"
+                : "bg-yellow-500/10 border-yellow-500/30"
+            }`}>
+              <div className="flex items-center gap-2">
+                {syncStatus.success ? (
+                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-yellow-400" />
+                )}
+                <span className={syncStatus.success ? "text-green-400" : "text-yellow-400"}>
+                  {syncStatus.synced} of {syncStatus.total} emails synced to Constant Contact
+                </span>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+              {error}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            {/* Sync to Constant Contact Button */}
+            <button
+              onClick={syncToConstantContact}
+              disabled={isSyncing || getSyncedCount() === sequence.emails.length}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-medium transition ${
+                getSyncedCount() === sequence.emails.length
+                  ? "bg-green-500/20 text-green-400 border border-green-500/30 cursor-default"
+                  : "bg-[#FF4500] hover:bg-[#FF5722] text-white"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Syncing to Constant Contact...
+                </>
+              ) : getSyncedCount() === sequence.emails.length ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Synced to Constant Contact
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Sync to Constant Contact
+                  {getSyncedCount() > 0 && (
+                    <span className="text-sm opacity-75">
+                      ({getSyncedCount()}/{sequence.emails.length})
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
+
+            {/* Start Over Button */}
+            <button
+              onClick={() => {
+                setSequence(null);
+                setError(null);
+                setSyncStatus(null);
+              }}
+              className="flex items-center justify-center gap-2 px-6 py-3 border border-[#2A2A2A] hover:border-[#3A3A3A] rounded-lg transition"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Start Over
+            </button>
+          </div>
         </div>
       )}
 

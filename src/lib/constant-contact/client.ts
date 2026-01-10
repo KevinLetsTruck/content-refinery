@@ -13,6 +13,11 @@ import {
   Contact,
   ContactList,
   CreateContactResponse,
+  CreateEmailCampaignInput,
+  CreateEmailCampaignResponse,
+  EmailCampaign,
+  PhysicalAddress,
+  SendEmailInput,
 } from "./types";
 import prisma from "@/lib/db/prisma";
 
@@ -366,6 +371,164 @@ export class ConstantContactClient {
       // Ignore if already tagged
       console.log(`[CC] Tag already applied or error: ${tagName}`);
     }
+  }
+
+  // ============================================
+  // EMAIL CAMPAIGN METHODS
+  // ============================================
+
+  /**
+   * Get the default physical address for email footers
+   */
+  getDefaultPhysicalAddress(): PhysicalAddress {
+    return {
+      address_line1: process.env.BUSINESS_ADDRESS_LINE1 || "Let's Truck",
+      city: process.env.BUSINESS_CITY || "Dallas",
+      state_code: process.env.BUSINESS_STATE || "TX",
+      postal_code: process.env.BUSINESS_ZIP || "75001",
+      country_code: "US",
+    };
+  }
+
+  /**
+   * Create an email campaign (draft)
+   * This creates the campaign in Constant Contact but does NOT send it
+   */
+  async createEmailCampaign(input: {
+    name: string;
+    subject: string;
+    preheader?: string;
+    htmlContent: string;
+    fromEmail?: string;
+    fromName?: string;
+    replyToEmail?: string;
+  }): Promise<CreateEmailCampaignResponse> {
+    const fromEmail = input.fromEmail || process.env.CC_FROM_EMAIL || "kevin@letstruck.com";
+    const fromName = input.fromName || process.env.CC_FROM_NAME || "Kevin Rutherford";
+    const replyToEmail = input.replyToEmail || fromEmail;
+
+    const campaignInput: CreateEmailCampaignInput = {
+      name: input.name,
+      email_campaign_activities: [
+        {
+          format_type: 5, // Custom HTML code
+          from_email: fromEmail,
+          from_name: fromName,
+          reply_to_email: replyToEmail,
+          subject: input.subject,
+          preheader: input.preheader,
+          html_content: input.htmlContent,
+          physical_address_in_footer: this.getDefaultPhysicalAddress(),
+        },
+      ],
+    };
+
+    const response = await this.apiRequest<CreateEmailCampaignResponse>("/emails", {
+      method: "POST",
+      body: JSON.stringify(campaignInput),
+    });
+
+    console.log(`[CC] Created email campaign: ${response.campaign_id}`);
+    return response;
+  }
+
+  /**
+   * Get an email campaign by ID
+   */
+  async getEmailCampaign(campaignId: string): Promise<EmailCampaign> {
+    return this.apiRequest<EmailCampaign>(`/emails/${campaignId}`);
+  }
+
+  /**
+   * Update an email campaign activity (the actual email content)
+   */
+  async updateEmailCampaignActivity(
+    campaignActivityId: string,
+    updates: {
+      subject?: string;
+      preheader?: string;
+      htmlContent?: string;
+      fromEmail?: string;
+      fromName?: string;
+    }
+  ): Promise<void> {
+    const body: Record<string, unknown> = {};
+    if (updates.subject) body.subject = updates.subject;
+    if (updates.preheader) body.preheader = updates.preheader;
+    if (updates.htmlContent) body.html_content = updates.htmlContent;
+    if (updates.fromEmail) body.from_email = updates.fromEmail;
+    if (updates.fromName) body.from_name = updates.fromName;
+
+    await this.apiRequest(`/emails/activities/${campaignActivityId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+
+    console.log(`[CC] Updated email activity: ${campaignActivityId}`);
+  }
+
+  /**
+   * Schedule an email campaign to be sent at a specific time
+   */
+  async scheduleEmailCampaign(
+    campaignActivityId: string,
+    scheduledDate: Date
+  ): Promise<void> {
+    await this.apiRequest(`/emails/activities/${campaignActivityId}/schedules`, {
+      method: "POST",
+      body: JSON.stringify({
+        scheduled_date: scheduledDate.toISOString(),
+      }),
+    });
+
+    console.log(`[CC] Scheduled email activity ${campaignActivityId} for ${scheduledDate.toISOString()}`);
+  }
+
+  /**
+   * Send an email campaign immediately to specified lists
+   */
+  async sendEmailCampaign(
+    campaignActivityId: string,
+    listIds: string[]
+  ): Promise<void> {
+    const sendInput: SendEmailInput = {
+      contact_lists: listIds,
+    };
+
+    await this.apiRequest(`/emails/activities/${campaignActivityId}/send`, {
+      method: "POST",
+      body: JSON.stringify(sendInput),
+    });
+
+    console.log(`[CC] Sent email activity ${campaignActivityId} to lists: ${listIds.join(", ")}`);
+  }
+
+  /**
+   * Delete an email campaign
+   */
+  async deleteEmailCampaign(campaignId: string): Promise<void> {
+    await this.apiRequest(`/emails/${campaignId}`, {
+      method: "DELETE",
+    });
+
+    console.log(`[CC] Deleted email campaign: ${campaignId}`);
+  }
+
+  /**
+   * List all email campaigns with optional filtering
+   */
+  async listEmailCampaigns(options?: {
+    limit?: number;
+    status?: "DRAFT" | "SCHEDULED" | "EXECUTING" | "DONE" | "CANCELLED";
+  }): Promise<{ campaigns: EmailCampaign[] }> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", options.limit.toString());
+    if (options?.status) params.set("status", options.status);
+
+    const query = params.toString();
+    const endpoint = query ? `/emails?${query}` : "/emails";
+
+    return this.apiRequest<{ campaigns: EmailCampaign[] }>(endpoint);
   }
 }
 

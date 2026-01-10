@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import prisma from "@/lib/db/prisma";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
+import { extractText } from "unpdf";
 
 export const runtime = 'nodejs';
 
@@ -38,15 +37,15 @@ interface ExtractedData {
 }
 
 /**
- * Extract text from PDF buffer using pdf-parse library
+ * Extract text from PDF buffer using unpdf library
+ * unpdf is a modern, serverless-friendly PDF parser
  */
 async function extractTextFromPdfBuffer(buffer: Buffer): Promise<string> {
   try {
-    const data = await pdfParse(buffer);
-    const text = data.text || "";
+    const { text } = await extractText(buffer, { mergePages: true });
 
     // Clean up the extracted text
-    const cleanedText = text
+    const cleanedText = (text || "")
       .replace(/\s+/g, ' ')
       .replace(/\n\s*\n/g, '\n\n')
       .trim();

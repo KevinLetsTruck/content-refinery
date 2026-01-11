@@ -34,34 +34,34 @@ model SourceApp {
 // SOURCES - Raw uploaded content
 // ============================================
 model Source {
-  id               String   @id @default(uuid())
-  sourceAppId      String?  @map("source_app_id") // Which app sent this
+  id               String  @id @default(uuid())
+  sourceAppId      String? @map("source_app_id") // Which app sent this
   title            String
-  sourceType       String   @map("source_type") // audio, video, text, url
-  contentType      String?  @map("content_type") // episode, success_story, chapter_teaser, etc.
-  fileUrl          String?  @map("file_url")
-  storageKey       String?  @map("storage_key") // Key in R2 or local storage
-  storageType      String?  @map("storage_type") // "r2" or "local"
-  originalFilename String?  @map("original_filename")
-  fileSizeBytes    BigInt?  @map("file_size_bytes")
-  durationSeconds  Int?     @map("duration_seconds")
-  status           String   @default("pending") // pending, uploading, processing, transcribing, extracting, completed, failed
-  errorMessage     String?  @map("error_message")
-  
+  sourceType       String  @map("source_type") // audio, video, text, url
+  contentType      String? @map("content_type") // episode, success_story, chapter_teaser, etc.
+  fileUrl          String? @map("file_url")
+  storageKey       String? @map("storage_key") // Key in R2 or local storage
+  storageType      String? @map("storage_type") // "r2" or "local"
+  originalFilename String? @map("original_filename")
+  fileSizeBytes    BigInt? @map("file_size_bytes")
+  durationSeconds  Int?    @map("duration_seconds")
+  status           String  @default("pending") // pending, uploading, processing, transcribing, extracting, completed, failed
+  errorMessage     String? @map("error_message")
+
   // Flexible data from source app
-  rawData          Json?    @map("raw_data") // Original payload from source app
-  metadata         Json     @default("{}")
-  
+  rawData  Json? @map("raw_data") // Original payload from source app
+  metadata Json  @default("{}")
+
   // Processing flags
   needsTranscription Boolean @default(false) @map("needs_transcription")
   needsExtraction    Boolean @default(true) @map("needs_extraction")
-  
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
 
-  sourceApp    SourceApp?   @relation(fields: [sourceAppId], references: [id])
-  transcripts  Transcript[]
-  extractions  Extraction[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sourceApp   SourceApp?   @relation(fields: [sourceAppId], references: [id])
+  transcripts Transcript[]
+  extractions Extraction[]
 
   @@index([sourceAppId])
   @@index([status])
@@ -93,7 +93,7 @@ model Extraction {
   id           String   @id @default(uuid())
   sourceId     String   @map("source_id")
   transcriptId String?  @map("transcript_id")
-  type         String   // quote, stat, hot_take, story, clip, product_mention, testimonial, teaser, excerpt
+  type         String // quote, stat, hot_take, story, clip, product_mention, testimonial, teaser, excerpt
   text         String
   startTime    Decimal? @map("start_time")
   endTime      Decimal? @map("end_time")
@@ -117,9 +117,9 @@ model Extraction {
 model GeneratedContent {
   id              String    @id @default(uuid())
   extractionId    String?   @map("extraction_id")
-  platform        String    // twitter, instagram, facebook, linkedin, tiktok, youtube, gamma
+  platform        String // twitter, instagram, facebook, linkedin, tiktok, youtube, gamma
   text            String    @default("")
-  title           String?   // Title for imported/wizard content
+  title           String? // Title for imported/wizard content
   contentType     String?   @map("content_type") // document, presentation, social_post, etc.
   hashtags        String[]
   mediaUrl        String?   @map("media_url")
@@ -129,21 +129,21 @@ model GeneratedContent {
   publishedAt     DateTime? @map("published_at")
   platformPostId  String?   @map("platform_post_id")
   platformPostUrl String?   @map("platform_post_url")
-  engagementData  Json      @default("{}")  @map("engagement_data")
+  engagementData  Json      @default("{}") @map("engagement_data")
   reviewedBy      String?   @map("reviewed_by")
   reviewedAt      DateTime? @map("reviewed_at")
   metadata        Json      @default("{}")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
-  
+
   // Gamma integration
-  gammaId         String?   @map("gamma_id")
-  gammaUrl        String?   @map("gamma_url")
-  
+  gammaId  String? @map("gamma_id")
+  gammaUrl String? @map("gamma_url")
+
   // Source tracking
-  source          String    @default("wizard") // wizard, imported, api
-  importedAt      DateTime? @map("imported_at")
-  
+  source     String    @default("wizard") // wizard, imported, api
+  importedAt DateTime? @map("imported_at")
+
   // Evergreen fields
   isEvergreen       Boolean   @default(false) @map("is_evergreen")
   evergreenScore    Float?    @map("evergreen_score") // Performance-based priority
@@ -151,17 +151,17 @@ model GeneratedContent {
   reshareCount      Int       @default(0) @map("reshare_count")
   nextReshareDate   DateTime? @map("next_reshare_date")
   evergreenPausedAt DateTime? @map("evergreen_paused_at") // Temporarily pause resharing
-  
+
   // Repurposing relationships
-  parentContentId   String?            @map("parent_content_id")
-  parentContent     GeneratedContent?  @relation("ContentLineage", fields: [parentContentId], references: [id])
-  derivedContent    GeneratedContent[] @relation("ContentLineage")
-  repurposedFrom    String?            @map("repurposed_from") // e.g., "presentation", "thread"
-  
+  parentContentId String?            @map("parent_content_id")
+  parentContent   GeneratedContent?  @relation("ContentLineage", fields: [parentContentId], references: [id])
+  derivedContent  GeneratedContent[] @relation("ContentLineage")
+  repurposedFrom  String?            @map("repurposed_from") // e.g., "presentation", "thread"
+
   // Link tracking stats (denormalized)
-  totalClicks       Int      @default(0) @map("total_clicks")
-  totalConversions  Int      @default(0) @map("total_conversions")
-  totalRevenue      Float    @default(0) @map("total_revenue")
+  totalClicks      Int   @default(0) @map("total_clicks")
+  totalConversions Int   @default(0) @map("total_conversions")
+  totalRevenue     Float @default(0) @map("total_revenue")
 
   extraction           Extraction?           @relation(fields: [extractionId], references: [id], onDelete: Cascade)
   performance          PostPerformance?
@@ -203,14 +203,14 @@ model Product {
 // PLATFORM_CREDENTIALS - Social media tokens
 // ============================================
 model PlatformCredential {
-  id           String   @id @default(uuid())
-  platform     String   @unique // twitter, instagram, facebook, linkedin, tiktok, youtube
-  accessToken  String   @map("access_token")
-  refreshToken String?  @map("refresh_token")
+  id           String    @id @default(uuid())
+  platform     String    @unique // twitter, instagram, facebook, linkedin, tiktok, youtube
+  accessToken  String    @map("access_token")
+  refreshToken String?   @map("refresh_token")
   expiresAt    DateTime? @map("expires_at")
-  metadata     Json     @default("{}")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  metadata     Json      @default("{}")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@map("platform_credentials")
 }
@@ -219,15 +219,15 @@ model PlatformCredential {
 // VOICE_PROFILES - AI generation styles
 // ============================================
 model VoiceProfile {
-  id          String   @id @default(uuid())
-  name        String   @unique // kevin-health, trucktales-storyteller, testimonial
-  displayName String   @map("display_name")
-  description String?
-  systemPrompt String  @map("system_prompt") @db.Text
-  examples    Json?    // Example outputs for this voice
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  name         String   @unique // kevin-health, trucktales-storyteller, testimonial
+  displayName  String   @map("display_name")
+  description  String?
+  systemPrompt String   @map("system_prompt") @db.Text
+  examples     Json? // Example outputs for this voice
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("voice_profiles")
 }
@@ -238,56 +238,56 @@ model VoiceProfile {
 
 // Track performance metrics for every published post
 model PostPerformance {
-  id                 String   @id @default(uuid())
-  generatedContentId String   @unique @map("generated_content_id")
-  platform           String   // twitter, facebook, instagram
-  
+  id                 String @id @default(uuid())
+  generatedContentId String @unique @map("generated_content_id")
+  platform           String // twitter, facebook, instagram
+
   // Content metadata (for correlation analysis)
-  formula            String?  // data_bomb, tough_love, transformation, etc.
-  hookType           String?  @map("hook_type") // shocking_stat, contrarian, etc.
-  pillar             String?  // proper_human_diet, gut_health, etc.
-  objective          String?  // email_list, coaching, product_sales, etc.
-  contentType        String?  @map("content_type") // quote, stat, hot_take, story
-  
+  formula     String? // data_bomb, tough_love, transformation, etc.
+  hookType    String? @map("hook_type") // shocking_stat, contrarian, etc.
+  pillar      String? // proper_human_diet, gut_health, etc.
+  objective   String? // email_list, coaching, product_sales, etc.
+  contentType String? @map("content_type") // quote, stat, hot_take, story
+
   // Timing metadata
-  publishedAt        DateTime @map("published_at")
-  dayOfWeek          Int      @map("day_of_week") // 0=Sunday, 6=Saturday
-  hourOfDay          Int      @map("hour_of_day") // 0-23
-  
+  publishedAt DateTime @map("published_at")
+  dayOfWeek   Int      @map("day_of_week") // 0=Sunday, 6=Saturday
+  hourOfDay   Int      @map("hour_of_day") // 0-23
+
   // Raw metrics (updated by cron job)
-  impressions        Int      @default(0)
-  reach              Int      @default(0)
-  likes              Int      @default(0)
-  comments           Int      @default(0)
-  shares             Int      @default(0)
-  saves              Int      @default(0)
-  clicks             Int      @default(0)
-  profileVisits      Int      @default(0) @map("profile_visits")
-  follows            Int      @default(0)
-  
+  impressions   Int @default(0)
+  reach         Int @default(0)
+  likes         Int @default(0)
+  comments      Int @default(0)
+  shares        Int @default(0)
+  saves         Int @default(0)
+  clicks        Int @default(0)
+  profileVisits Int @default(0) @map("profile_visits")
+  follows       Int @default(0)
+
   // Calculated metrics
-  engagementRate     Decimal  @default(0) @map("engagement_rate") @db.Decimal(10, 6)
-  clickRate          Decimal  @default(0) @map("click_rate") @db.Decimal(10, 6)
-  viralityScore      Decimal  @default(0) @map("virality_score") @db.Decimal(10, 6)
-  saveRate           Decimal  @default(0) @map("save_rate") @db.Decimal(10, 6)
-  
+  engagementRate Decimal @default(0) @map("engagement_rate") @db.Decimal(10, 6)
+  clickRate      Decimal @default(0) @map("click_rate") @db.Decimal(10, 6)
+  viralityScore  Decimal @default(0) @map("virality_score") @db.Decimal(10, 6)
+  saveRate       Decimal @default(0) @map("save_rate") @db.Decimal(10, 6)
+
   // Performance classification
-  performanceLevel   String   @default("pending") @map("performance_level") // pending, poor, average, good, excellent, viral
-  
+  performanceLevel String @default("pending") @map("performance_level") // pending, poor, average, good, excellent, viral
+
   // A/B test reference
-  abTestId           String?  @map("ab_test_id")
-  variant            String?  // A, B, or C
-  
+  abTestId String? @map("ab_test_id")
+  variant  String? // A, B, or C
+
   // Tracking
-  lastFetchedAt      DateTime? @map("last_fetched_at")
-  fetchCount         Int      @default(0) @map("fetch_count")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  
+  lastFetchedAt DateTime? @map("last_fetched_at")
+  fetchCount    Int       @default(0) @map("fetch_count")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
   // Relations
-  generatedContent   GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
-  abTest             ABTest?  @relation(fields: [abTestId], references: [id])
-  
+  generatedContent GeneratedContent @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+  abTest           ABTest?          @relation(fields: [abTestId], references: [id])
+
   @@index([platform])
   @@index([formula])
   @@index([hookType])
@@ -301,42 +301,42 @@ model PostPerformance {
 
 // A/B test experiments
 model ABTest {
-  id              String    @id @default(uuid())
-  name            String    // "Gut Health Hook Test - Jan 2026"
-  extractionId    String?   @map("extraction_id")
-  
+  id           String  @id @default(uuid())
+  name         String // "Gut Health Hook Test - Jan 2026"
+  extractionId String? @map("extraction_id")
+
   // Test configuration
-  testVariable    String    @map("test_variable") // formula, hook, cta, timing
-  platform        String    // twitter, facebook, instagram
-  pillar          String?   // Content pillar being tested
-  
+  testVariable String  @map("test_variable") // formula, hook, cta, timing
+  platform     String // twitter, facebook, instagram
+  pillar       String? // Content pillar being tested
+
   // Variant configurations (JSON)
-  variantAConfig  Json      @map("variant_a_config")
-  variantBConfig  Json      @map("variant_b_config")
-  variantCConfig  Json?     @map("variant_c_config")
-  
+  variantAConfig Json  @map("variant_a_config")
+  variantBConfig Json  @map("variant_b_config")
+  variantCConfig Json? @map("variant_c_config")
+
   // Status tracking
-  status          String    @default("running") // draft, running, completed, cancelled
-  startedAt       DateTime  @default(now()) @map("started_at")
-  completedAt     DateTime? @map("completed_at")
-  
+  status      String    @default("running") // draft, running, completed, cancelled
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+
   // Results
-  winningVariant  String?   @map("winning_variant") // A, B, C, or null if inconclusive
-  confidenceLevel Decimal?  @map("confidence_level") @db.Decimal(5, 4) // 0.0000 to 1.0000
-  liftPercentage  Decimal?  @map("lift_percentage") @db.Decimal(10, 2) // Winner vs loser improvement
-  
+  winningVariant  String?  @map("winning_variant") // A, B, C, or null if inconclusive
+  confidenceLevel Decimal? @map("confidence_level") @db.Decimal(5, 4) // 0.0000 to 1.0000
+  liftPercentage  Decimal? @map("lift_percentage") @db.Decimal(10, 2) // Winner vs loser improvement
+
   // Metrics summary (JSON)
-  variantAMetrics Json?     @map("variant_a_metrics")
-  variantBMetrics Json?     @map("variant_b_metrics")
-  variantCMetrics Json?     @map("variant_c_metrics")
-  
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
+  variantAMetrics Json? @map("variant_a_metrics")
+  variantBMetrics Json? @map("variant_b_metrics")
+  variantCMetrics Json? @map("variant_c_metrics")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  posts           PostPerformance[]
-  extraction      Extraction? @relation(fields: [extractionId], references: [id])
-  
+  posts      PostPerformance[]
+  extraction Extraction?       @relation(fields: [extractionId], references: [id])
+
   @@index([status])
   @@index([platform])
   @@index([testVariable])
@@ -345,121 +345,121 @@ model ABTest {
 
 // Learned formula weights (updated by learning engine)
 model FormulaWeight {
-  id               String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Scope
-  platform         String   // twitter, facebook, instagram
-  pillar           String   @default("all") // specific pillar or "all"
-  
+  platform String // twitter, facebook, instagram
+  pillar   String @default("all") // specific pillar or "all"
+
   // Formula weights (1.0 = neutral, >1 = boost, <1 = reduce)
-  dataBomb         Decimal  @default(1.0) @map("data_bomb") @db.Decimal(5, 3)
-  toughLove        Decimal  @default(1.0) @map("tough_love") @db.Decimal(5, 3)
-  transformation   Decimal  @default(1.0) @db.Decimal(5, 3)
-  contrarian       Decimal  @default(1.0) @db.Decimal(5, 3)
-  protocol         Decimal  @default(1.0) @db.Decimal(5, 3)
-  mythBuster       Decimal  @default(1.0) @map("myth_buster") @db.Decimal(5, 3)
-  insiderSecret    Decimal  @default(1.0) @map("insider_secret") @db.Decimal(5, 3)
-  
+  dataBomb       Decimal @default(1.0) @map("data_bomb") @db.Decimal(5, 3)
+  toughLove      Decimal @default(1.0) @map("tough_love") @db.Decimal(5, 3)
+  transformation Decimal @default(1.0) @db.Decimal(5, 3)
+  contrarian     Decimal @default(1.0) @db.Decimal(5, 3)
+  protocol       Decimal @default(1.0) @db.Decimal(5, 3)
+  mythBuster     Decimal @default(1.0) @map("myth_buster") @db.Decimal(5, 3)
+  insiderSecret  Decimal @default(1.0) @map("insider_secret") @db.Decimal(5, 3)
+
   // Tracking
   lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
   sampleSize       Int      @default(0) @map("sample_size")
-  
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@unique([platform, pillar])
   @@map("formula_weights")
 }
 
 // Learned hook weights
 model HookWeight {
-  id               String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Scope
-  platform         String
-  pillar           String   @default("all")
-  
+  platform String
+  pillar   String @default("all")
+
   // Hook type weights
-  shockingStat     Decimal  @default(1.0) @map("shocking_stat") @db.Decimal(5, 3)
-  contrarian       Decimal  @default(1.0) @db.Decimal(5, 3)
-  challenge        Decimal  @default(1.0) @db.Decimal(5, 3)
-  curiosityGap     Decimal  @default(1.0) @map("curiosity_gap") @db.Decimal(5, 3)
-  storyTease       Decimal  @default(1.0) @map("story_tease") @db.Decimal(5, 3)
-  directCommand    Decimal  @default(1.0) @map("direct_command") @db.Decimal(5, 3)
-  usVsThem         Decimal  @default(1.0) @map("us_vs_them") @db.Decimal(5, 3)
-  boldPromise      Decimal  @default(1.0) @map("bold_promise") @db.Decimal(5, 3)
-  
+  shockingStat  Decimal @default(1.0) @map("shocking_stat") @db.Decimal(5, 3)
+  contrarian    Decimal @default(1.0) @db.Decimal(5, 3)
+  challenge     Decimal @default(1.0) @db.Decimal(5, 3)
+  curiosityGap  Decimal @default(1.0) @map("curiosity_gap") @db.Decimal(5, 3)
+  storyTease    Decimal @default(1.0) @map("story_tease") @db.Decimal(5, 3)
+  directCommand Decimal @default(1.0) @map("direct_command") @db.Decimal(5, 3)
+  usVsThem      Decimal @default(1.0) @map("us_vs_them") @db.Decimal(5, 3)
+  boldPromise   Decimal @default(1.0) @map("bold_promise") @db.Decimal(5, 3)
+
   // Tracking
   lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
   sampleSize       Int      @default(0) @map("sample_size")
-  
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@unique([platform, pillar])
   @@map("hook_weights")
 }
 
 // Best posting times learned from data
 model TimingInsight {
-  id               String   @id @default(uuid())
-  
-  platform         String
-  pillar           String   @default("all")
-  
+  id String @id @default(uuid())
+
+  platform String
+  pillar   String @default("all")
+
   // Best/worst times as JSON arrays
   // Format: [{dayOfWeek: 0-6, hourOfDay: 0-23, avgEngagement: 0.05}]
-  bestTimes        Json     @map("best_times")
-  worstTimes       Json     @map("worst_times")
-  
+  bestTimes  Json @map("best_times")
+  worstTimes Json @map("worst_times")
+
   // Tracking
   lastCalculatedAt DateTime @default(now()) @map("last_calculated_at")
   sampleSize       Int      @default(0) @map("sample_size")
-  
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@unique([platform, pillar])
   @@map("timing_insights")
 }
 
 // General content insights (AI-generated recommendations)
 model ContentInsight {
-  id              String    @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Scope
-  platform        String    @default("all") // specific platform or "all"
-  pillar          String?   // specific pillar or null for all
-  category        String?   // e.g., "gut_health", "sleep", "stress"
-  
+  platform String  @default("all") // specific platform or "all"
+  pillar   String? // specific pillar or null for all
+  category String? // e.g., "gut_health", "sleep", "stress"
+
   // Insight details (supports both old and new field naming)
-  insightType     String    @map("insight_type") // top_formula, best_time, cta_winner, trend, recommendation
-  type            String?   // topic_performance, timing, format, engagement_pattern, content_gap, platform
-  title           String    // Short title
-  description     String    // Full insight text
-  recommendation  String?   // What to do about it
-  data            Json?     // Supporting data
-  dataPoints      Json?     @map("data_points") // Evidence/stats backing this insight
-  
+  insightType    String  @map("insight_type") // top_formula, best_time, cta_winner, trend, recommendation
+  type           String? // topic_performance, timing, format, engagement_pattern, content_gap, platform
+  title          String // Short title
+  description    String // Full insight text
+  recommendation String? // What to do about it
+  data           Json? // Supporting data
+  dataPoints     Json?   @map("data_points") // Evidence/stats backing this insight
+
   // Confidence/validity
-  sampleSize      Int       @default(0) @map("sample_size")
-  confidenceScore Decimal   @default(0.5) @map("confidence_score") @db.Decimal(5, 4)
-  confidence      Float     @default(0.5) // 0-1 confidence score
-  impact          String    @default("medium") // low, medium, high
-  
+  sampleSize      Int     @default(0) @map("sample_size")
+  confidenceScore Decimal @default(0.5) @map("confidence_score") @db.Decimal(5, 4)
+  confidence      Float   @default(0.5) // 0-1 confidence score
+  impact          String  @default("medium") // low, medium, high
+
   // Status tracking
-  status          String    @default("new") // new, viewed, acted_on, dismissed
-  actedOnAt       DateTime? @map("acted_on_at")
-  
+  status    String    @default("new") // new, viewed, acted_on, dismissed
+  actedOnAt DateTime? @map("acted_on_at")
+
   // Expiration
-  validFrom       DateTime  @default(now()) @map("valid_from")
-  validUntil      DateTime? @map("valid_until")
-  expiresAt       DateTime? @map("expires_at")
-  isActive        Boolean   @default(true) @map("is_active")
-  
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
+  validFrom  DateTime  @default(now()) @map("valid_from")
+  validUntil DateTime? @map("valid_until")
+  expiresAt  DateTime? @map("expires_at")
+  isActive   Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([insightType])
   @@index([type])
   @@index([status])
@@ -472,68 +472,83 @@ model ContentInsight {
 // ============================================
 
 model Campaign {
-  id              String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   // Basic info
-  name            String
-  description     String?  @db.Text
-  
+  name        String
+  description String? @db.Text
+
   // Type and goal
-  campaignType    String   @map("campaign_type") // product_launch, educational_series, custom
-  goal            String   // email_signups, sales, awareness, engagement
-  
+  campaignType String @map("campaign_type") // product_launch, educational_series, custom
+  goal         String // email_signups, sales, awareness, engagement
+
+  // Source tracking (for unified wizard)
+  sourceType       String? @map("source_type") // quick_idea, guide, episode, product, success_story, trucktales
+  sourceId         String? @map("source_id")
+  leadMagnetId     String? @map("lead_magnet_id")
+  productShopifyId String? @map("product_shopify_id")
+
+  // Campaign style
+  campaignStyle String? @map("campaign_style") // launch, education, problem_solution
+
+  // CTA configuration
+  ctaType String? @map("cta_type") // email_signup, product, coaching, custom, episode, app
+  ctaUrl  String? @map("cta_url")
+  ctaText String? @map("cta_text")
+
   // Product/Topic
-  productName     String?  @map("product_name")
-  productUrl      String?  @map("product_url")
-  topic           String?
-  keyMessages     String[] @map("key_messages")
-  
+  productName String?  @map("product_name")
+  productUrl  String?  @map("product_url")
+  topic       String?
+  keyMessages String[] @map("key_messages")
+
   // Timing
-  startDate       DateTime @map("start_date")
-  endDate         DateTime @map("end_date")
-  durationDays    Int      @map("duration_days")
-  
+  startDate    DateTime @map("start_date")
+  endDate      DateTime @map("end_date")
+  durationDays Int      @map("duration_days")
+
   // Platforms
-  platforms       String[]
-  
+  platforms String[]
+
   // Content settings
   postsPerDayTwitter   Int @default(1) @map("posts_per_day_twitter")
   postsPerDayFacebook  Int @default(1) @map("posts_per_day_facebook")
   postsPerDayInstagram Int @default(1) @map("posts_per_day_instagram")
   youtubeShorts        Int @default(2) @map("youtube_shorts")
   youtubeStandard      Int @default(0) @map("youtube_standard")
-  
+
   // Strategy (AI-generated)
-  strategy        Json?
-  
+  strategy Json?
+
   // Status
-  status          String   @default("draft") // draft, generating, review, approved, active, completed, paused
-  
+  status String @default("draft") // draft, generating, review, approved, active, completed, paused
+
   // Tracking
-  totalPosts      Int      @default(0) @map("total_posts")
-  publishedPosts  Int      @default(0) @map("published_posts")
-  totalVideos     Int      @default(0) @map("total_videos")
-  publishedVideos Int      @default(0) @map("published_videos")
-  
+  totalPosts      Int @default(0) @map("total_posts")
+  publishedPosts  Int @default(0) @map("published_posts")
+  totalVideos     Int @default(0) @map("total_videos")
+  publishedVideos Int @default(0) @map("published_videos")
+
   // Performance (aggregated)
-  totalImpressions   Int @default(0) @map("total_impressions")
-  totalEngagements   Int @default(0) @map("total_engagements")
-  totalClicks        Int @default(0) @map("total_clicks")
-  totalConversions   Int @default(0) @map("total_conversions")
-  engagementRate     Decimal? @map("engagement_rate") @db.Decimal(5, 4)
-  
+  totalImpressions Int      @default(0) @map("total_impressions")
+  totalEngagements Int      @default(0) @map("total_engagements")
+  totalClicks      Int      @default(0) @map("total_clicks")
+  totalConversions Int      @default(0) @map("total_conversions")
+  engagementRate   Decimal? @map("engagement_rate") @db.Decimal(5, 4)
+
   // Timestamps
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  launchedAt      DateTime? @map("launched_at")
-  completedAt     DateTime? @map("completed_at")
-  
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  launchedAt  DateTime? @map("launched_at")
+  completedAt DateTime? @map("completed_at")
+
   // Relations
-  phases          CampaignPhase[]
-  posts           CampaignPost[]
-  videos          CampaignVideo[]
-  leads           Lead[]
-  emailSequence   EmailSequence?
+  phases        CampaignPhase[]
+  posts         CampaignPost[]
+  videos        CampaignVideo[]
+  leads         Lead[]
+  emailSequence EmailSequence?
+  wizardSession WizardSession?
 
   @@index([status])
   @@index([startDate])
@@ -542,73 +557,73 @@ model Campaign {
 }
 
 model CampaignPhase {
-  id              String   @id @default(uuid())
-  campaignId      String   @map("campaign_id")
-  
+  id         String @id @default(uuid())
+  campaignId String @map("campaign_id")
+
   // Phase info
-  name            String
-  orderIndex      Int      @map("order_index")
-  purpose         String   @db.Text
-  
+  name       String
+  orderIndex Int    @map("order_index")
+  purpose    String @db.Text
+
   // Timing
-  startDay        Int      @map("start_day")
-  endDay          Int      @map("end_day")
-  
+  startDay Int @map("start_day")
+  endDay   Int @map("end_day")
+
   // Content themes
-  themes          String[]
-  hooks           String[]
-  ctas            String[]
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  posts           CampaignPost[]
-  
+  themes String[]
+  hooks  String[]
+  ctas   String[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  posts    CampaignPost[]
+
   @@index([campaignId])
   @@map("campaign_phases")
 }
 
 model CampaignPost {
-  id              String   @id @default(uuid())
-  campaignId      String   @map("campaign_id")
-  phaseId         String?  @map("phase_id")
-  
+  id         String  @id @default(uuid())
+  campaignId String  @map("campaign_id")
+  phaseId    String? @map("phase_id")
+
   // Content
-  platform        String
-  content         String   @db.Text
-  contentType     String   @default("post") @map("content_type") // post, thread, carousel, story, reel
-  hashtags        String[]
-  
+  platform    String
+  content     String   @db.Text
+  contentType String   @default("post") @map("content_type") // post, thread, carousel, story, reel
+  hashtags    String[]
+
   // Scheduling
-  dayNumber       Int      @map("day_number")
-  scheduledFor    DateTime @map("scheduled_for")
-  optimalTime     Boolean  @default(true) @map("optimal_time")
-  
+  dayNumber    Int      @map("day_number")
+  scheduledFor DateTime @map("scheduled_for")
+  optimalTime  Boolean  @default(true) @map("optimal_time")
+
   // Visual
-  visualType      String?  @map("visual_type") // gamma, dalle, stock, custom, none
-  visualPrompt    String?  @map("visual_prompt") @db.Text
-  visualUrl       String?  @map("visual_url")
-  visualStatus    String   @default("pending") @map("visual_status")
-  
+  visualType   String? @map("visual_type") // gamma, dalle, stock, custom, none
+  visualPrompt String? @map("visual_prompt") @db.Text
+  visualUrl    String? @map("visual_url")
+  visualStatus String  @default("pending") @map("visual_status")
+
   // Publishing
-  status          String   @default("draft") // draft, scheduled, publishing, published, failed
-  platformPostId  String?  @map("platform_post_id")
-  publishedUrl    String?  @map("published_url")
-  publishedAt     DateTime? @map("published_at")
-  error           String?
-  
+  status         String    @default("draft") // draft, scheduled, publishing, published, failed
+  platformPostId String?   @map("platform_post_id")
+  publishedUrl   String?   @map("published_url")
+  publishedAt    DateTime? @map("published_at")
+  error          String?
+
   // Performance
-  impressions     Int      @default(0)
-  engagements     Int      @default(0)
-  clicks          Int      @default(0)
-  shares          Int      @default(0)
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  phase           CampaignPhase? @relation(fields: [phaseId], references: [id])
-  
+  impressions Int @default(0)
+  engagements Int @default(0)
+  clicks      Int @default(0)
+  shares      Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  phase    CampaignPhase? @relation(fields: [phaseId], references: [id])
+
   @@index([campaignId])
   @@index([status])
   @@index([scheduledFor])
@@ -617,56 +632,56 @@ model CampaignPost {
 }
 
 model CampaignVideo {
-  id              String   @id @default(uuid())
-  campaignId      String   @map("campaign_id")
-  videoProjectId  String?  @map("video_project_id")
-  
+  id             String  @id @default(uuid())
+  campaignId     String  @map("campaign_id")
+  videoProjectId String? @map("video_project_id")
+
   // Video info
-  videoType       String   @map("video_type") // short, standard
-  title           String
-  purpose         String
-  scriptData      Json?    @map("script_data")
-  
+  videoType  String @map("video_type") // short, standard
+  title      String
+  purpose    String
+  scriptData Json?  @map("script_data")
+
   // Scheduling
-  dayNumber       Int      @map("day_number")
-  scheduledFor    DateTime @map("scheduled_for")
-  
+  dayNumber    Int      @map("day_number")
+  scheduledFor DateTime @map("scheduled_for")
+
   // Status
-  status          String   @default("pending") // pending, scripting, rendering, ready, published, failed
-  youtubeId       String?  @map("youtube_id")
-  youtubeUrl      String?  @map("youtube_url")
-  
+  status     String  @default("pending") // pending, scripting, rendering, ready, published, failed
+  youtubeId  String? @map("youtube_id")
+  youtubeUrl String? @map("youtube_url")
+
   // Performance
-  views           Int      @default(0)
-  likes           Int      @default(0)
-  comments        Int      @default(0)
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  
-  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  
+  views    Int @default(0)
+  likes    Int @default(0)
+  comments Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
   @@index([campaignId])
   @@index([status])
   @@map("campaign_videos")
 }
 
 model OptimalPostingTime {
-  id              String   @id @default(uuid())
-  
-  platform        String
-  dayOfWeek       Int      @map("day_of_week") // 0=Sunday, 6=Saturday
-  hour            Int      // 0-23 UTC
-  
+  id String @id @default(uuid())
+
+  platform  String
+  dayOfWeek Int    @map("day_of_week") // 0=Sunday, 6=Saturday
+  hour      Int // 0-23 UTC
+
   // Performance data
-  avgEngagement   Decimal  @map("avg_engagement") @db.Decimal(8, 4)
-  avgImpressions  Int      @map("avg_impressions")
-  sampleSize      Int      @map("sample_size")
-  
+  avgEngagement  Decimal @map("avg_engagement") @db.Decimal(8, 4)
+  avgImpressions Int     @map("avg_impressions")
+  sampleSize     Int     @map("sample_size")
+
   // Confidence
-  confidence      Decimal  @db.Decimal(5, 4)
-  
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
+  confidence Decimal @db.Decimal(5, 4)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@unique([platform, dayOfWeek, hour])
   @@index([platform])
   @@map("optimal_posting_times")
@@ -678,16 +693,16 @@ model OptimalPostingTime {
 
 // Track reshare history
 model EvergreenReshare {
-  id              String   @id @default(cuid())
-  contentId       String   @map("content_id")
-  resharedAt      DateTime @default(now()) @map("reshared_at")
-  platform        String
-  postId          String?  @map("post_id") // ID from social platform
-  impressions     Int?
-  engagements     Int?
-  
-  content         GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  
+  id          String   @id @default(cuid())
+  contentId   String   @map("content_id")
+  resharedAt  DateTime @default(now()) @map("reshared_at")
+  platform    String
+  postId      String?  @map("post_id") // ID from social platform
+  impressions Int?
+  engagements Int?
+
+  content GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
   @@index([contentId])
   @@index([resharedAt])
   @@map("evergreen_reshares")
@@ -702,10 +717,10 @@ model EvergreenSettings {
   maxResharesPerDay Int      @default(2) @map("max_reshares_per_day")
   preferredTimes    String[] @default([]) @map("preferred_times") // ["09:00", "14:00", "19:00"]
   minEngagementRate Float?   @map("min_engagement_rate") // Only reshare if above this rate
-  
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@map("evergreen_settings")
 }
 
@@ -715,18 +730,18 @@ model EvergreenSettings {
 
 // Track repurposing suggestions
 model RepurposeSuggestion {
-  id              String    @id @default(cuid())
-  contentId       String    @map("content_id")
-  targetFormat    String    @map("target_format") // thread, carousel, video_script, blog, etc.
-  reason          String    // Why this would work well
-  priority        Int       @default(50) // 0-100, higher = better match
-  status          String    @default("pending") // pending, accepted, dismissed, completed
-  
-  createdAt       DateTime  @default(now()) @map("created_at")
-  completedAt     DateTime? @map("completed_at")
-  
-  content         GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  
+  id           String @id @default(cuid())
+  contentId    String @map("content_id")
+  targetFormat String @map("target_format") // thread, carousel, video_script, blog, etc.
+  reason       String // Why this would work well
+  priority     Int    @default(50) // 0-100, higher = better match
+  status       String @default("pending") // pending, accepted, dismissed, completed
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  content GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
   @@index([contentId])
   @@index([status])
   @@map("repurpose_suggestions")
@@ -738,36 +753,36 @@ model RepurposeSuggestion {
 
 // Trackable links with UTM parameters
 model TrackedLink {
-  id              String    @id @default(cuid())
-  shortCode       String    @unique @map("short_code") // e.g., "abc123"
-  destinationUrl  String    @map("destination_url")
-  
+  id             String @id @default(cuid())
+  shortCode      String @unique @map("short_code") // e.g., "abc123"
+  destinationUrl String @map("destination_url")
+
   // UTM Parameters
-  utmSource       String?   @map("utm_source")      // e.g., "twitter"
-  utmMedium       String?   @map("utm_medium")      // e.g., "social"
-  utmCampaign     String?   @map("utm_campaign")    // e.g., "algae-dha-launch"
-  utmContent      String?   @map("utm_content")     // e.g., "post-1"
-  utmTerm         String?   @map("utm_term")
-  
+  utmSource   String? @map("utm_source") // e.g., "twitter"
+  utmMedium   String? @map("utm_medium") // e.g., "social"
+  utmCampaign String? @map("utm_campaign") // e.g., "algae-dha-launch"
+  utmContent  String? @map("utm_content") // e.g., "post-1"
+  utmTerm     String? @map("utm_term")
+
   // Relationships
-  contentId       String?   @map("content_id")
-  campaignId      String?   @map("campaign_id")
-  productId       String?   @map("product_id") // Shopify product ID
-  
+  contentId  String? @map("content_id")
+  campaignId String? @map("campaign_id")
+  productId  String? @map("product_id") // Shopify product ID
+
   // Stats (denormalized for quick access)
-  clickCount      Int       @default(0) @map("click_count")
-  uniqueClicks    Int       @default(0) @map("unique_clicks")
-  conversions     Int       @default(0)
-  revenue         Float     @default(0)
-  
+  clickCount   Int   @default(0) @map("click_count")
+  uniqueClicks Int   @default(0) @map("unique_clicks")
+  conversions  Int   @default(0)
+  revenue      Float @default(0)
+
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  expiresAt       DateTime? @map("expires_at")
-  
+  createdAt DateTime  @default(now()) @map("created_at")
+  expiresAt DateTime? @map("expires_at")
+
   // Relations
-  content         GeneratedContent? @relation(fields: [contentId], references: [id])
-  clicks          LinkClick[]
-  
+  content GeneratedContent? @relation(fields: [contentId], references: [id])
+  clicks  LinkClick[]
+
   @@index([shortCode])
   @@index([contentId])
   @@index([campaignId])
@@ -776,26 +791,26 @@ model TrackedLink {
 
 // Individual click events
 model LinkClick {
-  id            String    @id @default(cuid())
-  linkId        String    @map("link_id")
-  
+  id     String @id @default(cuid())
+  linkId String @map("link_id")
+
   // Click data
-  clickedAt     DateTime  @default(now()) @map("clicked_at")
-  ipHash        String?   @map("ip_hash") // Hashed for privacy
-  userAgent     String?   @map("user_agent")
-  referer       String?
-  country       String?
-  device        String?   // mobile, desktop, tablet
-  browser       String?
-  
+  clickedAt DateTime @default(now()) @map("clicked_at")
+  ipHash    String?  @map("ip_hash") // Hashed for privacy
+  userAgent String?  @map("user_agent")
+  referer   String?
+  country   String?
+  device    String? // mobile, desktop, tablet
+  browser   String?
+
   // Conversion tracking
-  converted     Boolean   @default(false)
-  conversionAt  DateTime? @map("conversion_at")
-  orderId       String?   @map("order_id") // Shopify order ID
-  orderValue    Float?    @map("order_value")
-  
-  link          TrackedLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
-  
+  converted    Boolean   @default(false)
+  conversionAt DateTime? @map("conversion_at")
+  orderId      String?   @map("order_id") // Shopify order ID
+  orderValue   Float?    @map("order_value")
+
+  link TrackedLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
   @@index([linkId])
   @@index([clickedAt])
   @@map("link_clicks")
@@ -803,26 +818,26 @@ model LinkClick {
 
 // Conversion events from Shopify
 model ConversionEvent {
-  id              String   @id @default(cuid())
-  orderId         String   @unique @map("order_id")
-  orderValue      Float    @map("order_value")
-  
+  id         String @id @default(cuid())
+  orderId    String @unique @map("order_id")
+  orderValue Float  @map("order_value")
+
   // Attribution
-  utmSource       String?  @map("utm_source")
-  utmMedium       String?  @map("utm_medium")
-  utmCampaign     String?  @map("utm_campaign")
-  utmContent      String?  @map("utm_content")
-  
+  utmSource   String? @map("utm_source")
+  utmMedium   String? @map("utm_medium")
+  utmCampaign String? @map("utm_campaign")
+  utmContent  String? @map("utm_content")
+
   // Link attribution
-  trackedLinkId   String?  @map("tracked_link_id")
-  contentId       String?  @map("content_id")
-  
+  trackedLinkId String? @map("tracked_link_id")
+  contentId     String? @map("content_id")
+
   // Order details
-  productIds      String[] @map("product_ids")
-  customerEmail   String?  @map("customer_email") // Hashed
-  
-  createdAt       DateTime @default(now()) @map("created_at")
-  
+  productIds    String[] @map("product_ids")
+  customerEmail String?  @map("customer_email") // Hashed
+
+  createdAt DateTime @default(now()) @map("created_at")
+
   @@index([utmCampaign])
   @@index([contentId])
   @@map("conversion_events")
@@ -834,13 +849,13 @@ model ConversionEvent {
 
 // Track content topics for analysis
 model ContentTopic {
-  id              String   @id @default(cuid())
-  contentId       String   @map("content_id")
-  topic           String   // gut_health, sleep, stress, nutrition, exercise, etc.
-  confidence      Float    @default(0.8)
-  
-  content         GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  
+  id         String @id @default(cuid())
+  contentId  String @map("content_id")
+  topic      String // gut_health, sleep, stress, nutrition, exercise, etc.
+  confidence Float  @default(0.8)
+
+  content GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
   @@unique([contentId, topic])
   @@index([topic])
   @@map("content_topics")
@@ -848,23 +863,23 @@ model ContentTopic {
 
 // Weekly advisor digest
 model AdvisorDigest {
-  id              String   @id @default(cuid())
-  weekStart       DateTime @unique @map("week_start")
-  weekEnd         DateTime @map("week_end")
-  
+  id        String   @id @default(cuid())
+  weekStart DateTime @unique @map("week_start")
+  weekEnd   DateTime @map("week_end")
+
   // Summary stats
-  postsAnalyzed   Int      @map("posts_analyzed")
-  totalEngagement Int      @map("total_engagement")
-  topTopic        String?  @map("top_topic")
-  topFormat       String?  @map("top_format")
-  
+  postsAnalyzed   Int     @map("posts_analyzed")
+  totalEngagement Int     @map("total_engagement")
+  topTopic        String? @map("top_topic")
+  topFormat       String? @map("top_format")
+
   // AI-generated summary
-  summary         String   // Natural language summary
-  highlights      Json     // Key wins
-  improvements    Json     // Areas to improve
-  nextWeekPlan    Json     @map("next_week_plan") // Suggested content plan
-  
-  createdAt       DateTime @default(now()) @map("created_at")
+  summary      String // Natural language summary
+  highlights   Json // Key wins
+  improvements Json // Areas to improve
+  nextWeekPlan Json   @map("next_week_plan") // Suggested content plan
+
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@map("advisor_digests")
 }
@@ -874,43 +889,44 @@ model AdvisorDigest {
 // ============================================
 
 model LeadMagnet {
-  id              String    @id @default(uuid())
+  id String @id @default(uuid())
 
   // Basic info
-  title           String
-  description     String?   @db.Text
-  slug            String?   // URL-friendly identifier (uniqueness enforced at app level)
+  title       String
+  description String? @db.Text
+  slug        String? // URL-friendly identifier (uniqueness enforced at app level)
 
   // Categorization
-  category        String?   // gut_health, sleep, stress, nutrition, etc.
-  tags            String[]
+  category String? // gut_health, sleep, stress, nutrition, etc.
+  tags     String[]
 
   // File storage
-  fileUrl         String    @map("file_url")
-  storageKey      String?   @map("storage_key") // R2 key for deletion
-  fileName        String?   @map("file_name")
-  fileType        String?   @map("file_type") // application/pdf, image/png, etc.
-  fileSizeBytes   BigInt?   @map("file_size_bytes")
+  fileUrl       String  @map("file_url")
+  storageKey    String? @map("storage_key") // R2 key for deletion
+  fileName      String? @map("file_name")
+  fileType      String? @map("file_type") // application/pdf, image/png, etc.
+  fileSizeBytes BigInt? @map("file_size_bytes")
 
   // AI extracted content
-  extractedText   String?   @map("extracted_text") @db.Text
-  extractedData   Json?     @map("extracted_data") // Structured data extracted from the lead magnet
+  extractedText String? @map("extracted_text") @db.Text
+  extractedData Json?   @map("extracted_data") // Structured data extracted from the lead magnet
 
   // Usage tracking
-  downloadCount   Int       @default(0) @map("download_count")
-  usedInFunnels   Int       @default(0) @map("used_in_funnels")
+  downloadCount Int @default(0) @map("download_count")
+  usedInFunnels Int @default(0) @map("used_in_funnels")
 
   // Status
-  isActive        Boolean   @default(true) @map("is_active")
+  isActive Boolean @default(true) @map("is_active")
 
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  leads           Lead[]
-  emailSequences  EmailSequence[]
-  landingPages    LandingPage[]
+  leads          Lead[]
+  emailSequences EmailSequence[]
+  landingPages   LandingPage[]
+  wizardSessions WizardSession[]
 
   @@index([category])
   @@index([isActive])
@@ -923,51 +939,51 @@ model LeadMagnet {
 // ============================================
 
 model Lead {
-  id              String    @id @default(uuid())
+  id String @id @default(uuid())
 
   // Contact info
-  email           String
-  firstName       String?   @map("first_name")
-  lastName        String?   @map("last_name")
-  phone           String?
+  email     String
+  firstName String? @map("first_name")
+  lastName  String? @map("last_name")
+  phone     String?
 
   // Source tracking
-  leadMagnetId    String?   @map("lead_magnet_id")
-  landingPageSlug String?   @map("landing_page_slug")
-  campaignId      String?   @map("campaign_id")
-  source          String?   // direct, social, email, etc.
-  utmSource       String?   @map("utm_source")
-  utmMedium       String?   @map("utm_medium")
-  utmCampaign     String?   @map("utm_campaign")
+  leadMagnetId    String? @map("lead_magnet_id")
+  landingPageSlug String? @map("landing_page_slug")
+  campaignId      String? @map("campaign_id")
+  source          String? // direct, social, email, etc.
+  utmSource       String? @map("utm_source")
+  utmMedium       String? @map("utm_medium")
+  utmCampaign     String? @map("utm_campaign")
 
   // Constant Contact sync
-  ccContactId     String?   @map("cc_contact_id")
-  ccListIds       String[]  @map("cc_list_ids")
-  ccSyncedAt      DateTime? @map("cc_synced_at")
+  ccContactId String?   @map("cc_contact_id")
+  ccListIds   String[]  @map("cc_list_ids")
+  ccSyncedAt  DateTime? @map("cc_synced_at")
 
   // Download tracking
-  downloadToken   String?   @map("download_token") // Unique per lead, enforced at app level
-  downloadedAt    DateTime? @map("downloaded_at")
+  downloadToken String?   @map("download_token") // Unique per lead, enforced at app level
+  downloadedAt  DateTime? @map("downloaded_at")
 
   // Email engagement tracking
-  emailSentAt     DateTime? @map("email_sent_at")
-  emailOpenedAt   DateTime? @map("email_opened_at")
-  emailOpens      Int       @default(0) @map("email_opens")
-  emailClicks     Int       @default(0) @map("email_clicks")
-  lastEngagedAt   DateTime? @map("last_engaged_at")
+  emailSentAt   DateTime? @map("email_sent_at")
+  emailOpenedAt DateTime? @map("email_opened_at")
+  emailOpens    Int       @default(0) @map("email_opens")
+  emailClicks   Int       @default(0) @map("email_clicks")
+  lastEngagedAt DateTime? @map("last_engaged_at")
 
   // Status
-  status          String    @default("subscribed") // subscribed, downloaded, engaged, converted
-  isSubscribed    Boolean   @default(true) @map("is_subscribed")
-  unsubscribedAt  DateTime? @map("unsubscribed_at")
+  status         String    @default("subscribed") // subscribed, downloaded, engaged, converted
+  isSubscribed   Boolean   @default(true) @map("is_subscribed")
+  unsubscribedAt DateTime? @map("unsubscribed_at")
 
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  leadMagnet      LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
-  campaign        Campaign?   @relation(fields: [campaignId], references: [id])
+  leadMagnet LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
+  campaign   Campaign?   @relation(fields: [campaignId], references: [id])
 
   @@unique([email, leadMagnetId])
   @@index([email])
@@ -983,36 +999,36 @@ model Lead {
 // ============================================
 
 model EmailSequence {
-  id              String    @id @default(uuid())
-  name            String
+  id   String @id @default(uuid())
+  name String
 
   // Relationships
-  campaignId      String?   @unique @map("campaign_id")
-  leadMagnetId    String?   @map("lead_magnet_id")
-  listId          String?   @map("list_id") // Constant Contact list ID
+  campaignId   String? @unique @map("campaign_id")
+  leadMagnetId String? @map("lead_magnet_id")
+  listId       String? @map("list_id") // Constant Contact list ID
 
   // Configuration
-  sequenceLength  Int       @default(5) @map("sequence_length")
-  productId       String?   @map("product_id") // Product to promote (from catalog)
-  productName     String?   @map("product_name")
-  productUrl      String?   @map("product_url")
+  sequenceLength Int     @default(5) @map("sequence_length")
+  productId      String? @map("product_id") // Product to promote (from catalog)
+  productName    String? @map("product_name")
+  productUrl     String? @map("product_url")
 
   // Status
-  status          String    @default("draft") // draft, active, paused, completed
+  status String @default("draft") // draft, active, paused, completed
 
   // Stats
-  totalSent       Int       @default(0) @map("total_sent")
-  totalOpens      Int       @default(0) @map("total_opens")
-  totalClicks     Int       @default(0) @map("total_clicks")
+  totalSent   Int @default(0) @map("total_sent")
+  totalOpens  Int @default(0) @map("total_opens")
+  totalClicks Int @default(0) @map("total_clicks")
 
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  campaign        Campaign?   @relation(fields: [campaignId], references: [id])
-  leadMagnet      LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
-  emails          Email[]
+  campaign   Campaign?   @relation(fields: [campaignId], references: [id])
+  leadMagnet LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
+  emails     Email[]
 
   @@index([status])
   @@index([leadMagnetId])
@@ -1020,111 +1036,152 @@ model EmailSequence {
 }
 
 model Email {
-  id              String    @id @default(uuid())
-  sequenceId      String    @map("sequence_id")
+  id         String @id @default(uuid())
+  sequenceId String @map("sequence_id")
 
   // Email details
-  order           Int       // Position in sequence (1, 2, 3...)
-  sendDelayDays   Int       @map("send_delay_days") // Days after signup to send
-  subject         String
-  preheader       String?
-  bodyHtml        String    @map("body_html") @db.Text
-  bodyText        String?   @map("body_text") @db.Text
-  purpose         String    // value, engagement, soft_pitch, hard_pitch
+  order         Int // Position in sequence (1, 2, 3...)
+  sendDelayDays Int     @map("send_delay_days") // Days after signup to send
+  subject       String
+  preheader     String?
+  bodyHtml      String  @map("body_html") @db.Text
+  bodyText      String? @map("body_text") @db.Text
+  purpose       String // value, engagement, soft_pitch, hard_pitch
 
   // Constant Contact integration
-  ccCampaignId    String?   @map("cc_campaign_id")
+  ccCampaignId String? @map("cc_campaign_id")
 
   // Stats
-  sent            Int       @default(0)
-  opens           Int       @default(0)
-  clicks          Int       @default(0)
+  sent   Int @default(0)
+  opens  Int @default(0)
+  clicks Int @default(0)
 
   // Status
-  status          String    @default("draft") // draft, scheduled, sent, failed
-  scheduledFor    DateTime? @map("scheduled_for")
-  sentAt          DateTime? @map("sent_at")
+  status       String    @default("draft") // draft, scheduled, sent, failed
+  scheduledFor DateTime? @map("scheduled_for")
+  sentAt       DateTime? @map("sent_at")
 
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  sequence        EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  sequence EmailSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
 
   @@unique([sequenceId, order])
   @@index([status])
   @@map("emails")
 }
 
-// ============================================
 // LANDING PAGES - Self-hosted landing pages
 // ============================================
 
 model LandingPage {
-  id              String    @id @default(uuid())
+  id String @id @default(uuid())
 
   // URL and identification
-  slug            String    @unique
+  slug String @unique
 
   // Template and status
-  template        String    // lead_magnet, challenge, waitlist, product_launch
-  status          String    @default("draft") // draft, published, archived
+  template String // lead_magnet, challenge, waitlist, product_launch
+  status   String @default("draft") // draft, published, archived
 
   // Meta
   title           String
-  metaDescription String?   @map("meta_description")
-  ogImage         String?   @map("og_image")
+  metaDescription String? @map("meta_description")
+  ogImage         String? @map("og_image")
 
   // Content
-  headline        String
-  subheadline     String?
-  heroImage       String?   @map("hero_image")
+  headline    String
+  subheadline String?
+  heroImage   String? @map("hero_image")
 
   // Benefits and trust
-  benefits        String[]
-  trustElements   String[]  @map("trust_elements")
+  benefits      String[]
+  trustElements String[] @map("trust_elements")
 
   // Lead magnet info
-  leadMagnetId    String?   @map("lead_magnet_id")
-  downloadUrl     String?   @map("download_url")
+  leadMagnetId String? @map("lead_magnet_id")
+  downloadUrl  String? @map("download_url")
 
   // CTA
-  ctaText         String    @map("cta_text")
-  ctaSubtext      String?   @map("cta_subtext")
+  ctaText    String  @map("cta_text")
+  ctaSubtext String? @map("cta_subtext")
 
   // Form config
-  formFields      String[]  @map("form_fields") // email, firstName, lastName, phone
-  ccListId        String?   @map("cc_list_id") // Constant Contact list ID
+  formFields String[] @map("form_fields") // email, firstName, lastName, phone
+  ccListId   String?  @map("cc_list_id") // Constant Contact list ID
 
   // Thank you page
-  thankYouHeadline  String  @map("thank_you_headline")
-  thankYouMessage   String  @map("thank_you_message")
-  thankYouCtas      Json?   @map("thank_you_ctas") // Array of CTAs
+  thankYouHeadline String @map("thank_you_headline")
+  thankYouMessage  String @map("thank_you_message")
+  thankYouCtas     Json?  @map("thank_you_ctas") // Array of CTAs
 
   // Styling
-  primaryColor    String    @default("#FF4500") @map("primary_color")
-  accentColor     String    @default("#f59e0b") @map("accent_color")
-  darkMode        Boolean   @default(true) @map("dark_mode")
+  primaryColor String  @default("#FF4500") @map("primary_color")
+  accentColor  String  @default("#f59e0b") @map("accent_color")
+  darkMode     Boolean @default(true) @map("dark_mode")
 
   // Tracking
-  utmCampaign     String?   @map("utm_campaign")
+  utmCampaign String? @map("utm_campaign")
 
   // Campaign relationship
-  campaignId      String?   @map("campaign_id")
+  campaignId String? @map("campaign_id")
 
   // Analytics
-  views           Int       @default(0)
-  conversions     Int       @default(0)
+  views       Int @default(0)
+  conversions Int @default(0)
 
   // Timestamps
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  leadMagnet      LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
+  leadMagnet LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
 
   @@index([status])
   @@index([campaignId])
   @@map("landing_pages")
+}
+
+// ============================================
+// WIZARD SESSIONS - Track unified wizard state
+// ============================================
+
+model WizardSession {
+  id String @id @default(uuid())
+
+  // Wizard state
+  currentStep Int     @default(1) @map("current_step")
+  mode        String? // "quick_post" | "campaign"
+  sourceType  String? @map("source_type") // quick_idea, guide, episode, product, success_story, trucktales
+
+  // Source references
+  leadMagnetId String? @map("lead_magnet_id")
+  productId    String? @map("product_id")
+  sourceId     String? @map("source_id")
+
+  // User inputs
+  userInputs       Json  @default("{}") @map("user_inputs")
+  contentStrategy  Json? @map("content_strategy")
+  interviewHistory Json? @map("interview_history")
+
+  // Generated content IDs
+  generatedContentIds String[] @map("generated_content_ids")
+
+  // Campaign reference
+  campaignId String? @unique @map("campaign_id")
+
+  // Status
+  status String @default("in_progress") // in_progress, completed, abandoned
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+
+  campaign   Campaign?   @relation(fields: [campaignId], references: [id])
+  leadMagnet LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
+
+  @@index([status])
+  @@map("wizard_sessions")
 }

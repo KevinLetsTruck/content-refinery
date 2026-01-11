@@ -14,14 +14,18 @@ import { Step7Publish } from "./components/steps/Step7Publish";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, Truck } from "lucide-react";
 
-const STEP_TITLES = {
+const STEP_TITLES: Record<number, string> = {
   1: "What's your starting point?",
-  2: "Tell me more",
-  3: "Choose your content",
-  4: "Where should this go?",
-  5: "Creating your visuals",
-  6: "Final review",
-  7: "Ready to publish",
+  2: "Choose your mode",
+  3: "Configure your campaign",
+  4: "Tell me more",
+  5: "Review your strategy",
+  6: "Select platforms",
+  7: "Landing page",
+  8: "Email sequence",
+  9: "Final review",
+  10: "Generate campaign",
+  11: "Ready to publish",
 };
 
 export default function CreatePage() {

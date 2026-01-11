@@ -25,8 +25,17 @@ import {
 } from "./storage";
 import { generateVideoScript, generateVideoMetadata } from "./script-generator";
 import { getElevenLabsClient } from "./elevenlabs";
-import { getRunwayClient, enhancePromptForRunway } from "./runway";
+import {
+  isVeoAvailable,
+  generateVideo as generateVeoVideo,
+  getAspectRatioForPlatform as getVeoAspectRatio,
+  createVideoPrompt,
+  VeoModel,
+} from "./veo";
 import { getBestTrackForDuration, toneToMusicMood } from "./music";
+
+// Video provider configuration
+const VIDEO_PROVIDER = process.env.VIDEO_PROVIDER || "veo"; // "veo" or "runway"
 import { assembleVideo, generateThumbnail } from "./assembly";
 
 // R2 storage helpers (reuse from existing)
@@ -155,44 +164,49 @@ async function generateAllAudio(projectId: string): Promise<void> {
 
 /**
  * Step 3: Generate video for all scenes
+ * Uses Veo 3 (Google Gemini) by default, with native audio support
  */
 async function generateAllVideo(projectId: string): Promise<void> {
-  console.log(`[Producer] Generating video for ${projectId}...`);
+  console.log(`[Producer] Generating video for ${projectId} using ${VIDEO_PROVIDER}...`);
   updateProjectStatus(projectId, "generating_video");
-  
+
   const project = getVideoProject(projectId);
   if (!project?.script) {
     throw new Error("No script found");
   }
-  
-  const runway = getRunwayClient();
-  
-  if (!runway.isConfigured()) {
-    console.warn("[Producer] Runway not configured, skipping video generation");
+
+  // Check if Veo is available
+  if (!isVeoAvailable()) {
+    console.warn("[Producer] Veo not configured (GEMINI_API_KEY missing), skipping video generation");
     return;
   }
-  
+
   const config = VIDEO_TYPE_CONFIG[project.type];
   const aspectRatio = config.aspectRatio === "9:16" ? "9:16" : "16:9";
-  
+
   for (const scene of project.script.scenes) {
     console.log(`[Producer] Generating video for scene ${scene.order}/${project.script.scenes.length}...`);
-    
+
     try {
-      // Enhance the prompt for better results
-      const enhancedPrompt = enhancePromptForRunway(
+      // Create optimized prompt for Veo
+      const prompt = createVideoPrompt(
         scene.visualDescription,
         scene.visualStyle || "cinematic",
-        scene.cameraMovement || "slow_pan"
+        aspectRatio === "9:16" ? "tiktok" : "youtube"
       );
-      
-      // Generate video
-      const videoUrl = await runway.generateAndWait({
-        prompt: enhancedPrompt,
+
+      // Determine duration (Veo supports 4, 6, or 8 seconds)
+      const duration = scene.duration <= 4 ? 4 : scene.duration <= 6 ? 6 : 8;
+
+      // Generate video with Veo 3
+      const videoUrl = await generateVeoVideo({
+        prompt,
         aspectRatio,
-        duration: Math.min(scene.duration, 10) as 5 | 10,
+        resolution: "720p",
+        durationSeconds: duration as 4 | 6 | 8,
+        model: "veo-3", // Use standard Veo 3 with native audio
       });
-      
+
       updateScene(projectId, scene.id, {
         videoUrl,
         status: "video_ready",
@@ -202,7 +216,7 @@ async function generateAllVideo(projectId: string): Promise<void> {
       throw error;
     }
   }
-  
+
   console.log(`[Producer] All video generated for ${projectId}`);
 }
 

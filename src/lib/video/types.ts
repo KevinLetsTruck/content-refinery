@@ -30,7 +30,11 @@ export interface VideoProject {
   youtubeTitle?: string;
   youtubeDescription?: string;
   youtubeTags?: string[];
-  
+
+  // YouTube publishing status
+  youtubeVideoId?: string;
+  youtubeShortUrl?: string;
+
   // Timestamps
   createdAt: string;
   updatedAt: string;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/db/prisma";
 import { postTweet, uploadMedia as uploadTwitterMedia, isConfigured as isTwitterConfigured } from "@/lib/social/twitter";
 import { postToFacebook, postToInstagram, isConfigured as isMetaConfigured } from "@/lib/social/meta";
+import { uploadVideo as uploadYouTubeVideo, isConfigured as isYouTubeConfigured } from "@/lib/social/youtube";
 import { trackPublish } from "@/lib/analytics/track-performance";
 import { parseAndValidate, notFound, badRequest, notImplemented } from "@/lib/utils/api";
 import { PLATFORM_CHAR_LIMITS } from "@/lib/constants";
@@ -125,6 +126,16 @@ export async function POST(request: NextRequest) {
 
       case "facebook":
         result = await publishToFacebookPage(content);
+        break;
+
+      case "youtube":
+      case "youtube_shorts":
+        result = await publishToYouTube({
+          text: content.text,
+          hashtags: content.hashtags,
+          title: content.title || undefined,
+          videoUrl: content.mediaUrl, // mediaUrl can be video or image
+        }, content.platform === "youtube_shorts");
         break;
 
       case "linkedin":
@@ -274,13 +285,65 @@ async function publishToFacebookPage(content: ContentInput): Promise<{ id: strin
 }
 
 /**
+ * Publish to YouTube / YouTube Shorts
+ */
+interface YouTubeContentInput extends ContentInput {
+  title?: string;
+  videoUrl?: string | null;
+}
+
+async function publishToYouTube(
+  content: YouTubeContentInput,
+  isShort: boolean = false
+): Promise<{ id: string; url: string }> {
+  if (!isYouTubeConfigured()) {
+    throw new Error(
+      "YouTube credentials not configured. Set YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN"
+    );
+  }
+
+  // YouTube requires a video
+  if (!content.videoUrl) {
+    throw new Error("YouTube publishing requires a video URL");
+  }
+
+  // Download the video from the URL (could be R2 or temporary Veo URL)
+  const videoResponse = await fetch(content.videoUrl);
+  if (!videoResponse.ok) {
+    throw new Error(`Failed to download video from ${content.videoUrl}`);
+  }
+  const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+
+  // Build title (use content title or first 100 chars of text)
+  const title = content.title || content.text.substring(0, 100);
+
+  // Build description with hashtags
+  const hashtagString = content.hashtags.length > 0
+    ? "\n\n" + content.hashtags.map(t => t.startsWith("#") ? t : `#${t}`).join(" ")
+    : "";
+  const description = content.text + hashtagString;
+
+  // Upload to YouTube
+  const result = await uploadYouTubeVideo({
+    title,
+    description,
+    tags: content.hashtags,
+    videoBuffer,
+    isShort,
+    privacyStatus: "public",
+  });
+
+  return { id: result.id, url: result.url };
+}
+
+/**
  * GET /api/publish/status
- * 
+ *
  * Check publishing capabilities
  */
 export async function GET() {
   const metaConfig = isMetaConfigured();
-  
+
   const platforms = {
     twitter: {
       configured: isTwitterConfigured(),
@@ -294,6 +357,17 @@ export async function GET() {
     facebook: {
       configured: metaConfig.facebook,
       name: "Facebook",
+    },
+    youtube: {
+      configured: isYouTubeConfigured(),
+      name: "YouTube",
+      requiresVideo: true,
+    },
+    youtube_shorts: {
+      configured: isYouTubeConfigured(),
+      name: "YouTube Shorts",
+      requiresVideo: true,
+      maxDuration: 60,
     },
     linkedin: {
       configured: false,

@@ -6,8 +6,10 @@
 import { Resend } from "resend";
 import { generateLeadMagnetDeliveryEmail, LeadMagnetDeliveryData } from "./templates/lead-magnet-delivery";
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "kevin@letstruck.com";
-const FROM_NAME = process.env.RESEND_FROM_NAME || "Kevin Rutherford";
+// Use Resend's free testing domain by default (no domain verification needed)
+// Once letstruck.com is verified in Resend, update RESEND_FROM_EMAIL
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+const FROM_NAME = process.env.RESEND_FROM_NAME || "Let's Truck";
 
 let resendClient: Resend | null = null;
 

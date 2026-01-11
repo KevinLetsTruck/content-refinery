@@ -43,6 +43,9 @@ export interface CreateCampaignInput {
   youtubeShorts: number;
   youtubeStandard: number;
   generateImages?: boolean; // Auto-generate images using DALL-E
+  // Email marketing integration
+  emailSequenceId?: string; // Link to email sequence for nurture emails
+  leadMagnetId?: string; // Link to lead magnet
 }
 
 // AI-generated strategy

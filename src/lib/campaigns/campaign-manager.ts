@@ -6,6 +6,7 @@ import {
   createImagePrompt,
   isDalleAvailable
 } from "@/lib/images/dalle";
+import { getConstantContactClient } from "@/lib/constant-contact/client";
 
 /**
  * Create a new campaign and generate all content
@@ -13,6 +14,7 @@ import {
 export async function createCampaign(input: CreateCampaignInput): Promise<{
   campaignId: string;
   status: string;
+  ccListId?: string;
 }> {
   // Calculate end date
   const startDate = new Date(input.startDate);
@@ -43,6 +45,28 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
     },
   });
 
+  let ccListId: string | undefined;
+
+  // If email sequence is provided, link it to the campaign and create CC list
+  if (input.emailSequenceId) {
+    console.log(`[Campaign] Linking email sequence ${input.emailSequenceId} to campaign ${campaign.id}`);
+
+    // Link email sequence to campaign
+    await prisma.emailSequence.update({
+      where: { id: input.emailSequenceId },
+      data: { campaignId: campaign.id },
+    });
+
+    // Create Constant Contact list for this campaign
+    try {
+      ccListId = await createCampaignEmailList(campaign.id, input.name, input.emailSequenceId);
+      console.log(`[Campaign] Created CC list ${ccListId} for campaign ${campaign.id}`);
+    } catch (error) {
+      // Don't fail campaign creation if CC list creation fails
+      console.error(`[Campaign] Failed to create CC list for ${campaign.id}:`, error);
+    }
+  }
+
   // Generate content in background
   generateCampaignContent(campaign.id, input).catch((error) => {
     console.error(`[Campaign] Generation failed for ${campaign.id}:`, error);
@@ -51,7 +75,45 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
   return {
     campaignId: campaign.id,
     status: "generating",
+    ccListId,
   };
+}
+
+/**
+ * Create a Constant Contact list for a campaign
+ * This list will be used to collect leads and send nurture emails
+ */
+async function createCampaignEmailList(
+  campaignId: string,
+  campaignName: string,
+  emailSequenceId: string
+): Promise<string> {
+  const client = getConstantContactClient();
+
+  // Check if CC is authenticated
+  const isAuth = await client.isAuthenticated();
+  if (!isAuth) {
+    throw new Error("Constant Contact not authenticated. Please complete OAuth flow first.");
+  }
+
+  // Create list name based on campaign
+  const listName = `${campaignName} - Subscribers`;
+  const listDescription = `Subscribers for campaign: ${campaignName}`;
+
+  // Create the list in Constant Contact
+  const ccList = await client.createList(listName, listDescription);
+
+  console.log(`[Campaign] Created Constant Contact list: ${ccList.list_id} - ${listName}`);
+
+  // Update email sequence with the CC list ID
+  await prisma.emailSequence.update({
+    where: { id: emailSequenceId },
+    data: { listId: ccList.list_id },
+  });
+
+  console.log(`[Campaign] Linked CC list ${ccList.list_id} to email sequence ${emailSequenceId}`);
+
+  return ccList.list_id;
 }
 
 /**

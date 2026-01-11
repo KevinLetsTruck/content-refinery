@@ -91,6 +91,23 @@ export default function StepPreview({ campaignId, onApprove }: StepPreviewProps)
     fetchCampaign();
   }, [campaignId]);
 
+  // Auto-refresh while images are still generating
+  useEffect(() => {
+    if (!campaign) return;
+
+    const hasGeneratingImages = campaign.posts.some(
+      (p) => p.visualStatus === "generating" || p.visualStatus === "pending"
+    );
+
+    if (hasGeneratingImages) {
+      const interval = setInterval(() => {
+        fetchCampaign();
+      }, 5000); // Refresh every 5 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [campaign]);
+
   const fetchCampaign = async () => {
     try {
       const res = await fetch(`/api/campaigns/${campaignId}`);
@@ -207,8 +224,30 @@ export default function StepPreview({ campaignId, onApprove }: StepPreviewProps)
   // Get unique platforms
   const platforms = [...new Set(campaign.posts.map(p => p.platform))];
 
+  // Check image generation status
+  const generatingCount = campaign.posts.filter(
+    (p) => p.visualStatus === "generating" || p.visualStatus === "pending"
+  ).length;
+  const readyCount = campaign.posts.filter((p) => p.visualUrl).length;
+  const errorCount = campaign.posts.filter((p) => p.visualStatus === "error").length;
+
   return (
     <div className="space-y-6">
+      {/* Image Generation Status Banner */}
+      {generatingCount > 0 && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-center gap-3">
+          <Loader2 className="w-5 h-5 animate-spin text-yellow-400" />
+          <div>
+            <div className="text-yellow-300 font-medium">
+              Generating images... ({readyCount}/{campaign.posts.length} complete)
+            </div>
+            <div className="text-yellow-400/70 text-sm">
+              Images will appear automatically as they&apos;re generated
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Stats */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-4">
@@ -298,6 +337,23 @@ export default function StepPreview({ campaignId, onApprove }: StepPreviewProps)
                 onClick={() => togglePost(post.id)}
                 className="flex items-center gap-4 p-4 cursor-pointer hover:bg-[#252525] transition"
               >
+                {/* Thumbnail */}
+                {post.visualUrl ? (
+                  <img
+                    src={post.visualUrl}
+                    alt=""
+                    className="w-12 h-12 rounded object-cover flex-shrink-0 border border-[#2A2A2A]"
+                  />
+                ) : post.visualStatus === "generating" ? (
+                  <div className="w-12 h-12 rounded bg-[#2A2A2A] flex items-center justify-center flex-shrink-0">
+                    <Loader2 className="w-5 h-5 animate-spin text-yellow-400" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded bg-[#2A2A2A] flex items-center justify-center flex-shrink-0">
+                    <ImageIcon className="w-5 h-5 text-gray-600" />
+                  </div>
+                )}
+
                 {/* Platform Badge */}
                 <span className={`px-2 py-1 rounded text-xs font-medium border ${platformColors[post.platform]}`}>
                   {platformLabels[post.platform]}
@@ -317,17 +373,23 @@ export default function StepPreview({ campaignId, onApprove }: StepPreviewProps)
                   {post.content.substring(0, 80)}...
                 </div>
 
-                {/* Image Indicator */}
+                {/* Status Indicator */}
                 {post.visualUrl && (
                   <span className="text-green-400 text-xs flex items-center gap-1">
-                    <ImageIcon className="w-4 h-4" />
-                    Image
+                    <Check className="w-4 h-4" />
+                    Ready
                   </span>
                 )}
                 {post.visualStatus === "generating" && (
                   <span className="text-yellow-400 text-xs flex items-center gap-1">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Generating
+                  </span>
+                )}
+                {post.visualStatus === "error" && (
+                  <span className="text-red-400 text-xs flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    Error
                   </span>
                 )}
 

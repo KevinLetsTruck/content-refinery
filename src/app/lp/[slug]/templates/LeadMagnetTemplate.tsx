@@ -20,7 +20,6 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [verifiedDownloadUrl, setVerifiedDownloadUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,11 +42,6 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
         throw new Error("Subscription failed");
       }
 
-      const data = await response.json();
-      // Only set download link if returned from API (token-protected)
-      if (data.downloadLink) {
-        setVerifiedDownloadUrl(data.downloadLink);
-      }
       setIsSuccess(true);
     } catch (err) {
       setError("Something went wrong. Please try again.");
@@ -82,6 +76,22 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
             </div>
           </div>
           
+          {/* Email confirmation notice */}
+          {page.leadMagnet && (
+            <div className="mb-8 p-6 bg-gray-800/50 rounded-lg border border-amber-500/30">
+              <div className="flex items-center gap-3 mb-3">
+                <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span className="text-amber-400 font-semibold">Check Your Email</span>
+              </div>
+              <p className="text-gray-300">
+                We&apos;ve sent a download link for <span className="font-semibold text-white">{page.leadMagnet.title}</span> to your email address.
+                Check your inbox (and spam folder) for the download link.
+              </p>
+            </div>
+          )}
+
           {/* Other CTAs (Tribe, etc.) */}
           <div className="space-y-4">
             {page.thankYou.ctas
@@ -107,24 +117,6 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
                 );
               })}
           </div>
-
-          {/* Only show download link if user completed subscription (verified via API) */}
-          {verifiedDownloadUrl && page.leadMagnet && (
-            <div className="mt-10 p-6 bg-gray-800 rounded-lg">
-              <p className="text-gray-400 mb-3">Your guide is ready for download:</p>
-              <a
-                href={verifiedDownloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 underline font-semibold"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Download: {page.leadMagnet.title}
-              </a>
-            </div>
-          )}
         </div>
       </div>
     );

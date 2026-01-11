@@ -185,20 +185,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Build the secure download URL with token
+    // Build the secure download URL with token (for email only, not returned to client)
     const downloadLink = lead?.downloadToken
       ? `${BASE_URL}/api/lp/download?token=${lead.downloadToken}`
       : null;
 
     console.log(`[Subscribe] New subscriber: ${body.email} for ${body.slug} (CC: ${addedToCC})`);
+    if (downloadLink) {
+      console.log(`[Subscribe] Download link generated (for email): ${downloadLink}`);
+    }
 
-    // NOTE: We do NOT return the direct downloadUrl anymore
-    // The user must click the link in their email or use the token-verified endpoint
+    // NOTE: We do NOT return the downloadLink to the client
+    // The download link should ONLY be sent via email for true verification
+    // This ensures users must have access to the email inbox to download
     return NextResponse.json({
       success: true,
       message: "Subscription successful! Check your email for the download link.",
-      // Return the token-protected download link for the thank you page
-      downloadLink,
       addedToCC,
       ...(ccError && { ccWarning: "Email saved but Constant Contact sync failed" }),
     });

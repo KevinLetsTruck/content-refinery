@@ -360,6 +360,32 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
+        {/* Landing Page */}
+        {campaign.productUrl && (
+          <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold mb-1">Landing Page</h2>
+                <p className="text-sm text-gray-400">
+                  {campaign.productName || "Lead Magnet Landing Page"}
+                </p>
+              </div>
+              <a
+                href={campaign.productUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg transition"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View Landing Page
+              </a>
+            </div>
+            <div className="mt-3 p-3 bg-[#0D0D0D] rounded-lg">
+              <code className="text-sm text-gray-400 break-all">{campaign.productUrl}</code>
+            </div>
+          </div>
+        )}
+
         {/* Phases */}
         <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-6 mb-8">
           <h2 className="text-lg font-semibold mb-4">Campaign Phases</h2>

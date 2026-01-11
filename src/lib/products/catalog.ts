@@ -98,6 +98,78 @@ export const PRODUCT_CATALOG: Product[] = [
     bestForLeadMagnets: ["gut-check", "shut-up-and-digest", "eat-like-a-human", "clean-machine"],
     isKevinDaily: true,
   },
+  {
+    id: "bee-ome-gold",
+    name: "Bee-Ome Gold",
+    handle: "bee-ome-gold",
+    url: "https://store.letstruck.com/products/bee-ome-gold",
+    price: "49.95",
+    category: "supplement",
+    subcategory: "probiotic",
+    description: "Functional honey with probiotics and prebiotics. Gut health that tastes amazing.",
+    benefits: [
+      "Probiotics + prebiotics in one",
+      "Raw honey base",
+      "Supports gut microbiome",
+      "Delicious daily ritual",
+    ],
+    bestForLeadMagnets: ["gut-check", "shut-up-and-digest", "eat-like-a-human"],
+    isKevinDaily: true,
+  },
+  {
+    id: "terraflora-deep-zen",
+    name: "Terraflora Deep Zen",
+    handle: "terraflora-deep-zen",
+    url: "https://store.letstruck.com/products/terraflora-deep-zen",
+    price: "59.95",
+    category: "supplement",
+    subcategory: "psychobiotic",
+    description: "Advanced psychobiotic formula for gut-brain axis support. Calm mind, healthy gut.",
+    benefits: [
+      "Gut-brain axis support",
+      "Promotes calm and focus",
+      "Spore-based probiotics",
+      "No refrigeration needed",
+    ],
+    bestForLeadMagnets: ["gut-check", "stress-proof", "sleep-when-youre-dead"],
+    isKevinDaily: true,
+  },
+  {
+    id: "mind-fuel-mct",
+    name: "Mind Fuel MCT Oil",
+    handle: "mind-fuel-mct-oil",
+    url: "https://store.letstruck.com/products/mind-fuel-mct-oil",
+    price: "24.95",
+    category: "supplement",
+    subcategory: "energy",
+    description: "Pure C8 MCT oil for mental clarity and sustained energy. Brain fuel for long hauls.",
+    benefits: [
+      "Quick mental energy",
+      "Supports ketone production",
+      "No crash or jitters",
+      "Flavorless - add to anything",
+    ],
+    bestForLeadMagnets: ["eat-like-a-human", "blood-sugar-chaos", "diesel-in-your-blood"],
+    isKevinDaily: true,
+  },
+  {
+    id: "bio-dk-mulsion",
+    name: "Bio-DK Mulsion",
+    handle: "bio-dk-mulsion",
+    url: "https://store.letstruck.com/products/bio-dk-mulsion",
+    price: "30.50",
+    category: "supplement",
+    subcategory: "vitamin-d",
+    description: "Emulsified Vitamin D3 + K2 for enhanced absorption. Essential for drivers.",
+    benefits: [
+      "D3 + K2 synergy",
+      "Superior absorption",
+      "Supports bone and heart health",
+      "Easy liquid dosing",
+    ],
+    bestForLeadMagnets: ["diesel-in-your-blood", "the-owners-operators-heart", "stress-proof"],
+    isKevinDaily: true,
+  },
 
   // ===== GUT HEALTH =====
   {
@@ -828,4 +900,52 @@ export function searchProducts(query: string): Product[] {
       p.category.toLowerCase().includes(lowerQuery) ||
       (p.subcategory && p.subcategory.toLowerCase().includes(lowerQuery))
   );
+}
+
+/**
+ * Find a product mentioned in text content
+ * Returns the first matching product or undefined
+ */
+export function findProductInText(text: string): Product | undefined {
+  const lowerText = text.toLowerCase();
+
+  // Check each product - prioritize exact name matches
+  for (const product of PRODUCT_CATALOG) {
+    const productNameLower = product.name.toLowerCase();
+    // Check if product name appears in text
+    if (lowerText.includes(productNameLower)) {
+      return product;
+    }
+  }
+
+  // Second pass: check for partial matches (first significant word)
+  for (const product of PRODUCT_CATALOG) {
+    const firstWord = product.name.split(' ')[0].toLowerCase();
+    // Skip generic words
+    if (['the', 'a', 'an', 'grass', 'super', 'advanced'].includes(firstWord)) {
+      continue;
+    }
+    if (firstWord.length >= 4 && lowerText.includes(firstWord)) {
+      return product;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Find all products mentioned in text content
+ */
+export function findAllProductsInText(text: string): Product[] {
+  const lowerText = text.toLowerCase();
+  const found: Product[] = [];
+
+  for (const product of PRODUCT_CATALOG) {
+    const productNameLower = product.name.toLowerCase();
+    if (lowerText.includes(productNameLower)) {
+      found.push(product);
+    }
+  }
+
+  return found;
 }

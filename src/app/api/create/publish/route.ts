@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { postTweet, postThread, uploadMedia, isConfigured as isTwitterConfigured } from '@/lib/social/twitter';
+import { findProductInText } from '@/lib/products/catalog';
 
 interface PublishResult {
   platform: string;
@@ -12,6 +13,18 @@ interface PublishResult {
 
 // X/Twitter character limit for paid accounts (Premium/Premium+)
 const TWITTER_PAID_LIMIT = 25000;
+
+/**
+ * Add product store link to post text if a product is mentioned
+ */
+function addProductLink(text: string): string {
+  const product = findProductInText(text);
+  if (product) {
+    // Add store link at the end
+    return `${text}\n\n🛒 ${product.url}`;
+  }
+  return text;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,11 +85,12 @@ export async function POST(request: NextRequest) {
               publishError = 'Twitter not configured';
             } else {
               try {
-                // Build the full post text with hashtags
+                // Build the full post text with product link and hashtags
+                const textWithProductLink = addProductLink(text);
                 const hashtagString = hashtags.length > 0
                   ? '\n\n' + hashtags.map((tag: string) => `#${tag}`).join(' ')
                   : '';
-                const fullText = text + hashtagString;
+                const fullText = textWithProductLink + hashtagString;
 
                 // Upload image if we have one
                 let mediaIds: string[] | undefined;

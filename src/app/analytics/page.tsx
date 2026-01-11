@@ -117,19 +117,21 @@ const PLATFORM_COLORS: Record<string, string> = {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
   const [period, setPeriod] = useState("30");
   const [platform, setPlatform] = useState<string>("");
-  
+
   useEffect(() => {
     fetchAnalytics();
   }, [period, platform]);
-  
+
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ period });
       if (platform) params.set("platform", platform);
-      
+
       const response = await fetch(`/api/analytics?${params}`);
       if (response.ok) {
         const result = await response.json();
@@ -139,6 +141,30 @@ export default function AnalyticsPage() {
       console.error("Failed to fetch analytics:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const collectMetrics = async () => {
+    setRefreshing(true);
+    setRefreshMessage(null);
+    try {
+      const response = await fetch("/api/analytics/refresh", { method: "POST" });
+      const result = await response.json();
+
+      if (response.ok) {
+        setRefreshMessage(`Collected metrics: ${result.updated} updated, ${result.errors} errors`);
+        // Refresh analytics data after collection
+        await fetchAnalytics();
+      } else {
+        setRefreshMessage(result.message || "Failed to collect metrics");
+      }
+    } catch (error) {
+      setRefreshMessage("Failed to collect metrics");
+      console.error("Failed to collect metrics:", error);
+    } finally {
+      setRefreshing(false);
+      // Clear message after 5 seconds
+      setTimeout(() => setRefreshMessage(null), 5000);
     }
   };
   
@@ -238,13 +264,34 @@ export default function AnalyticsPage() {
       {data.metricsPending && (
         <div className="bg-[#F4A300]/10 border border-[#F4A300]/30 rounded-xl p-4 mb-6 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-[#F4A300] mt-0.5 flex-shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-[#F4A300] font-medium">Engagement metrics pending</p>
             <p className="text-[#888] text-sm mt-1">
-              Your published posts are shown below. Engagement data (impressions, likes, shares)
-              will be collected automatically and displayed once available.
+              Your published posts are shown below. Click &quot;Collect Metrics&quot; to fetch engagement data from Twitter.
             </p>
+            {refreshMessage && (
+              <p className="text-[#CCC] text-sm mt-2 bg-[#1A1A1A] px-3 py-1 rounded inline-block">
+                {refreshMessage}
+              </p>
+            )}
           </div>
+          <button
+            onClick={collectMetrics}
+            disabled={refreshing}
+            className="px-4 py-2 bg-[#FF4500] text-white rounded-lg hover:bg-[#E63E00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap"
+          >
+            {refreshing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Collecting...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                Collect Metrics
+              </>
+            )}
+          </button>
         </div>
       )}
 

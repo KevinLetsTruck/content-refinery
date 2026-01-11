@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { postTweet, postThread, uploadMedia, isConfigured as isTwitterConfigured } from '@/lib/social/twitter';
 
 interface PublishResult {
   platform: string;
@@ -9,17 +10,23 @@ interface PublishResult {
   contentId?: string;
 }
 
+// X/Twitter character limit for paid accounts (Premium/Premium+)
+const TWITTER_PAID_LIMIT = 25000;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
       content,
-      hashtags,
-      platforms,
       visuals,
       publishOption,
       scheduledTime,
     } = body;
+
+    // Extract from content object (frontend structure)
+    const text = content?.text || '';
+    const hashtags = content?.hashtags || [];
+    const platforms = content?.platforms || [];
 
     const results: PublishResult[] = [];
 
@@ -43,9 +50,9 @@ export async function POST(request: NextRequest) {
         const generatedContent = await prisma.generatedContent.create({
           data: {
             platform,
-            text: content,
-            hashtags: hashtags || [],
-            mediaUrl: visual?.imageUrl || null,
+            text,
+            hashtags,
+            mediaUrl: visual?.imageUrl || visual?.gammaUrl || null,
             gammaUrl: visual?.gammaUrl || null,
             status,
             scheduledFor: scheduledTime ? new Date(scheduledTime) : null,
@@ -55,25 +62,81 @@ export async function POST(request: NextRequest) {
 
         // If publishing now, attempt to publish
         if (publishOption === 'now') {
-          // TODO: Implement actual platform publishing
-          // For now, simulate success
-          const publishSuccess = true;
-          
+          let publishedUrl: string | undefined;
+          let publishSuccess = false;
+          let publishError: string | undefined;
+
+          if (platform === 'twitter') {
+            // Publish to Twitter/X
+            if (!isTwitterConfigured()) {
+              publishError = 'Twitter not configured';
+            } else {
+              try {
+                // Build the full post text with hashtags
+                const hashtagString = hashtags.length > 0
+                  ? '\n\n' + hashtags.map((tag: string) => `#${tag}`).join(' ')
+                  : '';
+                const fullText = text + hashtagString;
+
+                // Upload image if we have one
+                let mediaIds: string[] | undefined;
+                const imageUrl = visual?.imageUrl || visual?.gammaUrl;
+                if (imageUrl && !imageUrl.includes('gamma.app')) {
+                  try {
+                    console.log('[Publish] Uploading image to Twitter:', imageUrl);
+                    const mediaId = await uploadMedia(imageUrl);
+                    mediaIds = [mediaId];
+                    console.log('[Publish] Media uploaded, ID:', mediaId);
+                  } catch (mediaError) {
+                    console.error('[Publish] Media upload failed:', mediaError);
+                    // Continue without image
+                  }
+                }
+
+                // Check if we need a thread (over limit)
+                if (fullText.length > TWITTER_PAID_LIMIT) {
+                  // Split into thread - this shouldn't happen often with 25k limit
+                  const tweets = splitIntoThread(fullText);
+                  console.log(`[Publish] Creating thread with ${tweets.length} tweets`);
+                  const threadResults = await postThread(tweets);
+                  publishedUrl = threadResults[0].url;
+                  publishSuccess = true;
+                } else {
+                  // Single tweet
+                  console.log('[Publish] Posting tweet, length:', fullText.length);
+                  const result = await postTweet({
+                    text: fullText,
+                    mediaIds
+                  });
+                  publishedUrl = result.url;
+                  publishSuccess = true;
+                  console.log('[Publish] Tweet posted:', result.url);
+                }
+              } catch (twitterError) {
+                console.error('[Publish] Twitter error:', twitterError);
+                publishError = twitterError instanceof Error ? twitterError.message : 'Twitter publishing failed';
+              }
+            }
+          } else {
+            // Other platforms not yet implemented
+            publishError = `Publishing to ${platform} not yet implemented`;
+          }
+
           if (publishSuccess) {
             await prisma.generatedContent.update({
               where: { id: generatedContent.id },
               data: {
                 status: 'published',
                 publishedAt: new Date(),
-                // publishedUrl would be set from the platform's response
+                publishedUrl,
               },
             });
 
             results.push({
               platform,
               success: true,
+              url: publishedUrl,
               contentId: generatedContent.id,
-              // url: publishedUrl would come from the platform
             });
           } else {
             await prisma.generatedContent.update({
@@ -84,7 +147,7 @@ export async function POST(request: NextRequest) {
             results.push({
               platform,
               success: false,
-              error: 'Publishing failed',
+              error: publishError || 'Publishing failed',
               contentId: generatedContent.id,
             });
           }
@@ -101,7 +164,7 @@ export async function POST(request: NextRequest) {
         results.push({
           platform,
           success: false,
-          error: 'Failed to save content',
+          error: platformError instanceof Error ? platformError.message : 'Failed to save content',
         });
       }
     }
@@ -113,8 +176,32 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Publish error:', error);
     return NextResponse.json(
-      { error: 'Failed to publish content' },
+      { error: error instanceof Error ? error.message : 'Failed to publish content' },
       { status: 500 }
     );
   }
+}
+
+/**
+ * Split long text into thread-friendly chunks
+ */
+function splitIntoThread(text: string, maxLength = 280): string[] {
+  const tweets: string[] = [];
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  let current = '';
+
+  for (const sentence of sentences) {
+    if ((current + ' ' + sentence).trim().length <= maxLength - 10) { // Leave room for thread indicator
+      current = (current + ' ' + sentence).trim();
+    } else {
+      if (current) tweets.push(current);
+      current = sentence;
+    }
+  }
+  if (current) tweets.push(current);
+
+  // Add thread indicators
+  return tweets.map((tweet, i) =>
+    tweets.length > 1 ? `${tweet} (${i + 1}/${tweets.length})` : tweet
+  );
 }

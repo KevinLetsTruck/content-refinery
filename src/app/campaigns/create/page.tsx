@@ -16,11 +16,13 @@ import {
   Share2,
   Mail,
   Image,
+  Eye,
 } from "lucide-react";
 import Step1LeadMagnet from "./components/Step1LeadMagnet";
 import Step2Template from "./components/Step2Template";
 import Step3Review from "./components/Step3Review";
 import StepEmailSequence from "./components/StepEmailSequence";
+import StepPreview from "./components/StepPreview";
 import { LANDING_PAGE_TEMPLATES } from "@/lib/landing-pages/templates";
 import { Product } from "@/lib/products/catalog";
 
@@ -97,6 +99,7 @@ const STEPS = [
   { id: 6, name: "Emails", icon: Mail },
   { id: 7, name: "Review", icon: Check },
   { id: 8, name: "Generate", icon: Sparkles },
+  { id: 9, name: "Preview", icon: Eye },
 ];
 
 export default function CreateCampaignPage() {
@@ -134,11 +137,14 @@ export default function CreateCampaignPage() {
     productUrl: "",
   });
 
+  // Generated campaign ID (for preview step)
+  const [generatedCampaignId, setGeneratedCampaignId] = useState<string | null>(null);
+
   const updateState = useCallback((updates: Partial<WizardState>) => {
     setState((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const nextStep = () => setStep((s) => Math.min(s + 1, 8));
+  const nextStep = () => setStep((s) => Math.min(s + 1, 9));
   const prevStep = () => setStep((s) => Math.max(s - 1, 1));
 
   // Handle Step 6 email sequence generation
@@ -247,7 +253,10 @@ export default function CreateCampaignPage() {
       const data = await res.json();
 
       if (data.campaign?.status === "review") {
-        router.push(`/campaigns/${id}`);
+        // Campaign is ready - go to preview step
+        setGeneratedCampaignId(id);
+        setGenerating(false);
+        setStep(9); // Go to preview step
       } else if (data.campaign?.status === "generating") {
         setTimeout(checkStatus, 2000);
       } else {
@@ -256,6 +265,13 @@ export default function CreateCampaignPage() {
     };
 
     checkStatus();
+  };
+
+  // Handle approval from preview step
+  const handlePreviewApprove = () => {
+    if (generatedCampaignId) {
+      router.push(`/campaigns/${generatedCampaignId}`);
+    }
   };
 
   const totalPosts =
@@ -817,6 +833,22 @@ export default function CreateCampaignPage() {
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* Step 9: Preview */}
+        {step === 9 && generatedCampaignId && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Preview Campaign Content</h2>
+              <p className="text-gray-400">
+                Review all generated posts and videos. Click to expand and edit.
+              </p>
+            </div>
+            <StepPreview
+              campaignId={generatedCampaignId}
+              onApprove={handlePreviewApprove}
+            />
           </div>
         )}
 

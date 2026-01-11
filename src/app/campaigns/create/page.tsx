@@ -199,10 +199,10 @@ export default function CreateCampaignPage() {
       });
 
       const landingData = await landingRes.json();
-      // gammaUrl is nested inside landingPage object
-      let gammaUrl = landingData.landingPage?.gammaUrl || landingData.gammaUrl || landingData.url || "";
-      setLandingPageUrl(gammaUrl);
-      console.log("[Campaign Create] Landing page generated:", { gammaUrl, landingData });
+      // Use the self-hosted URL from landingPage.url (not the external gammaUrl)
+      const selfHostedUrl = landingData.landingPage?.url || "";
+      setLandingPageUrl(selfHostedUrl);
+      console.log("[Campaign Create] Landing page generated:", { selfHostedUrl, landingData });
 
       // Phase 2: Create campaign
       setGenerationPhase("posts");
@@ -215,7 +215,7 @@ export default function CreateCampaignPage() {
           campaignType: "product_launch",
           goal: state.goal,
           productName: selectedLeadMagnet.title,
-          productUrl: gammaUrl || state.productUrl,
+          productUrl: selfHostedUrl || state.productUrl,
           keyMessages: state.keyMessages.filter((m) => m.trim()),
           startDate: state.startDate,
           durationDays: state.durationDays,

@@ -34,6 +34,8 @@ export function Step5Visuals() {
     platforms,
     contentOptions,
     selectedContentId,
+    editedContent,
+    sourceContent,
     visuals,
     setVisual,
     setLoading,
@@ -44,6 +46,9 @@ export function Step5Visuals() {
 
   const enabledPlatforms = platforms.filter((p) => p.enabled);
   const selectedContent = contentOptions.find((o) => o.id === selectedContentId);
+
+  // Get the actual text to use for image generation
+  const contentText = editedContent || selectedContent?.text || sourceContent || "";
 
   // Start generating visuals on mount
   useEffect(() => {
@@ -72,7 +77,7 @@ export function Step5Visuals() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              text: selectedContent?.text || "",
+              text: contentText,
               contentType: selectedContent?.type || "educational",
               platform: platform.platform,
             }),
@@ -102,7 +107,7 @@ export function Step5Visuals() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              text: selectedContent?.text || "",
+              text: contentText,
               contentType: selectedContent?.type || "educational",
               format: platform.format,
               platform: platform.platform,
@@ -153,12 +158,12 @@ export function Step5Visuals() {
       console.log(`[Step5] Regenerating visual for ${platform} (${config.format}), direct: ${needsDirectImage}...`);
       
       if (needsDirectImage) {
-        // Use Cloudflare AI for platforms that need direct image URLs
+        // Use Nano Banana for platforms that need direct image URLs
         const response = await fetch("/api/images/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: selectedContent?.text || "",
+            text: contentText,
             contentType: selectedContent?.type || "educational",
             platform: platform,
           }),
@@ -188,7 +193,7 @@ export function Step5Visuals() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: selectedContent?.text || "",
+            text: contentText,
             contentType: selectedContent?.type || "educational",
             format: config.format,
             platform: platform,

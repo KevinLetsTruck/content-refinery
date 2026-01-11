@@ -4,6 +4,7 @@ import { generate, isConfigured } from "@/lib/gamma";
 
 export const runtime = 'nodejs';
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://content-refinery-07dc.onrender.com";
 const LETS_TRUCK_THEME_ID = "jg2glj9ae8ah4vv";
 
 interface ExtractedData {
@@ -125,17 +126,80 @@ Voice: Direct, no-BS, pro-driver, anti-establishment
       },
     });
 
-    console.log(`[Campaign] Gamma landing page generated: ${result.gammaUrl}`);
+    console.log(`[Campaign] Gamma content generated: ${result.gammaUrl}`);
 
-    // Update the campaign with the new Gamma URL
-    const updatedCampaign = await prisma.campaign.update({
-      where: { id },
+    // Create slug from title
+    const baseSlug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .substring(0, 50)
+      .replace(/-$/, "");
+
+    // Ensure unique slug
+    let slug = baseSlug;
+    let counter = 1;
+    while (await prisma.landingPage.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    // Create self-hosted landing page in database
+    const landingPage = await prisma.landingPage.create({
       data: {
-        productUrl: result.gammaUrl,
+        slug,
+        template: "lead_magnet",
+        status: "published",
+        title: `${title} | Let's Truck`,
+        metaDescription: subtitle || `Free guide for professional drivers from Let's Truck Health Coaching`,
+        headline: extractedData.title || title,
+        subheadline: extractedData.subtitle || subtitle,
+        benefits: benefits,
+        trustElements: [
+          "4,000+ drivers in the Let's Truck Tribe",
+          "Created by Kevin Rutherford, FNTP",
+          "Based on ancestral health science",
+        ],
+        leadMagnetId: leadMagnet.id,
+        downloadUrl: leadMagnet.fileUrl,
+        ctaText: "Get My Free Guide",
+        ctaSubtext: "Instant download. No spam. Unsubscribe anytime.",
+        formFields: ["email", "firstName"],
+        thankYouHeadline: "Your Guide Is Ready!",
+        thankYouMessage: "Check your email for the download link. While you wait...",
+        thankYouCtas: [
+          {
+            text: "Join the Let's Truck Tribe",
+            url: "https://letstrucktribe.com",
+            style: "primary",
+          },
+          {
+            text: "Listen to Let's Truck Radio",
+            url: "https://letstruck.com/radio",
+            style: "secondary",
+          },
+        ],
+        utmCampaign: `${slug}-${new Date().toISOString().slice(0, 7)}`,
+        primaryColor: "#FF4500",
+        accentColor: "#f59e0b",
+        darkMode: true,
+        campaignId: id,
       },
     });
 
-    console.log(`[Campaign] Updated campaign ${id} with landing page URL: ${result.gammaUrl}`);
+    // Build self-hosted URL
+    const selfHostedUrl = `${BASE_URL}/lp/${slug}`;
+
+    // Update campaign with self-hosted URL
+    const updatedCampaign = await prisma.campaign.update({
+      where: { id },
+      data: {
+        productUrl: selfHostedUrl,
+      },
+    });
+
+    console.log(`[Campaign] Created self-hosted landing page: ${selfHostedUrl}`);
 
     return NextResponse.json({
       success: true,
@@ -143,6 +207,11 @@ Voice: Direct, no-BS, pro-driver, anti-establishment
         id: updatedCampaign.id,
         name: updatedCampaign.name,
         productUrl: updatedCampaign.productUrl,
+      },
+      landingPage: {
+        id: landingPage.id,
+        slug: landingPage.slug,
+        url: selfHostedUrl,
       },
       gammaId: result.generationId,
       gammaUrl: result.gammaUrl,

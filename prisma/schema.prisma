@@ -910,6 +910,7 @@ model LeadMagnet {
   // Relations
   leads           Lead[]
   emailSequences  EmailSequence[]
+  landingPages    LandingPage[]
 
   @@index([category])
   @@index([isActive])
@@ -1054,4 +1055,76 @@ model Email {
   @@unique([sequenceId, order])
   @@index([status])
   @@map("emails")
+}
+
+// ============================================
+// LANDING PAGES - Self-hosted landing pages
+// ============================================
+
+model LandingPage {
+  id              String    @id @default(uuid())
+
+  // URL and identification
+  slug            String    @unique
+
+  // Template and status
+  template        String    // lead_magnet, challenge, waitlist, product_launch
+  status          String    @default("draft") // draft, published, archived
+
+  // Meta
+  title           String
+  metaDescription String?   @map("meta_description")
+  ogImage         String?   @map("og_image")
+
+  // Content
+  headline        String
+  subheadline     String?
+  heroImage       String?   @map("hero_image")
+
+  // Benefits and trust
+  benefits        String[]
+  trustElements   String[]  @map("trust_elements")
+
+  // Lead magnet info
+  leadMagnetId    String?   @map("lead_magnet_id")
+  downloadUrl     String?   @map("download_url")
+
+  // CTA
+  ctaText         String    @map("cta_text")
+  ctaSubtext      String?   @map("cta_subtext")
+
+  // Form config
+  formFields      String[]  @map("form_fields") // email, firstName, lastName, phone
+  ccListId        String?   @map("cc_list_id") // Constant Contact list ID
+
+  // Thank you page
+  thankYouHeadline  String  @map("thank_you_headline")
+  thankYouMessage   String  @map("thank_you_message")
+  thankYouCtas      Json?   @map("thank_you_ctas") // Array of CTAs
+
+  // Styling
+  primaryColor    String    @default("#FF4500") @map("primary_color")
+  accentColor     String    @default("#f59e0b") @map("accent_color")
+  darkMode        Boolean   @default(true) @map("dark_mode")
+
+  // Tracking
+  utmCampaign     String?   @map("utm_campaign")
+
+  // Campaign relationship
+  campaignId      String?   @map("campaign_id")
+
+  // Analytics
+  views           Int       @default(0)
+  conversions     Int       @default(0)
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  leadMagnet      LeadMagnet? @relation(fields: [leadMagnetId], references: [id])
+
+  @@index([status])
+  @@index([campaignId])
+  @@map("landing_pages")
 }

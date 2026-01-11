@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { generate, isConfigured } from "@/lib/gamma";
-import { saveLandingPage } from "@/lib/landing-pages/storage";
-import { LandingPageData, LandingPageTemplate } from "@/lib/landing-pages/types";
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://content-refinery-07dc.onrender.com";
 
 export const runtime = 'nodejs';
 
@@ -177,7 +177,7 @@ Voice: Direct, no-BS, pro-driver, anti-establishment
     });
 
     // Create slug from title
-    const slug = title
+    const baseSlug = title
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
       .replace(/\s+/g, "-")
@@ -185,42 +185,38 @@ Voice: Direct, no-BS, pro-driver, anti-establishment
       .substring(0, 50)
       .replace(/-$/, "");
 
-    // Create landing page data
-    const landingPageData: LandingPageData = {
-      slug,
-      template: template as LandingPageTemplate,
-      status: "published",
+    // Ensure unique slug
+    let slug = baseSlug;
+    let counter = 1;
+    while (await prisma.landingPage.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
 
-      title: `${title} | Let's Truck`,
-      metaDescription: subtitle || `Free guide for professional drivers from Let's Truck Health Coaching`,
-
-      headline: customizations?.headline || extractedData.title || templateConfig.defaultHeadline,
-      subheadline: customizations?.subheadline || extractedData.subtitle || templateConfig.defaultSubheadline,
-
-      benefits: benefits,
-
-      trustElements: [
-        "4,000+ drivers in the Let's Truck Tribe",
-        "Created by Kevin Rutherford, FNTP",
-        "Based on ancestral health science",
-      ],
-
-      leadMagnet: {
-        title: leadMagnet.title,
-        description: leadMagnet.description || "",
+    // Save landing page to database
+    const landingPage = await prisma.landingPage.create({
+      data: {
+        slug,
+        template,
+        status: "published",
+        title: `${title} | Let's Truck`,
+        metaDescription: subtitle || `Free guide for professional drivers from Let's Truck Health Coaching`,
+        headline: customizations?.headline || extractedData.title || templateConfig.defaultHeadline,
+        subheadline: customizations?.subheadline || extractedData.subtitle || templateConfig.defaultSubheadline,
+        benefits: benefits,
+        trustElements: [
+          "4,000+ drivers in the Let's Truck Tribe",
+          "Created by Kevin Rutherford, FNTP",
+          "Based on ancestral health science",
+        ],
+        leadMagnetId: leadMagnetId,
         downloadUrl: leadMagnet.fileUrl,
-      },
-
-      ctaText: templateConfig.defaultCtaText,
-      ctaSubtext: "Instant download. No spam. Unsubscribe anytime.",
-
-      formFields: ["email", "firstName"],
-      constantContactListId: "",
-
-      thankYou: {
-        headline: "Your Guide Is Ready!",
-        message: "Check your email for the download link. While you wait...",
-        ctas: [
+        ctaText: templateConfig.defaultCtaText,
+        ctaSubtext: "Instant download. No spam. Unsubscribe anytime.",
+        formFields: ["email", "firstName"],
+        thankYouHeadline: "Your Guide Is Ready!",
+        thankYouMessage: "Check your email for the download link. While you wait...",
+        thankYouCtas: [
           {
             text: "Join the Let's Truck Tribe",
             url: "https://letstrucktribe.com",
@@ -232,32 +228,32 @@ Voice: Direct, no-BS, pro-driver, anti-establishment
             style: "secondary",
           },
         ],
+        utmCampaign: `${slug}-${new Date().toISOString().slice(0, 7)}`,
+        primaryColor: "#FF4500",
+        accentColor: "#f59e0b",
+        darkMode: true,
       },
+    });
 
-      utmCampaign: `${slug}-${new Date().toISOString().slice(0, 7)}`,
+    // Build self-hosted URL
+    const selfHostedUrl = `${BASE_URL}/lp/${slug}`;
 
-      primaryColor: "#FF4500",
-      accentColor: "#f59e0b",
-      darkMode: true,
-
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      views: 0,
-      conversions: 0,
-    };
-
-    // Save to in-memory storage
-    saveLandingPage(landingPageData);
-
-    console.log(`[Landing Pages] Created landing page: ${slug}`);
+    console.log(`[Landing Pages] Created landing page: ${slug} at ${selfHostedUrl}`);
 
     return NextResponse.json({
       success: true,
       landingPage: {
-        ...landingPageData,
-        gammaId: result.generationId,
-        gammaUrl: result.gammaUrl,
+        id: landingPage.id,
+        slug: landingPage.slug,
+        url: selfHostedUrl,
+        template: landingPage.template,
+        status: landingPage.status,
+        title: landingPage.title,
+        headline: landingPage.headline,
+        subheadline: landingPage.subheadline,
       },
+      gammaId: result.generationId,
+      gammaUrl: result.gammaUrl,
     });
 
   } catch (error) {

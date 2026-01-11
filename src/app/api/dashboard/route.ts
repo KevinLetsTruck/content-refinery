@@ -21,7 +21,7 @@ export async function GET() {
     const startOfLastWeek = new Date(startOfWeek);
     startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-    // Stats
+    // Stats from GeneratedContent (ad-hoc posts)
     const postsToday = await prisma.generatedContent.count({
       where: {
         scheduledFor: { gte: startOfToday, lte: endOfToday },
@@ -50,6 +50,33 @@ export async function GET() {
     const pendingReview = await prisma.generatedContent.count({
       where: { status: { in: ["pending", "pending_review"] } },
     });
+
+    // Stats from CampaignPost (campaign posts)
+    const campaignPostsToday = await prisma.campaignPost.count({
+      where: {
+        scheduledFor: { gte: startOfToday, lte: endOfToday },
+        status: { in: ["scheduled", "published", "draft"] },
+      },
+    });
+
+    const campaignPostsThisWeek = await prisma.campaignPost.count({
+      where: {
+        scheduledFor: { gte: startOfWeek },
+        status: { in: ["scheduled", "published", "draft"] },
+      },
+    });
+
+    const campaignPublishedThisWeek = await prisma.campaignPost.count({
+      where: {
+        publishedAt: { gte: startOfWeek },
+        status: "published",
+      },
+    });
+
+    // Combine stats
+    const totalPostsToday = postsToday + campaignPostsToday;
+    const totalPostsThisWeek = postsThisWeek + campaignPostsThisWeek;
+    const totalPublishedThisWeek = publishedThisWeek + campaignPublishedThisWeek;
 
     // Engagement stats (from PostPerformance if available)
     let totalEngagement = 0;
@@ -94,8 +121,8 @@ export async function GET() {
     // Calculate content streak
     const contentStreak = await calculateContentStreak();
 
-    // Today's posts
-    const todaysPosts = await prisma.generatedContent.findMany({
+    // Today's posts from GeneratedContent
+    const todaysGeneratedPosts = await prisma.generatedContent.findMany({
       where: {
         scheduledFor: { gte: startOfToday, lte: endOfToday },
       },
@@ -103,7 +130,41 @@ export async function GET() {
       take: 10,
     });
 
-    // Recent activity - combine published and created
+    // Today's posts from CampaignPost
+    const todaysCampaignPosts = await prisma.campaignPost.findMany({
+      where: {
+        scheduledFor: { gte: startOfToday, lte: endOfToday },
+      },
+      orderBy: { scheduledFor: "asc" },
+      take: 10,
+      include: {
+        campaign: { select: { name: true } },
+      },
+    });
+
+    // Combine and sort today's posts
+    const combinedTodaysPosts = [
+      ...todaysGeneratedPosts.map((post) => ({
+        id: post.id,
+        title: post.title || "",
+        content: post.text || "",
+        platform: post.platform,
+        scheduledFor: post.scheduledFor?.toISOString() || "",
+        status: post.status,
+        source: "generated" as const,
+      })),
+      ...todaysCampaignPosts.map((post) => ({
+        id: post.id,
+        title: post.campaign?.name || "",
+        content: post.content || "",
+        platform: post.platform,
+        scheduledFor: post.scheduledFor?.toISOString() || "",
+        status: post.status,
+        source: "campaign" as const,
+      })),
+    ].sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime());
+
+    // Recent activity - combine published and created from both sources
     const recentContent = await prisma.generatedContent.findMany({
       where: {
         OR: [
@@ -115,24 +176,61 @@ export async function GET() {
       take: 10,
     });
 
-    const recentActivity = recentContent.map((content) => ({
-      id: content.id,
-      type:
-        content.status === "published"
-          ? "published"
-          : content.status === "failed"
-          ? "failed"
-          : "created",
-      title:
-        content.status === "published"
-          ? `Published to ${content.platform}`
-          : content.status === "failed"
-          ? `Failed to publish to ${content.platform}`
-          : `Created new ${content.platform} post`,
-      platform: content.platform,
-      timestamp: (content.publishedAt || content.createdAt).toISOString(),
-      details: content.title || content.text?.substring(0, 50) || "",
-    }));
+    const recentCampaignPosts = await prisma.campaignPost.findMany({
+      where: {
+        OR: [
+          { publishedAt: { not: null } },
+          { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+      include: {
+        campaign: { select: { name: true } },
+      },
+    });
+
+    // Combine recent activity
+    const recentActivity = [
+      ...recentContent.map((content) => ({
+        id: content.id,
+        type:
+          content.status === "published"
+            ? "published"
+            : content.status === "failed"
+            ? "failed"
+            : "created",
+        title:
+          content.status === "published"
+            ? `Published to ${content.platform}`
+            : content.status === "failed"
+            ? `Failed to publish to ${content.platform}`
+            : `Created new ${content.platform} post`,
+        platform: content.platform,
+        timestamp: (content.publishedAt || content.createdAt).toISOString(),
+        details: content.title || content.text?.substring(0, 50) || "",
+      })),
+      ...recentCampaignPosts.map((post) => ({
+        id: post.id,
+        type:
+          post.status === "published"
+            ? "published"
+            : post.status === "failed"
+            ? "failed"
+            : "created",
+        title:
+          post.status === "published"
+            ? `Published to ${post.platform}`
+            : post.status === "failed"
+            ? `Failed to publish to ${post.platform}`
+            : `Created new ${post.platform} post`,
+        platform: post.platform,
+        timestamp: (post.publishedAt || post.createdAt).toISOString(),
+        details: post.campaign?.name || post.content?.substring(0, 50) || "",
+      })),
+    ]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10);
 
     // Top performing posts
     let topPosts: Array<{
@@ -173,9 +271,9 @@ export async function GET() {
 
     return NextResponse.json({
       stats: {
-        postsToday,
-        postsThisWeek,
-        publishedThisWeek,
+        postsToday: totalPostsToday,
+        postsThisWeek: totalPostsThisWeek,
+        publishedThisWeek: totalPublishedThisWeek,
         failedPosts,
         pendingReview,
         totalEngagement,
@@ -183,14 +281,7 @@ export async function GET() {
         impressions,
         contentStreak,
       },
-      todaysPosts: todaysPosts.map((post) => ({
-        id: post.id,
-        title: post.title || "",
-        content: post.text || "",
-        platform: post.platform,
-        scheduledFor: post.scheduledFor?.toISOString() || "",
-        status: post.status,
-      })),
+      todaysPosts: combinedTodaysPosts,
       recentActivity,
       topPosts,
     });

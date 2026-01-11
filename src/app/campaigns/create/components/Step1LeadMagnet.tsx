@@ -73,19 +73,38 @@ export default function Step1LeadMagnet({ onSelect, selectedId }: Props) {
     }
   };
 
+  // Track which item is being selected (for loading state)
+  const [selectingId, setSelectingId] = useState<string | null>(null);
+
   const handleSelect = async (leadMagnet: LeadMagnet) => {
+    // Prevent double-clicks
+    if (selectingId) return;
+
+    setSelectingId(leadMagnet.id);
+    setError(null);
+
     try {
       // Fetch full details including extractedData
       const response = await fetch(`/api/lead-magnets/${leadMagnet.id}`);
-      if (!response.ok) throw new Error("Failed to fetch lead magnet details");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to fetch lead magnet details (${response.status})`);
+      }
       const data = await response.json();
 
       const extractedData = data.extractedData || data.leadMagnet?.extractedData || {};
       onSelect(data.leadMagnet, extractedData);
     } catch (err) {
       console.error("Error fetching lead magnet details:", err);
-      // Still call onSelect with what we have
-      onSelect(leadMagnet, leadMagnet.extractedData || {});
+      setError(err instanceof Error ? err.message : "Failed to load lead magnet");
+      // Still try to proceed with what we have
+      try {
+        onSelect(leadMagnet, leadMagnet.extractedData || {});
+      } catch (selectErr) {
+        console.error("Error calling onSelect:", selectErr);
+      }
+    } finally {
+      setSelectingId(null);
     }
   };
 
@@ -221,22 +240,32 @@ export default function Step1LeadMagnet({ onSelect, selectedId }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {leadMagnets.map((lm) => {
                 const isSelected = selectedId === lm.id;
+                const isSelecting = selectingId === lm.id;
                 return (
                   <button
                     key={lm.id}
                     onClick={() => handleSelect(lm)}
+                    disabled={!!selectingId}
                     className={`relative text-left p-4 rounded-xl border-2 transition-all ${
                       isSelected
                         ? "border-[#FF4500] bg-[#FF4500]/10"
+                        : isSelecting
+                        ? "border-[#FF4500]/50 bg-[#1A1A1A] cursor-wait"
+                        : selectingId
+                        ? "border-[#2A2A2A] bg-[#1A1A1A] opacity-50 cursor-not-allowed"
                         : "border-[#2A2A2A] bg-[#1A1A1A] hover:border-[#3A3A3A]"
                     }`}
                   >
-                    {/* Selected Checkmark */}
-                    {isSelected && (
+                    {/* Loading Spinner or Selected Checkmark */}
+                    {isSelecting ? (
+                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#FF4500]/20 flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 text-[#FF4500] animate-spin" />
+                      </div>
+                    ) : isSelected ? (
                       <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#FF4500] flex items-center justify-center">
                         <Check className="w-4 h-4 text-white" />
                       </div>
-                    )}
+                    ) : null}
 
                     <div className="flex gap-4">
                       {/* Thumbnail/Icon */}

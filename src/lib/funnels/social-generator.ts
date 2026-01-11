@@ -160,22 +160,25 @@ POST VARIETY - mix these types:
 5. Direct CTA to download the guide
 
 CRITICAL REQUIREMENTS:
-- EVERY post must have a clear CTA to the landing page
+- EVERY post MUST include the FULL landing page URL: ${landingPageUrl}
+- The URL must appear in the post text, not just as a link preview
 - Use "driver" or "owner-operator" NOT "trucker"
 - Vary the hook/opening for each post
-- Include relevant hashtags
+- Include relevant hashtags (but prioritize URL over hashtags for character count)
 - Assign each post to a day number (1 to ${durationDays})
+- For Twitter: Keep under 280 chars INCLUDING the URL and hashtags
 
 Return as JSON array:
 [
   {
-    "content": "Full post content including the link",
+    "content": "Full post content WITH the URL included",
     "hashtags": ["hashtag1", "hashtag2"],
     "dayNumber": 1
   }
 ]
 
-Make the landing page URL part of the content naturally, e.g., "Grab the free guide: ${landingPageUrl}"`;
+MANDATORY: Every post content field MUST contain the exact URL: ${landingPageUrl}
+Example: "Your genes are 99.9% identical to ancestors from 40,000 years ago. Your body doesn't know what a Dorito is. Get the free guide: ${landingPageUrl}"`;
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
@@ -206,16 +209,28 @@ Make the landing page URL part of the content naturally, e.g., "Grab the free gu
     dayNumber: number;
   }>;
 
-  // Transform to FunnelPost format
-  const posts: FunnelPost[] = postData.map((post) => ({
-    id: uuid(),
-    platform: platform as FunnelPost["platform"],
-    content: post.content,
-    hashtags: post.hashtags,
-    dayNumber: post.dayNumber,
-    landingPageUrl,
-    status: "draft" as const,
-  }));
+  // Transform to FunnelPost format, ensuring URL is always included
+  const posts: FunnelPost[] = postData.map((post) => {
+    let content = post.content;
+
+    // Ensure the landing page URL is in the content
+    if (!content.includes(landingPageUrl)) {
+      // Add URL if missing - append to end
+      const urlSuffix = `\n\n${landingPageUrl}`;
+      content = content + urlSuffix;
+      console.warn(`[SocialGen] Added missing URL to post for day ${post.dayNumber}`);
+    }
+
+    return {
+      id: uuid(),
+      platform: platform as FunnelPost["platform"],
+      content,
+      hashtags: post.hashtags,
+      dayNumber: post.dayNumber,
+      landingPageUrl,
+      status: "draft" as const,
+    };
+  });
 
   return posts;
 }

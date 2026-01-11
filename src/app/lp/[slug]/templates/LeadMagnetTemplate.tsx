@@ -44,9 +44,9 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
       }
 
       const data = await response.json();
-      // Only set download URL if returned from API (proves they subscribed)
-      if (data.downloadUrl) {
-        setVerifiedDownloadUrl(data.downloadUrl);
+      // Only set download link if returned from API (token-protected)
+      if (data.downloadLink) {
+        setVerifiedDownloadUrl(data.downloadLink);
       }
       setIsSuccess(true);
     } catch (err) {

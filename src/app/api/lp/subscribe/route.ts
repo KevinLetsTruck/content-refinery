@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import prisma from "@/lib/db/prisma";
 import { getLandingPage, incrementConversions } from "@/lib/landing-pages/storage";
 import { getConstantContactClient } from "@/lib/constant-contact/client";
+
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://content-refinery-07dc.onrender.com";
+
+// Generate a unique download token
+function generateDownloadToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
 
 interface SubscribeRequest {
   slug: string;
@@ -130,9 +138,13 @@ export async function POST(request: NextRequest) {
       console.error("[Subscribe] Constant Contact error:", error);
     }
 
-    // Create lead in database
+    // Generate unique download token
+    const downloadToken = generateDownloadToken();
+
+    // Create lead in database with download token
+    let lead;
     try {
-      await prisma.lead.create({
+      lead = await prisma.lead.create({
         data: {
           email: body.email,
           firstName: body.firstName,
@@ -146,20 +158,47 @@ export async function POST(request: NextRequest) {
           utmCampaign: body.utm_campaign,
           ccSyncedAt: addedToCC ? new Date() : null,
           status: "subscribed",
+          downloadToken,
         },
       });
-      console.log(`[Subscribe] Lead saved to database: ${body.email}`);
+      console.log(`[Subscribe] Lead saved to database: ${body.email} with token`);
     } catch (error) {
-      // Might be duplicate - that's ok
-      console.log(`[Subscribe] Lead already exists or error: ${body.email}`);
+      // Might be duplicate - update existing lead with new token
+      if (pageData.leadMagnetId) {
+        try {
+          lead = await prisma.lead.update({
+            where: {
+              email_leadMagnetId: {
+                email: body.email,
+                leadMagnetId: pageData.leadMagnetId,
+              },
+            },
+            data: {
+              downloadToken,
+              downloadedAt: null, // Reset download status
+            },
+          });
+          console.log(`[Subscribe] Updated existing lead: ${body.email} with new token`);
+        } catch {
+          console.log(`[Subscribe] Could not create/update lead: ${body.email}`);
+        }
+      }
     }
+
+    // Build the secure download URL with token
+    const downloadLink = lead?.downloadToken
+      ? `${BASE_URL}/api/lp/download?token=${lead.downloadToken}`
+      : null;
 
     console.log(`[Subscribe] New subscriber: ${body.email} for ${body.slug} (CC: ${addedToCC})`);
 
+    // NOTE: We do NOT return the direct downloadUrl anymore
+    // The user must click the link in their email or use the token-verified endpoint
     return NextResponse.json({
       success: true,
-      message: "Subscription successful",
-      downloadUrl: pageData.downloadUrl,
+      message: "Subscription successful! Check your email for the download link.",
+      // Return the token-protected download link for the thank you page
+      downloadLink,
       addedToCC,
       ...(ccError && { ccWarning: "Email saved but Constant Contact sync failed" }),
     });

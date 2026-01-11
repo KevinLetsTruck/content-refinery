@@ -3,6 +3,7 @@ import crypto from "crypto";
 import prisma from "@/lib/db/prisma";
 import { getLandingPage, incrementConversions } from "@/lib/landing-pages/storage";
 import { getConstantContactClient } from "@/lib/constant-contact/client";
+import { sendLeadMagnetEmail, isResendConfigured } from "@/lib/email/resend";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://content-refinery-07dc.onrender.com";
 
@@ -191,18 +192,51 @@ export async function POST(request: NextRequest) {
       : null;
 
     console.log(`[Subscribe] New subscriber: ${body.email} for ${body.slug} (CC: ${addedToCC})`);
-    if (downloadLink) {
-      console.log(`[Subscribe] Download link generated (for email): ${downloadLink}`);
+
+    // Send the download email via Resend
+    let emailSent = false;
+    let emailError: string | null = null;
+
+    if (downloadLink && isResendConfigured()) {
+      // Get lead magnet title for the email
+      let leadMagnetTitle = "Your Guide";
+      if (pageData.leadMagnetId) {
+        const lm = await prisma.leadMagnet.findUnique({
+          where: { id: pageData.leadMagnetId },
+          select: { title: true },
+        });
+        if (lm) leadMagnetTitle = lm.title;
+      }
+
+      const emailResult = await sendLeadMagnetEmail({
+        email: body.email,
+        firstName: body.firstName,
+        leadMagnetTitle,
+        downloadUrl: downloadLink,
+        landingPageSlug: body.slug,
+      });
+
+      emailSent = emailResult.success;
+      if (!emailResult.success) {
+        emailError = emailResult.error || "Failed to send email";
+        console.error(`[Subscribe] Email send failed: ${emailError}`);
+      }
+    } else if (downloadLink) {
+      console.log(`[Subscribe] Download link generated but email not sent (Resend not configured): ${downloadLink}`);
     }
 
     // NOTE: We do NOT return the downloadLink to the client
-    // The download link should ONLY be sent via email for true verification
+    // The download link is ONLY sent via email for true verification
     // This ensures users must have access to the email inbox to download
     return NextResponse.json({
       success: true,
-      message: "Subscription successful! Check your email for the download link.",
+      message: emailSent
+        ? "Success! Check your email for the download link."
+        : "Subscription successful! Check your email for the download link.",
       addedToCC,
+      emailSent,
       ...(ccError && { ccWarning: "Email saved but Constant Contact sync failed" }),
+      ...(emailError && { emailWarning: emailError }),
     });
 
   } catch (error) {

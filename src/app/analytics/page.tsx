@@ -33,6 +33,7 @@ import { Sidebar } from "@/components/navigation/Sidebar";
 interface AnalyticsData {
   period: string;
   dataSource?: "published_content" | "performance_metrics";
+  metricsPending?: boolean;
   metricsStatus?: string;
   overview: {
     totalPosts: number;
@@ -234,7 +235,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Metrics Status Banner */}
-      {data.dataSource === "published_content" && (
+      {data.metricsPending && (
         <div className="bg-[#F4A300]/10 border border-[#F4A300]/30 rounded-xl p-4 mb-6 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-[#F4A300] mt-0.5 flex-shrink-0" />
           <div>

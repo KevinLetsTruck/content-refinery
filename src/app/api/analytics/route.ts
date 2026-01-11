@@ -26,6 +26,14 @@ export async function GET(request: NextRequest) {
     // First, check if we have any PostPerformance data
     const performanceCount = await prisma.postPerformance.count({ where });
 
+    // Check how many have actual metrics collected (not pending)
+    const metricsCollectedCount = await prisma.postPerformance.count({
+      where: {
+        ...where,
+        performanceLevel: { not: "pending" },
+      },
+    });
+
     // Also count published content directly
     const publishedCount = await prisma.generatedContent.count({
       where: contentWhere,
@@ -33,6 +41,9 @@ export async function GET(request: NextRequest) {
 
     // If no PostPerformance but we have published content, use GeneratedContent data
     const useContentFallback = performanceCount === 0 && publishedCount > 0;
+
+    // Metrics are pending if we have performance records but none have been collected yet
+    const metricsPending = performanceCount > 0 && metricsCollectedCount === 0;
 
     // Overview stats
     const [
@@ -272,8 +283,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       period: `${periodDays} days`,
       dataSource: useContentFallback ? "published_content" : "performance_metrics",
-      metricsStatus: useContentFallback
-        ? "Metrics collection pending - showing published content"
+      metricsPending: useContentFallback || metricsPending,
+      metricsStatus: useContentFallback || metricsPending
+        ? "Metrics collection pending - engagement data will be collected automatically"
         : "Metrics available",
       overview: {
         totalPosts,

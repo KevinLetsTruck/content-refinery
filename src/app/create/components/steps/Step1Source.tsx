@@ -71,12 +71,11 @@ export function Step1Source() {
   const [selectedType, setSelectedType] = useState<SourceType | null>(sourceType);
   const [content, setContent] = useState(sourceContent);
 
-  // Reset wizard state when entering step 1
+  // Reset wizard state when entering step 1 fresh
   useEffect(() => {
-    if (currentStep !== 1) {
-      goToStep(1);
-    }
-  }, [currentStep, goToStep]);
+    // Reset the entire wizard when landing on step 1
+    reset();
+  }, []); // Only on mount
 
   const handleSourceSelect = (type: SourceType) => {
     setSelectedType(type);

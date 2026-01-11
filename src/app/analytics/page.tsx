@@ -26,11 +26,14 @@ import {
   Beaker,
   ExternalLink,
   ChevronRight,
+  AlertCircle,
 } from "lucide-react";
 import { Sidebar } from "@/components/navigation/Sidebar";
 
 interface AnalyticsData {
   period: string;
+  dataSource?: "published_content" | "performance_metrics";
+  metricsStatus?: string;
   overview: {
     totalPosts: number;
     avgEngagement: number;
@@ -45,10 +48,10 @@ interface AnalyticsData {
     platform: string;
     text: string;
     url?: string;
-    engagementRate: number;
-    impressions: number;
-    likes: number;
-    shares: number;
+    engagementRate: number | null;
+    impressions: number | null;
+    likes: number | null;
+    shares: number | null;
     formula?: string;
     pillar?: string;
     performanceLevel: string;
@@ -57,10 +60,10 @@ interface AnalyticsData {
   platformStats: Array<{
     platform: string;
     posts: number;
-    avgEngagement: number;
-    totalImpressions: number;
-    totalLikes: number;
-    totalShares: number;
+    avgEngagement: number | null;
+    totalImpressions: number | null;
+    totalLikes: number | null;
+    totalShares: number | null;
   }>;
   formulaStats: Array<{
     formula: string;
@@ -75,7 +78,7 @@ interface AnalyticsData {
   dailyStats: Array<{
     date: string;
     posts: number;
-    avg_engagement: number;
+    avg_engagement: number | null;
     total_impressions: number;
   }>;
   recentTests: Array<{
@@ -229,7 +232,21 @@ export default function AnalyticsPage() {
           </button>
         </div>
       </div>
-      
+
+      {/* Metrics Status Banner */}
+      {data.dataSource === "published_content" && (
+        <div className="bg-[#F4A300]/10 border border-[#F4A300]/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-[#F4A300] mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-[#F4A300] font-medium">Engagement metrics pending</p>
+            <p className="text-[#888] text-sm mt-1">
+              Your published posts are shown below. Engagement data (impressions, likes, shares)
+              will be collected automatically and displayed once available.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Overview Cards */}
       <div className="grid grid-cols-5 gap-4 mb-8">
         <StatCard
@@ -382,12 +399,18 @@ export default function AnalyticsPage() {
                   <div className="flex justify-between">
                     <span className="text-[#888]">Avg Engagement</span>
                     <span className="text-[#FF4500] font-medium">
-                      {(p.avgEngagement * 100).toFixed(2)}%
+                      {p.avgEngagement !== null
+                        ? `${(p.avgEngagement * 100).toFixed(2)}%`
+                        : "Pending"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#888]">Impressions</span>
-                    <span className="text-white">{formatNumber(p.totalImpressions)}</span>
+                    <span className="text-white">
+                      {p.totalImpressions !== null
+                        ? formatNumber(p.totalImpressions)
+                        : "Pending"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -416,10 +439,16 @@ export default function AnalyticsPage() {
                     <p className="text-white text-sm truncate">{post.text}</p>
                     <div className="flex items-center gap-3 mt-2 text-xs text-[#888]">
                       <span className="capitalize">{post.platform}</span>
-                      <span className="text-[#FF4500]">
-                        {(post.engagementRate * 100).toFixed(2)}% eng
-                      </span>
-                      <span>{formatNumber(post.impressions)} imp</span>
+                      {post.engagementRate !== null ? (
+                        <>
+                          <span className="text-[#FF4500]">
+                            {(post.engagementRate * 100).toFixed(2)}% eng
+                          </span>
+                          <span>{formatNumber(post.impressions || 0)} imp</span>
+                        </>
+                      ) : (
+                        <span className="text-[#F4A300]">Metrics pending</span>
+                      )}
                     </div>
                   </div>
                   {post.url && (

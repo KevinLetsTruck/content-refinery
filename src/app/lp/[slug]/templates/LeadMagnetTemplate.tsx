@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LandingPageData } from "@/lib/landing-pages/types";
-import { SmartAppLinks, DEFAULT_APP_LINKS } from "@/lib/landing-pages/device-detection";
+import { SmartAppLinks } from "@/lib/landing-pages/device-detection";
 
 interface Props {
   page: LandingPageData;
@@ -20,6 +20,7 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [verifiedDownloadUrl, setVerifiedDownloadUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +43,11 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
         throw new Error("Subscription failed");
       }
 
+      const data = await response.json();
+      // Only set download URL if returned from API (proves they subscribed)
+      if (data.downloadUrl) {
+        setVerifiedDownloadUrl(data.downloadUrl);
+      }
       setIsSuccess(true);
     } catch (err) {
       setError("Something went wrong. Please try again.");
@@ -80,30 +86,41 @@ export function LeadMagnetTemplate({ page, tracking }: Props) {
           <div className="space-y-4">
             {page.thankYou.ctas
               .filter(cta => !cta.text.toLowerCase().includes("audioroad") && !cta.text.toLowerCase().includes("app"))
-              .map((cta, index) => (
-              <a
-                key={index}
-                href={cta.url}
-                className={`block w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all ${
-                  cta.style === "primary"
-                    ? "bg-amber-500 hover:bg-amber-400 text-black"
-                    : "bg-gray-700 hover:bg-gray-600 text-white border border-gray-600"
-                }`}
-              >
-                {cta.text}
-              </a>
-            ))}
+              .map((cta, index) => {
+                // Fix Radio URL if needed
+                let url = cta.url;
+                if (cta.text.toLowerCase().includes("radio")) {
+                  url = "https://store.letstruck.com/pages/audio-road";
+                }
+                return (
+                  <a
+                    key={index}
+                    href={url}
+                    className={`block w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all ${
+                      cta.style === "primary"
+                        ? "bg-amber-500 hover:bg-amber-400 text-black"
+                        : "bg-gray-700 hover:bg-gray-600 text-white border border-gray-600"
+                    }`}
+                  >
+                    {cta.text}
+                  </a>
+                );
+              })}
           </div>
-          
-          {page.leadMagnet && (
+
+          {/* Only show download link if user completed subscription (verified via API) */}
+          {verifiedDownloadUrl && page.leadMagnet && (
             <div className="mt-10 p-6 bg-gray-800 rounded-lg">
-              <p className="text-gray-400 mb-3">Your guide is also available here:</p>
+              <p className="text-gray-400 mb-3">Your guide is ready for download:</p>
               <a
-                href={page.leadMagnet.downloadUrl}
+                href={verifiedDownloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-amber-400 hover:text-amber-300 underline"
+                className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 underline font-semibold"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 Download: {page.leadMagnet.title}
               </a>
             </div>

@@ -224,7 +224,7 @@ Voice: Direct, no-BS, pro-driver, anti-establishment
           },
           {
             text: "Listen to Let's Truck Radio",
-            url: "https://letstruck.com/radio",
+            url: "https://store.letstruck.com/pages/audio-road",
             style: "secondary",
           },
         ],

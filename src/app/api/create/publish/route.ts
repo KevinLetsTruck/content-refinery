@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
               data: {
                 status: 'published',
                 publishedAt: new Date(),
-                publishedUrl,
+                platformPostUrl: publishedUrl,
               },
             });
 

@@ -193,8 +193,10 @@ export default function CreateCampaignPage() {
       });
 
       const landingData = await landingRes.json();
-      let gammaUrl = landingData.gammaUrl || landingData.url || "";
+      // gammaUrl is nested inside landingPage object
+      let gammaUrl = landingData.landingPage?.gammaUrl || landingData.gammaUrl || landingData.url || "";
       setLandingPageUrl(gammaUrl);
+      console.log("[Campaign Create] Landing page generated:", { gammaUrl, landingData });
 
       // Phase 2: Create campaign
       setGenerationPhase("posts");

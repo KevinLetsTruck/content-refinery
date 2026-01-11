@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { findProductInText, type Product } from '@/lib/products/catalog';
 
 const anthropic = new Anthropic();
 
@@ -12,16 +13,68 @@ interface ContentOption {
   hashtags: string[];
 }
 
+/**
+ * Build product context section for the prompt if a product is detected
+ */
+function buildProductContext(sourceContent: string, sourceType: string): string {
+  // Try to find product in source content
+  const product = findProductInText(sourceContent);
+
+  if (!product) {
+    return '';
+  }
+
+  // Map form to dosage language
+  const formDescriptions: Record<string, string> = {
+    capsule: "capsules/pills",
+    liquid: "liquid - measure by tablespoon or teaspoon",
+    powder: "powder - measure by scoop",
+    drops: "liquid drops",
+    honey: "honey - measure by teaspoon",
+    gummies: "gummies",
+    softgel: "softgels",
+    stick: "stick packs",
+    food: "food item",
+    device: "device/equipment",
+  };
+
+  const formInfo = product.form ? `
+- Product Form: ${formDescriptions[product.form] || product.form}
+- Serving Size: ${product.servingSize || 'see label'}` : '';
+
+  return `
+PRODUCT DETAILS (USE THESE FACTS - DO NOT INVENT):
+- Product Name: ${product.name}
+- Price: $${product.price}
+- Category: ${product.category}${product.subcategory ? ` (${product.subcategory})` : ''}${formInfo}
+- Description: ${product.description}
+- Key Benefits:
+${product.benefits.map(b => `  • ${b}`).join('\n')}
+- Store URL: ${product.url}
+
+CRITICAL: Use the EXACT product form when describing usage:
+${product.form === 'honey' ? '- This is HONEY - say "one teaspoon" or "a spoonful" - NEVER say "capsule" or "pill"' : ''}
+${product.form === 'liquid' ? '- This is a LIQUID - say "one tablespoon" or "a serving" - NEVER say "capsule" or "pill"' : ''}
+${product.form === 'drops' ? '- These are DROPS - say "a few drops" or "1-2 drops" - NEVER say "capsule" or "pill"' : ''}
+${product.form === 'capsule' ? '- These are CAPSULES - you can say "capsule" or "pill"' : ''}
+${product.form === 'powder' ? '- This is a POWDER - say "one scoop" - NEVER say "capsule" or "pill"' : ''}
+${!product.form ? '- Be generic about dosage - say "one serving" or "as directed"' : ''}
+`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { sourceType, sourceContent, interviewData, count = 3 } = body;
 
+    // Get product context if applicable
+    const productContext = buildProductContext(sourceContent, sourceType);
+
     const prompt = `Generate ${count} different social media post options for Let's Truck Health Coaching.
 
 SOURCE TYPE: ${sourceType}
 SOURCE CONTENT: ${sourceContent}
-
+${productContext}
 INTERVIEW DATA:
 - Primary Message: ${interviewData?.primaryMessage || 'Not specified'}
 - Target Emotion: ${interviewData?.targetEmotion || 'Not specified'}

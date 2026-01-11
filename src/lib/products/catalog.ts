@@ -15,6 +15,8 @@ export interface Product {
   benefits: string[];
   bestForLeadMagnets: string[]; // Lead magnet slugs this product pairs well with
   isKevinDaily?: boolean; // Part of Kevin's daily stack
+  form?: "capsule" | "liquid" | "powder" | "drops" | "honey" | "gummies" | "softgel" | "stick" | "food" | "device"; // Product form for accurate dosage language
+  servingSize?: string; // e.g., "1 capsule", "1 teaspoon", "1 scoop"
 }
 
 export const PRODUCT_CATALOG: Product[] = [
@@ -115,6 +117,8 @@ export const PRODUCT_CATALOG: Product[] = [
     ],
     bestForLeadMagnets: ["gut-check", "shut-up-and-digest", "eat-like-a-human"],
     isKevinDaily: true,
+    form: "honey",
+    servingSize: "1 teaspoon daily",
   },
   {
     id: "terraflora-deep-zen",
@@ -133,6 +137,8 @@ export const PRODUCT_CATALOG: Product[] = [
     ],
     bestForLeadMagnets: ["gut-check", "stress-proof", "sleep-when-youre-dead"],
     isKevinDaily: true,
+    form: "capsule",
+    servingSize: "2 capsules daily",
   },
   {
     id: "mind-fuel-mct",
@@ -151,6 +157,8 @@ export const PRODUCT_CATALOG: Product[] = [
     ],
     bestForLeadMagnets: ["eat-like-a-human", "blood-sugar-chaos", "diesel-in-your-blood"],
     isKevinDaily: true,
+    form: "liquid",
+    servingSize: "1 tablespoon daily",
   },
   {
     id: "bio-dk-mulsion",
@@ -169,6 +177,8 @@ export const PRODUCT_CATALOG: Product[] = [
     ],
     bestForLeadMagnets: ["diesel-in-your-blood", "the-owners-operators-heart", "stress-proof"],
     isKevinDaily: true,
+    form: "drops",
+    servingSize: "1-2 drops daily",
   },
 
   // ===== GUT HEALTH =====

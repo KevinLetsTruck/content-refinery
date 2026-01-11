@@ -1,43 +1,79 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useWizardStore, AIMessage } from "../store";
-import { ArrowLeft, ArrowRight, Loader2, Send } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useWizardStore } from "../store";
+import { ArrowLeft, ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 
-interface InterviewQuestion {
-  id: string;
-  question: string;
-  type: "text" | "select" | "multiselect";
-  placeholder?: string;
-  options?: string[];
+interface InterviewData {
+  primaryMessage: string;
+  targetAudience: string;
+  targetEmotion: string;
+  supportingEvidence: string;
+  callToAction: string;
+  tone: string;
 }
+
+const AUDIENCE_OPTIONS = [
+  { value: "new_drivers", label: "New Drivers", description: "Drivers new to health optimization" },
+  { value: "experienced_oo", label: "Experienced O/Os", description: "Veterans who've tried things before" },
+  { value: "health_curious", label: "Health-Curious", description: "Starting to think about their health" },
+  { value: "skeptics", label: "Skeptics", description: "Don't believe health changes work for them" },
+  { value: "all", label: "All Drivers", description: "Broadly applicable to everyone" },
+];
+
+const EMOTION_OPTIONS = [
+  { value: "wake_up_call", label: "Wake-up Call", description: "Shock them into action with hard truths" },
+  { value: "empowerment", label: "Empowerment", description: "Make them feel capable of change" },
+  { value: "curiosity", label: "Curiosity", description: "Pique interest to learn more" },
+  { value: "frustration", label: "Frustration", description: "Tap into frustration with current health" },
+  { value: "hope", label: "Hope", description: "Show possibility of transformation" },
+];
+
+const CTA_OPTIONS = [
+  { value: "visit_store", label: "Visit Store", description: "Buy from store.letstruck.com" },
+  { value: "book_coaching", label: "Book Coaching", description: "Schedule a health coaching session" },
+  { value: "download_guide", label: "Download Guide", description: "Get a free guide" },
+  { value: "join_community", label: "Join Community", description: "Join The Tribe" },
+  { value: "awareness", label: "Awareness Only", description: "No hard CTA, just spreading the word" },
+];
+
+const TONE_OPTIONS = [
+  { value: "direct", label: "Direct", description: "No-BS, confrontational truth bombs" },
+  { value: "educational", label: "Educational", description: "Teaching mode, explaining concepts" },
+  { value: "inspirational", label: "Inspirational", description: "Uplifting, transformation-focused" },
+  { value: "urgent", label: "Urgent", description: "Time-sensitive, act now messaging" },
+  { value: "conversational", label: "Conversational", description: "Casual, like talking to a friend" },
+];
 
 export default function InterviewPage() {
   const router = useRouter();
   const {
     sourceType,
     sourceContent,
+    sourceTitle,
     mode,
-    interviewAnswers,
-    interviewComplete,
-    setInterviewAnswer,
+    interviewData,
+    setInterviewData,
     setInterviewComplete,
-    addInterviewMessage,
-    interviewMessages,
     nextStep,
     prevStep,
     currentStep,
     goToStep,
   } = useWizardStore();
 
-  const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [inputValue, setInputValue] = useState("");
-  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [readyMessage, setReadyMessage] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [formData, setFormData] = useState<InterviewData>({
+    primaryMessage: interviewData.primaryMessage || "",
+    targetAudience: interviewData.targetAudience || "all",
+    targetEmotion: interviewData.targetEmotion || "wake_up_call",
+    supportingEvidence: interviewData.supportingEvidence || "",
+    callToAction: interviewData.callToAction || "awareness",
+    tone: interviewData.tone || "direct",
+  });
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [regeneratingField, setRegeneratingField] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const expectedStep = mode === "quick_post" ? 3 : 4;
 
@@ -54,91 +90,92 @@ export default function InterviewPage() {
     }
   }, [currentStep, expectedStep, goToStep]);
 
-  const fetchQuestions = useCallback(async () => {
-    setLoading(true);
+  const generatePrefill = useCallback(async () => {
+    setIsGenerating(true);
+    setError(null);
     try {
-      const response = await fetch("/api/wizard/interview", {
+      const response = await fetch("/api/wizard/interview/prefill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceType,
-          sourceData: { content: sourceContent },
+          sourceContent,
+          sourceTitle,
           mode,
-          previousAnswers: interviewAnswers,
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to fetch questions");
+      if (!response.ok) throw new Error("Failed to generate content brief");
 
       const data = await response.json();
-
-      if (data.isComplete) {
-        setInterviewComplete(true);
-        setReadyMessage(data.readyMessage || "Great! I have everything I need.");
-      } else {
-        setQuestions(data.questions || []);
-        setCurrentQuestion(0);
-      }
-    } catch (error) {
-      console.error("Interview error:", error);
-      // Fallback questions
-      setQuestions([
-        {
-          id: "fallback",
-          question: "Tell me more about what you want to create.",
-          type: "text",
-          placeholder: "Share your thoughts...",
-        },
-      ]);
+      setFormData({
+        primaryMessage: data.primaryMessage || "",
+        targetAudience: data.targetAudience || "all",
+        targetEmotion: data.targetEmotion || "wake_up_call",
+        supportingEvidence: data.supportingEvidence || "",
+        callToAction: data.callToAction || "awareness",
+        tone: data.tone || "direct",
+      });
+    } catch (err) {
+      console.error("Prefill error:", err);
+      setError("Failed to generate content brief. Please try again.");
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
-  }, [sourceType, sourceContent, mode, interviewAnswers, setInterviewComplete]);
+  }, [sourceType, sourceContent, sourceTitle, mode]);
 
+  // Generate prefill on mount if fields are empty
   useEffect(() => {
-    if (!interviewComplete && sourceType) {
-      fetchQuestions();
+    if (sourceType && !formData.primaryMessage && !isGenerating) {
+      generatePrefill();
     }
-  }, [interviewComplete, sourceType, fetchQuestions]);
+  }, [sourceType, formData.primaryMessage, isGenerating, generatePrefill]);
 
-  const handleAnswer = async () => {
-    const question = questions[currentQuestion];
-    if (!question) return;
+  const regenerateField = async (field: keyof InterviewData) => {
+    setRegeneratingField(field);
+    try {
+      const response = await fetch("/api/wizard/interview/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field,
+          sourceType,
+          sourceContent,
+          sourceTitle,
+          currentValues: formData,
+        }),
+      });
 
-    const answer =
-      question.type === "multiselect"
-        ? selectedOptions
-        : question.type === "select"
-        ? selectedOptions[0]
-        : inputValue;
+      if (!response.ok) throw new Error("Failed to regenerate");
 
-    // Add to interview answers
-    setInterviewAnswer(question.id, answer);
-
-    // Add to messages
-    const userMessage: AIMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: Array.isArray(answer) ? answer.join(", ") : answer,
-      timestamp: new Date(),
-    };
-    addInterviewMessage(userMessage);
-
-    // Reset inputs
-    setInputValue("");
-    setSelectedOptions([]);
-
-    // Move to next question or fetch more
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else {
-      // Fetch next batch of questions
-      await fetchQuestions();
+      const data = await response.json();
+      if (data[field]) {
+        setFormData((prev) => ({ ...prev, [field]: data[field] }));
+      }
+    } catch (err) {
+      console.error("Regenerate error:", err);
+    } finally {
+      setRegeneratingField(null);
     }
   };
 
+  const handleFieldChange = (field: keyof InterviewData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
   const handleContinue = () => {
+    // Save to store
+    setInterviewData({
+      primaryMessage: formData.primaryMessage,
+      targetAudience: formData.targetAudience,
+      targetEmotion: formData.targetEmotion,
+      supportingEvidence: formData.supportingEvidence,
+      callToAction: formData.callToAction,
+      tone: formData.tone,
+    });
+    setInterviewComplete(true);
     nextStep();
+
     if (mode === "quick_post") {
       router.push("/create/content");
     } else {
@@ -155,24 +192,17 @@ export default function InterviewPage() {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const canProceed = formData.primaryMessage.trim() && formData.supportingEvidence.trim();
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [interviewMessages, questions]);
-
-  if (loading && questions.length === 0 && !interviewComplete) {
+  if (isGenerating) {
     return (
       <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 text-[#FF4500] animate-spin mb-4" />
-        <p className="text-[#888888]">Preparing questions...</p>
+        <p className="text-[#888888]">Generating your content brief...</p>
+        <p className="text-sm text-[#666666] mt-2">AI is analyzing your content</p>
       </div>
     );
   }
-
-  const currentQ = questions[currentQuestion];
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -184,137 +214,213 @@ export default function InterviewPage() {
         Back
       </button>
 
-      <h1 className="text-3xl font-bold mb-2 text-white">Tell me more</h1>
+      <h1 className="text-3xl font-bold mb-2 text-white">Review Your Content Brief</h1>
       <p className="text-[#888888] mb-8">
-        A few quick questions to help me create the best content for you.
+        AI has filled in these details based on your source content. Edit anything that doesn&apos;t look right.
       </p>
 
-      {/* Chat-style interview */}
-      <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-6 mb-6 min-h-[300px] max-h-[500px] overflow-y-auto">
-        {/* Previous messages */}
-        {interviewMessages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`mb-4 ${msg.role === "user" ? "text-right" : ""}`}
-          >
-            <div
-              className={`inline-block max-w-[80%] p-3 rounded-lg ${
-                msg.role === "user"
-                  ? "bg-[#FF4500] text-white"
-                  : "bg-[#333333] text-[#CCCCCC]"
-              }`}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
-
-        {/* Current question or completion message */}
-        {interviewComplete ? (
-          <div className="text-center py-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#22C55E]/20 rounded-full mb-4">
-              <ArrowRight className="w-8 h-8 text-[#22C55E]" />
-            </div>
-            <p className="text-white text-lg font-medium mb-2">
-              {readyMessage}
-            </p>
-            <p className="text-[#888888]">
-              Click continue to{" "}
-              {mode === "quick_post"
-                ? "generate your content"
-                : "see your campaign strategy"}
-              .
-            </p>
-          </div>
-        ) : currentQ ? (
-          <div className="mb-4">
-            <div className="inline-block max-w-[80%] p-3 rounded-lg bg-[#333333] text-[#CCCCCC]">
-              {currentQ.question}
-            </div>
-          </div>
-        ) : null}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input area */}
-      {!interviewComplete && currentQ && (
-        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-4">
-          {currentQ.type === "text" && (
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder={currentQ.placeholder || "Type your answer..."}
-                className="flex-1 bg-[#0D0D0D] border border-[#333333] rounded-lg px-4 py-3 text-white placeholder-[#666666] focus:border-[#FF4500] focus:outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && inputValue.trim()) {
-                    handleAnswer();
-                  }
-                }}
-              />
-              <button
-                onClick={handleAnswer}
-                disabled={!inputValue.trim()}
-                className="px-4 py-3 bg-[#FF4500] hover:bg-[#CC3700] disabled:bg-[#333333] disabled:cursor-not-allowed rounded-lg text-white transition-colors"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-
-          {(currentQ.type === "select" || currentQ.type === "multiselect") &&
-            currentQ.options && (
-              <div className="space-y-2">
-                {currentQ.options.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      if (currentQ.type === "multiselect") {
-                        setSelectedOptions((prev) =>
-                          prev.includes(option)
-                            ? prev.filter((o) => o !== option)
-                            : [...prev, option]
-                        );
-                      } else {
-                        setSelectedOptions([option]);
-                      }
-                    }}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedOptions.includes(option)
-                        ? "border-[#FF4500] bg-[#FF4500]/10 text-white"
-                        : "border-[#333333] bg-[#0D0D0D] text-[#CCCCCC] hover:border-[#444444]"
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-                {selectedOptions.length > 0 && (
-                  <button
-                    onClick={handleAnswer}
-                    className="w-full mt-3 px-4 py-3 bg-[#FF4500] hover:bg-[#CC3700] rounded-lg text-white font-medium transition-colors"
-                  >
-                    Continue
-                  </button>
-                )}
-              </div>
-            )}
-        </div>
-      )}
-
-      {/* Continue button when interview is complete */}
-      {interviewComplete && (
-        <div className="flex justify-end">
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 mb-6">
+          <p className="text-red-400 mb-2">{error}</p>
           <button
-            onClick={handleContinue}
-            className="flex items-center gap-2 bg-[#FF4500] hover:bg-[#CC3700] px-6 py-3 rounded-lg font-medium text-white transition-colors"
+            onClick={generatePrefill}
+            className="text-sm text-red-400 underline hover:no-underline"
           >
-            Continue
-            <ArrowRight className="w-4 h-4" />
+            Try again
           </button>
         </div>
       )}
+
+      <div className="space-y-6">
+        {/* Primary Message */}
+        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-white">Primary Message</label>
+            <button
+              onClick={() => regenerateField("primaryMessage")}
+              disabled={regeneratingField === "primaryMessage"}
+              className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${regeneratingField === "primaryMessage" ? "animate-spin" : ""}`} />
+              Regenerate
+            </button>
+          </div>
+          <textarea
+            value={formData.primaryMessage}
+            onChange={(e) => handleFieldChange("primaryMessage", e.target.value)}
+            placeholder="The core message you want to communicate..."
+            rows={3}
+            className="w-full bg-[#0D0D0D] border border-[#333333] rounded-lg px-4 py-3 text-white placeholder-[#666666] focus:border-[#FF4500] focus:outline-none resize-none"
+          />
+          <p className="text-xs text-[#666666] mt-2">The main point in 1-2 compelling sentences</p>
+        </div>
+
+        {/* Target Audience */}
+        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-white">Target Audience</label>
+            <button
+              onClick={() => regenerateField("targetAudience")}
+              disabled={regeneratingField === "targetAudience"}
+              className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${regeneratingField === "targetAudience" ? "animate-spin" : ""}`} />
+              Regenerate
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {AUDIENCE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleFieldChange("targetAudience", option.value)}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  formData.targetAudience === option.value
+                    ? "border-[#FF4500] bg-[#FF4500]/10"
+                    : "border-[#333333] hover:border-[#444444]"
+                }`}
+              >
+                <p className="text-sm font-medium text-white">{option.label}</p>
+                <p className="text-xs text-[#888888]">{option.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Target Emotion */}
+        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-white">Target Emotion</label>
+            <button
+              onClick={() => regenerateField("targetEmotion")}
+              disabled={regeneratingField === "targetEmotion"}
+              className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${regeneratingField === "targetEmotion" ? "animate-spin" : ""}`} />
+              Regenerate
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {EMOTION_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleFieldChange("targetEmotion", option.value)}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  formData.targetEmotion === option.value
+                    ? "border-[#FF4500] bg-[#FF4500]/10"
+                    : "border-[#333333] hover:border-[#444444]"
+                }`}
+              >
+                <p className="text-sm font-medium text-white">{option.label}</p>
+                <p className="text-xs text-[#888888]">{option.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Supporting Evidence */}
+        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-white">Supporting Evidence</label>
+            <button
+              onClick={() => regenerateField("supportingEvidence")}
+              disabled={regeneratingField === "supportingEvidence"}
+              className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${regeneratingField === "supportingEvidence" ? "animate-spin" : ""}`} />
+              Regenerate
+            </button>
+          </div>
+          <textarea
+            value={formData.supportingEvidence}
+            onChange={(e) => handleFieldChange("supportingEvidence", e.target.value)}
+            placeholder="A specific stat, story, or fact that supports your message..."
+            rows={3}
+            className="w-full bg-[#0D0D0D] border border-[#333333] rounded-lg px-4 py-3 text-white placeholder-[#666666] focus:border-[#FF4500] focus:outline-none resize-none"
+          />
+          <p className="text-xs text-[#666666] mt-2">Stats, stories, or facts that make it credible</p>
+        </div>
+
+        {/* Call to Action */}
+        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-white">Call to Action</label>
+            <button
+              onClick={() => regenerateField("callToAction")}
+              disabled={regeneratingField === "callToAction"}
+              className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${regeneratingField === "callToAction" ? "animate-spin" : ""}`} />
+              Regenerate
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {CTA_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleFieldChange("callToAction", option.value)}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  formData.callToAction === option.value
+                    ? "border-[#FF4500] bg-[#FF4500]/10"
+                    : "border-[#333333] hover:border-[#444444]"
+                }`}
+              >
+                <p className="text-sm font-medium text-white">{option.label}</p>
+                <p className="text-xs text-[#888888]">{option.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tone */}
+        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-sm font-medium text-white">Tone</label>
+            <button
+              onClick={() => regenerateField("tone")}
+              disabled={regeneratingField === "tone"}
+              className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${regeneratingField === "tone" ? "animate-spin" : ""}`} />
+              Regenerate
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {TONE_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleFieldChange("tone", option.value)}
+                className={`p-3 rounded-lg border text-left transition-colors ${
+                  formData.tone === option.value
+                    ? "border-[#FF4500] bg-[#FF4500]/10"
+                    : "border-[#333333] hover:border-[#444444]"
+                }`}
+              >
+                <p className="text-sm font-medium text-white">{option.label}</p>
+                <p className="text-xs text-[#888888]">{option.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Continue Button */}
+      <div className="mt-8 flex justify-between items-center">
+        <button
+          onClick={generatePrefill}
+          className="flex items-center gap-2 text-[#888888] hover:text-white transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
+          Regenerate All
+        </button>
+        <button
+          onClick={handleContinue}
+          disabled={!canProceed}
+          className="flex items-center gap-2 bg-[#FF4500] hover:bg-[#CC3700] disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-lg font-medium text-white transition-colors"
+        >
+          Continue
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

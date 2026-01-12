@@ -22,17 +22,22 @@ export async function GET() {
     startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
     // Stats from GeneratedContent (ad-hoc posts)
+    // Count posts that are either scheduled for today OR published today
     const postsToday = await prisma.generatedContent.count({
       where: {
-        scheduledFor: { gte: startOfToday, lte: endOfToday },
-        status: { in: ["scheduled", "published"] },
+        OR: [
+          { scheduledFor: { gte: startOfToday, lte: endOfToday }, status: { in: ["scheduled", "published"] } },
+          { publishedAt: { gte: startOfToday, lte: endOfToday }, status: "published" },
+        ],
       },
     });
 
     const postsThisWeek = await prisma.generatedContent.count({
       where: {
-        scheduledFor: { gte: startOfWeek },
-        status: { in: ["scheduled", "published"] },
+        OR: [
+          { scheduledFor: { gte: startOfWeek }, status: { in: ["scheduled", "published"] } },
+          { publishedAt: { gte: startOfWeek }, status: "published" },
+        ],
       },
     });
 
@@ -121,12 +126,15 @@ export async function GET() {
     // Calculate content streak
     const contentStreak = await calculateContentStreak();
 
-    // Today's posts from GeneratedContent
+    // Today's posts from GeneratedContent (scheduled OR published today)
     const todaysGeneratedPosts = await prisma.generatedContent.findMany({
       where: {
-        scheduledFor: { gte: startOfToday, lte: endOfToday },
+        OR: [
+          { scheduledFor: { gte: startOfToday, lte: endOfToday } },
+          { publishedAt: { gte: startOfToday, lte: endOfToday } },
+        ],
       },
-      orderBy: { scheduledFor: "asc" },
+      orderBy: [{ scheduledFor: "asc" }, { publishedAt: "asc" }],
       take: 10,
     });
 
@@ -149,7 +157,8 @@ export async function GET() {
         title: post.title || "",
         content: post.text || "",
         platform: post.platform,
-        scheduledFor: post.scheduledFor?.toISOString() || "",
+        scheduledFor: post.scheduledFor?.toISOString() || post.publishedAt?.toISOString() || "",
+        publishedAt: post.publishedAt?.toISOString() || null,
         status: post.status,
         source: "generated" as const,
       })),
@@ -158,7 +167,8 @@ export async function GET() {
         title: post.campaign?.name || "",
         content: post.content || "",
         platform: post.platform,
-        scheduledFor: post.scheduledFor?.toISOString() || "",
+        scheduledFor: post.scheduledFor?.toISOString() || post.publishedAt?.toISOString() || "",
+        publishedAt: post.publishedAt?.toISOString() || null,
         status: post.status,
         source: "campaign" as const,
       })),

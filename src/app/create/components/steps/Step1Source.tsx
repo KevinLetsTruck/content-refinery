@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useWizardStore, SourceType } from "../../store";
 import {
@@ -12,7 +12,31 @@ import {
   BookMarked,
   Sparkles,
   ArrowRight,
+  RefreshCw,
+  Cloud,
+  CloudOff,
+  Loader2,
+  Clock,
+  Check,
+  AlertCircle,
 } from "lucide-react";
+
+interface Episode {
+  id: string;
+  title: string;
+  originalFilename: string | null;
+  status: string;
+  durationFormatted: string | null;
+  hasTranscript: boolean;
+  createdAt: string;
+}
+
+interface DropboxStatus {
+  isConnected: boolean;
+  folderPath: string | null;
+  totalEpisodes: number;
+  pendingTranscription: number;
+}
 
 const SOURCE_OPTIONS: {
   type: SourceType;
@@ -71,11 +95,84 @@ export function Step1Source() {
   const [selectedType, setSelectedType] = useState<SourceType | null>(sourceType);
   const [content, setContent] = useState(sourceContent);
 
+  // Episode state
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [episodesLoading, setEpisodesLoading] = useState(false);
+  const [dropboxStatus, setDropboxStatus] = useState<DropboxStatus | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   // Reset wizard state when entering step 1 fresh
   useEffect(() => {
     // Reset the entire wizard when landing on step 1
     reset();
   }, []); // Only on mount
+
+  // Fetch episodes and Dropbox status when episode is selected
+  const fetchEpisodes = useCallback(async () => {
+    setEpisodesLoading(true);
+    try {
+      const [episodesRes, statusRes] = await Promise.all([
+        fetch("/api/episodes?limit=20&hasTranscript=true"),
+        fetch("/api/dropbox/sync"),
+      ]);
+
+      if (episodesRes.ok) {
+        const data = await episodesRes.json();
+        setEpisodes(data.episodes || []);
+      }
+
+      if (statusRes.ok) {
+        const status = await statusRes.json();
+        setDropboxStatus(status);
+      }
+    } catch (error) {
+      console.error("Failed to fetch episodes:", error);
+    } finally {
+      setEpisodesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedType === "episode") {
+      fetchEpisodes();
+    }
+  }, [selectedType, fetchEpisodes]);
+
+  // Sync from Dropbox
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/dropbox/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoTranscribe: true }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Sync failed");
+      }
+
+      // Refresh episodes list
+      await fetchEpisodes();
+
+      if (result.imported > 0) {
+        // Show success briefly
+        setSyncError(`Imported ${result.imported} episode${result.imported > 1 ? "s" : ""}`);
+        setTimeout(() => setSyncError(null), 3000);
+      } else if (result.skipped > 0) {
+        setSyncError("No new episodes to import");
+        setTimeout(() => setSyncError(null), 3000);
+      }
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleSourceSelect = (type: SourceType) => {
     setSelectedType(type);
@@ -336,36 +433,142 @@ export function Step1Source() {
       {/* Episode Selector */}
       {selectedType === "episode" && (
         <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
-          <label className="block text-sm font-medium mb-4 text-white">
-            Select an episode
-          </label>
-          <div className="grid gap-3 mb-4">
-            {[
-              "TBB Episode 2847 - Gut Health Deep Dive",
-              "Destination Health - Sleep Protocol",
-              "Power Hour - Listener Q&A",
-            ].map((episode) => (
-              <button
-                key={episode}
-                onClick={() => {
-                  setContent(episode);
-                  setSource("episode", episode, episode);
-                  nextStep();
-                  router.push("/create/mode");
-                }}
-                className="flex items-center justify-between p-4 rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Mic className="h-5 w-5 text-purple-400" />
-                  <span className="font-medium text-white">{episode}</span>
-                </div>
-                <ArrowRight className="h-4 w-4 text-[#888888]" />
-              </button>
-            ))}
+          {/* Header with sync button */}
+          <div className="flex items-center justify-between mb-4">
+            <label className="block text-sm font-medium text-white">
+              Select an episode
+            </label>
+            <div className="flex items-center gap-2">
+              {dropboxStatus?.isConnected ? (
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors disabled:opacity-50"
+                >
+                  {syncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 text-purple-400" />
+                  )}
+                  <span className="text-[#888888]">Sync from Dropbox</span>
+                </button>
+              ) : (
+                <a
+                  href="/api/auth/dropbox"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 transition-colors"
+                >
+                  <Cloud className="h-4 w-4 text-purple-400" />
+                  <span className="text-purple-400">Connect Dropbox</span>
+                </a>
+              )}
+            </div>
           </div>
-          <p className="text-sm text-[#666666]">
-            Episodes from AudioRoad will appear here when synced.
-          </p>
+
+          {/* Sync status/error message */}
+          {syncError && (
+            <div className={`flex items-center gap-2 p-3 rounded mb-4 ${
+              syncError.startsWith("Imported") || syncError.startsWith("No new")
+                ? "bg-green-500/10 border border-green-500/30"
+                : "bg-red-500/10 border border-red-500/30"
+            }`}>
+              {syncError.startsWith("Imported") ? (
+                <Check className="h-4 w-4 text-green-400" />
+              ) : syncError.startsWith("No new") ? (
+                <Clock className="h-4 w-4 text-yellow-400" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-red-400" />
+              )}
+              <span className={`text-sm ${
+                syncError.startsWith("Imported") || syncError.startsWith("No new")
+                  ? "text-green-400"
+                  : "text-red-400"
+              }`}>
+                {syncError}
+              </span>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {episodesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-purple-400" />
+              <span className="ml-2 text-[#888888]">Loading episodes...</span>
+            </div>
+          ) : episodes.length > 0 ? (
+            <div className="grid gap-3 mb-4 max-h-80 overflow-y-auto">
+              {episodes.map((episode) => (
+                <button
+                  key={episode.id}
+                  onClick={() => {
+                    setContent(episode.title);
+                    setSource("episode", episode.title, episode.title);
+                    nextStep();
+                    router.push("/create/mode");
+                  }}
+                  className="flex items-center justify-between p-4 rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors text-left"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Mic className="h-5 w-5 text-purple-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-white block truncate">{episode.title}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        {episode.durationFormatted && (
+                          <span className="text-xs text-[#666666]">{episode.durationFormatted}</span>
+                        )}
+                        {episode.hasTranscript && (
+                          <span className="text-xs text-green-500 flex items-center gap-1">
+                            <Check className="h-3 w-3" />
+                            Transcribed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-[#888888] flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              {dropboxStatus?.isConnected ? (
+                <>
+                  <CloudOff className="h-8 w-8 text-[#444444] mx-auto mb-2" />
+                  <p className="text-[#666666]">No transcribed episodes yet.</p>
+                  <p className="text-sm text-[#444444] mt-1">
+                    Click "Sync from Dropbox" to import your episodes.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Cloud className="h-8 w-8 text-[#444444] mx-auto mb-2" />
+                  <p className="text-[#666666]">Connect Dropbox to sync your episodes.</p>
+                  <p className="text-sm text-[#444444] mt-1">
+                    Episodes recorded in Audio Hijack will appear here.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Status bar */}
+          {dropboxStatus && (
+            <div className="pt-4 border-t border-[#333333] flex items-center justify-between text-xs text-[#666666]">
+              <div className="flex items-center gap-4">
+                <span>{dropboxStatus.totalEpisodes} total episodes</span>
+                {dropboxStatus.pendingTranscription > 0 && (
+                  <span className="flex items-center gap-1 text-yellow-500">
+                    <Clock className="h-3 w-3" />
+                    {dropboxStatus.pendingTranscription} pending transcription
+                  </span>
+                )}
+              </div>
+              {dropboxStatus.folderPath && dropboxStatus.folderPath !== "/" && (
+                <span className="truncate max-w-[200px]" title={dropboxStatus.folderPath}>
+                  Folder: {dropboxStatus.folderPath}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 

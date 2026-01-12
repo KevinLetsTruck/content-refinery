@@ -135,13 +135,25 @@ async function dropboxRequest<T>(
     body: JSON.stringify(body),
   });
 
+  // Get response text first to handle both JSON and plain text errors
+  const responseText = await response.text();
+
   if (!response.ok) {
-    const error = await response.json();
-    console.error(`[Dropbox] API error (${endpoint}):`, error);
-    throw new Error(error.error_summary || `Dropbox API error: ${response.status}`);
+    console.error(`[Dropbox] API error (${endpoint}):`, responseText);
+    // Try to parse as JSON for structured error
+    try {
+      const error = JSON.parse(responseText);
+      throw new Error(error.error_summary || `Dropbox API error: ${response.status}`);
+    } catch (parseError) {
+      // If JSON parsing fails, use the raw text
+      if (parseError instanceof SyntaxError) {
+        throw new Error(responseText || `Dropbox API error: ${response.status}`);
+      }
+      throw parseError;
+    }
   }
 
-  return response.json();
+  return JSON.parse(responseText);
 }
 
 /**

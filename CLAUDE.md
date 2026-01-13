@@ -366,7 +366,7 @@ Each content type has specific processing rules:
 |---------|---------|---------------------|
 | Render PostgreSQL | Database | DATABASE_URL |
 | Anthropic | AI content generation | ANTHROPIC_API_KEY |
-| Deepgram | Audio transcription | DEEPGRAM_API_KEY |
+| **Eleven Labs** | TTS (Kevin's voice) & Scribe transcription | ELEVENLABS_API_KEY |
 | **Gamma** | Visual content generation | GAMMA_API_KEY |
 | Shopify | Product catalog | SHOPIFY_* |
 | Twitter/X | Publishing | TWITTER_* |
@@ -472,10 +472,11 @@ The processing pipeline (`/api/process`) handles the full flow from raw content 
 
 ### Pipeline Steps
 
-1. **Transcription** (Deepgram)
-   - Converts audio to text
+1. **Transcription** (Eleven Labs Scribe)
+   - Converts audio to text with 99 language support
    - Word-level timestamps
    - Speaker diarization
+   - Audio event tagging (laughter, footsteps, etc.)
 
 2. **AI Extraction** (Claude)
    - Identifies quotes, stats, hot takes, stories, clips

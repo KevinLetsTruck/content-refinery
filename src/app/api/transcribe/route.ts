@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { transcribeAudio } from "@/lib/audio/deepgram";
+import { transcribeAudio } from "@/lib/audio/transcription";
 import { getPresignedDownloadUrl, isR2Configured } from "@/lib/storage/r2";
 
 export const runtime = 'nodejs';

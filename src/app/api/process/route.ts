@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
-import { transcribeAudio, TranscriptionResult } from "@/lib/audio/deepgram";
+import { transcribeAudio, TranscriptionResult } from "@/lib/audio/transcription";
 import { extractContent, generateBulkContent, Extraction, Platform } from "@/lib/ai/claude";
 import { getGammaClient } from "@/lib/gamma/client";
 

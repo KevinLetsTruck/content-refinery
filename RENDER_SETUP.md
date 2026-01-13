@@ -76,8 +76,9 @@ DATABASE_URL=postgres://content_refinery_user:XXXXX@oregon-postgres.render.com/c
 # Anthropic (get from console.anthropic.com)
 ANTHROPIC_API_KEY=sk-ant-...
 
-# Deepgram (get from console.deepgram.com)
-DEEPGRAM_API_KEY=...
+# Eleven Labs (get from elevenlabs.io)
+# Powers TTS (Kevin's voice) and Scribe transcription
+ELEVENLABS_API_KEY=...
 
 # Shopify (already have these)
 SHOPIFY_STORE=store-letstruck
@@ -172,8 +173,8 @@ npx prisma generate
   - Node version mismatch (add `"engines": {"node": "18.x"}` to package.json)
 
 ### "Transcription failed"
-- Verify DEEPGRAM_API_KEY is set
-- Check Deepgram dashboard for quota/errors
+- Verify ELEVENLABS_API_KEY is set
+- Check Eleven Labs dashboard for quota/errors
 
 ### "AI extraction empty"
 - Verify ANTHROPIC_API_KEY is set

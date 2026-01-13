@@ -1,4 +1,13 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuid } from "uuid";
 
@@ -139,10 +148,15 @@ export async function uploadToR2(
   await client.send(command);
 }
 
+// Minimum part size for multipart upload (5MB required by S3/R2)
+const MIN_PART_SIZE = 5 * 1024 * 1024;
+// Chunk size for streaming (10MB - keeps memory usage low)
+const CHUNK_SIZE = 10 * 1024 * 1024;
+
 /**
- * Upload a file to R2 using a streaming approach from a URL
- * This downloads from the source URL and streams directly to R2
- * More memory-efficient for large files
+ * Upload a file to R2 using streaming multipart upload from a URL
+ * This processes the file in chunks to minimize memory usage
+ * Handles files up to 5TB (S3/R2 limit)
  */
 export async function uploadToR2FromUrl(
   key: string,
@@ -162,21 +176,144 @@ export async function uploadToR2FromUrl(
     throw new Error(`Failed to fetch from source: ${response.status}`);
   }
 
-  // Get the response as an array buffer (needed for S3 SDK)
-  // Note: For very large files (>500MB), we'd need multipart upload
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  // Get content length if available
+  const contentLength = response.headers.get("content-length");
+  const expectedSize = contentLength ? parseInt(contentLength, 10) : 0;
 
-  const command = new PutObjectCommand({
+  // For small files (< 10MB), use simple upload
+  if (expectedSize > 0 && expectedSize < CHUNK_SIZE) {
+    console.log(`[R2] Small file (${Math.round(expectedSize / 1024 / 1024)}MB), using simple upload`);
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const command = new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
+
+    await client.send(command);
+    return { size: buffer.length };
+  }
+
+  // For large files, use multipart upload with streaming
+  console.log(`[R2] Large file (~${Math.round(expectedSize / 1024 / 1024)}MB), using multipart upload`);
+
+  // Start multipart upload
+  const createCommand = new CreateMultipartUploadCommand({
     Bucket: R2_BUCKET,
     Key: key,
-    Body: buffer,
     ContentType: contentType,
   });
 
-  await client.send(command);
+  const { UploadId } = await client.send(createCommand);
 
-  return { size: buffer.length };
+  if (!UploadId) {
+    throw new Error("Failed to create multipart upload");
+  }
+
+  const parts: { ETag: string; PartNumber: number }[] = [];
+  let partNumber = 1;
+  let totalSize = 0;
+  let buffer = Buffer.alloc(0);
+
+  try {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("No response body reader available");
+    }
+
+    // Process the stream in chunks
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (value) {
+        // Append new data to buffer
+        buffer = Buffer.concat([buffer, Buffer.from(value)]);
+      }
+
+      // Upload when we have enough data or we're done
+      while (buffer.length >= CHUNK_SIZE || (done && buffer.length >= MIN_PART_SIZE)) {
+        const chunkSize = Math.min(buffer.length, CHUNK_SIZE);
+        const chunk = buffer.subarray(0, chunkSize);
+        buffer = buffer.subarray(chunkSize);
+
+        console.log(`[R2] Uploading part ${partNumber} (${Math.round(chunkSize / 1024 / 1024)}MB)`);
+
+        const uploadPartCommand = new UploadPartCommand({
+          Bucket: R2_BUCKET,
+          Key: key,
+          UploadId,
+          PartNumber: partNumber,
+          Body: chunk,
+        });
+
+        const { ETag } = await client.send(uploadPartCommand);
+
+        if (ETag) {
+          parts.push({ ETag, PartNumber: partNumber });
+        }
+
+        totalSize += chunkSize;
+        partNumber++;
+      }
+
+      if (done) {
+        // Upload any remaining data as final part (must be at least 1 byte)
+        if (buffer.length > 0) {
+          console.log(`[R2] Uploading final part ${partNumber} (${Math.round(buffer.length / 1024)}KB)`);
+
+          const uploadPartCommand = new UploadPartCommand({
+            Bucket: R2_BUCKET,
+            Key: key,
+            UploadId,
+            PartNumber: partNumber,
+            Body: buffer,
+          });
+
+          const { ETag } = await client.send(uploadPartCommand);
+
+          if (ETag) {
+            parts.push({ ETag, PartNumber: partNumber });
+          }
+
+          totalSize += buffer.length;
+        }
+        break;
+      }
+    }
+
+    // Complete the multipart upload
+    console.log(`[R2] Completing multipart upload (${parts.length} parts, ${Math.round(totalSize / 1024 / 1024)}MB total)`);
+
+    const completeCommand = new CompleteMultipartUploadCommand({
+      Bucket: R2_BUCKET,
+      Key: key,
+      UploadId,
+      MultipartUpload: { Parts: parts },
+    });
+
+    await client.send(completeCommand);
+
+    return { size: totalSize };
+  } catch (error) {
+    // Abort the multipart upload on error
+    console.error("[R2] Multipart upload failed, aborting:", error);
+
+    try {
+      const abortCommand = new AbortMultipartUploadCommand({
+        Bucket: R2_BUCKET,
+        Key: key,
+        UploadId,
+      });
+      await client.send(abortCommand);
+    } catch (abortError) {
+      console.error("[R2] Failed to abort multipart upload:", abortError);
+    }
+
+    throw error;
+  }
 }
 
 /**

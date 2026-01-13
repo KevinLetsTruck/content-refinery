@@ -1,6 +1,6 @@
 import prisma from "@/lib/db/prisma";
 import { scheduleCampaign } from "./smart-scheduler";
-import { generateAndStoreImage, createImagePrompt } from "@/lib/images/dalle";
+import { generateAndStoreImage, createImagePrompt } from "@/lib/images/nano-banana";
 
 interface LaunchResult {
   success: boolean;
@@ -71,7 +71,7 @@ export async function launchCampaign(campaignId: string): Promise<LaunchResult> 
 }
 
 /**
- * Generate visuals for all campaign posts using DALL-E
+ * Generate visuals for all campaign posts using Nano Banana (Gemini)
  */
 async function generateCampaignVisuals(campaignId: string): Promise<void> {
   const posts = await prisma.campaignPost.findMany({
@@ -92,7 +92,7 @@ async function generateCampaignVisuals(campaignId: string): Promise<void> {
         data: { visualStatus: "generating" },
       });
 
-      // Use DALL-E for visual generation
+      // Use Nano Banana (Gemini) for visual generation
       const prompt = post.visualPrompt || createImagePrompt(post.content, "social", post.platform);
       const visualUrl = await generateAndStoreImage(prompt, post.platform);
 
@@ -114,8 +114,8 @@ async function generateCampaignVisuals(campaignId: string): Promise<void> {
       });
     }
 
-    // Rate limit for API calls (DALL-E has rate limits)
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    // Rate limit for API calls
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 }
 

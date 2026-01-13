@@ -144,7 +144,7 @@ Return this exact JSON structure:
       "phase": "Phase Name",
       "content": "Full post text (UNDER 280 CHARS FOR TWITTER)",
       "hashtags": ["LetsTruck", "DriverHealth"],
-      "visualType": "dalle",
+      "visualType": "nano_banana",
       "visualPrompt": "Description for visual generation"
     }
   ],

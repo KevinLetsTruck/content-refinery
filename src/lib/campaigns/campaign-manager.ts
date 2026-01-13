@@ -4,8 +4,8 @@ import { CreateCampaignInput } from "./types";
 import {
   generateAndStoreImage,
   createImagePrompt,
-  isDalleAvailable
-} from "@/lib/images/dalle";
+  isNanoBananaAvailable
+} from "@/lib/images/nano-banana";
 import { getConstantContactClient } from "@/lib/constant-contact/client";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.RENDER_EXTERNAL_URL || "https://content-refinery-07dc.onrender.com";
@@ -231,7 +231,7 @@ async function generateCampaignContent(
     }
 
     // Generate images if requested
-    if (input.generateImages && isDalleAvailable()) {
+    if (input.generateImages && isNanoBananaAvailable()) {
       console.log(`[Campaign] Starting image generation for ${createdPosts.length} posts`);
 
       // Generate images in batches to avoid rate limits
@@ -283,8 +283,8 @@ async function generateCampaignContent(
       }
 
       console.log(`[Campaign] Image generation complete for ${campaignId}`);
-    } else if (input.generateImages && !isDalleAvailable()) {
-      console.warn(`[Campaign] Image generation requested but DALL-E is not configured`);
+    } else if (input.generateImages && !isNanoBananaAvailable()) {
+      console.warn(`[Campaign] Image generation requested but Nano Banana (Gemini) is not configured`);
     }
 
     // Update campaign status and counts

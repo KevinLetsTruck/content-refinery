@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateImage as generateNanoBanana,
-  createImagePrompt as createNanoBananaPrompt,
+  createImagePrompt,
   getAspectRatioForPlatform,
   isNanoBananaAvailable,
+  NANO_BANANA_MODELS,
 } from "@/lib/images/nano-banana";
-import {
-  generateImage as generateDalle,
-  createImagePrompt as createDallePrompt,
-  getSizeForPlatform,
-  isDalleAvailable,
-} from "@/lib/images/dalle";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -23,7 +18,7 @@ interface CompareRequest {
 
 /**
  * POST /api/images/compare
- * Generate side-by-side comparison of Nano Banana vs DALL-E
+ * Generate image with Nano Banana (Gemini)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +33,6 @@ export async function POST(request: NextRequest) {
       text: string;
       platform: string;
       nanoBanana?: { imageDataUrl: string; durationMs: number; prompt: string };
-      dalle?: { imageDataUrl: string; durationMs: number; prompt: string };
       errors: string[];
     } = {
       text,
@@ -49,7 +43,7 @@ export async function POST(request: NextRequest) {
     // Generate Nano Banana image
     if (isNanoBananaAvailable()) {
       try {
-        const prompt = createNanoBananaPrompt(text, contentType, platform);
+        const prompt = createImagePrompt(text, contentType, platform);
         const startTime = Date.now();
         const imageBuffer = await generateNanoBanana(prompt, {
           aspectRatio: getAspectRatioForPlatform(platform),
@@ -67,24 +61,6 @@ export async function POST(request: NextRequest) {
       results.errors.push("Nano Banana: GEMINI_API_KEY not configured");
     }
 
-    // Generate DALL-E image
-    if (isDalleAvailable()) {
-      try {
-        const prompt = createDallePrompt(text, contentType, platform);
-        const startTime = Date.now();
-        const imageBuffer = await generateDalle(prompt, platform);
-        results.dalle = {
-          imageDataUrl: `data:image/png;base64,${imageBuffer.toString("base64")}`,
-          durationMs: Date.now() - startTime,
-          prompt,
-        };
-      } catch (error) {
-        results.errors.push(`DALL-E: ${error instanceof Error ? error.message : "Unknown error"}`);
-      }
-    } else {
-      results.errors.push("DALL-E: OPENAI_API_KEY not configured");
-    }
-
     return NextResponse.json(results);
   } catch (error) {
     return NextResponse.json(
@@ -96,12 +72,12 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/images/compare
- * Return comparison status
+ * Return generation status
  */
 export async function GET() {
   return NextResponse.json({
     nanoBananaConfigured: isNanoBananaAvailable(),
-    dalleConfigured: isDalleAvailable(),
+    models: NANO_BANANA_MODELS,
     endpoint: "POST /api/images/compare",
     examplePayload: {
       text: "70% of professional drivers have Candida overgrowth",

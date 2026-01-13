@@ -84,7 +84,7 @@ interface WizardState {
   };
   youtubeShorts: number;
   youtubeStandard: number;
-  generateImages: boolean; // Auto-generate images with DALL-E
+  generateImages: boolean; // Auto-generate images with Nano Banana
   // Step 6 Review extras
   goal: CampaignGoal;
   productUrl: string;
@@ -223,7 +223,7 @@ export default function CreateCampaignPage() {
           postsPerDay: state.postsPerDay,
           youtubeShorts: state.youtubeShorts,
           youtubeStandard: state.youtubeStandard,
-          generateImages: state.generateImages, // Auto-generate images with DALL-E
+          generateImages: state.generateImages, // Auto-generate images with Nano Banana
           // Include lead magnet reference
           leadMagnetId: selectedLeadMagnet.id,
           landingPageTemplate: selectedTemplate,
@@ -593,7 +593,7 @@ export default function CreateCampaignPage() {
                         Auto-generate images
                       </div>
                       <div className="text-sm text-gray-400">
-                        Create AI images for each post using DALL-E 3
+                        Create AI images for each post using Nano Banana (Gemini)
                       </div>
                     </div>
                   </div>

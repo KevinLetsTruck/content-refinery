@@ -16,7 +16,7 @@ export type Platform = "twitter" | "facebook" | "instagram" | "youtube";
 
 export type PostStatus = "draft" | "scheduled" | "publishing" | "published" | "failed";
 
-export type VisualType = "gamma" | "dalle" | "stock" | "custom" | "none";
+export type VisualType = "gamma" | "nano_banana" | "stock" | "custom" | "none";
 
 export type VisualStatus = "pending" | "generating" | "ready" | "error";
 
@@ -42,7 +42,7 @@ export interface CreateCampaignInput {
   };
   youtubeShorts: number;
   youtubeStandard: number;
-  generateImages?: boolean; // Auto-generate images using DALL-E
+  generateImages?: boolean; // Auto-generate images using Nano Banana (Gemini)
   // Email marketing integration
   emailSequenceId?: string; // Link to email sequence for nurture emails
   leadMagnetId?: string; // Link to lead magnet

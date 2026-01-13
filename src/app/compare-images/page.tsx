@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 
-interface CompareResult {
+interface GenerateResult {
   text: string;
   platform: string;
   nanoBanana?: { imageDataUrl: string; durationMs: number; prompt: string };
-  dalle?: { imageDataUrl: string; durationMs: number; prompt: string };
   errors: string[];
 }
 
@@ -39,14 +38,14 @@ const PLATFORMS = [
   { value: "instagram_story", label: "IG Story (9:16)" },
 ];
 
-export default function CompareImagesPage() {
+export default function TestImagesPage() {
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<CompareResult[]>([]);
+  const [results, setResults] = useState<GenerateResult[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState(0);
   const [selectedPlatform, setSelectedPlatform] = useState("instagram_feed");
   const [customText, setCustomText] = useState("");
 
-  const generateComparison = async () => {
+  const generateImage = async () => {
     setLoading(true);
     try {
       const prompt = customText || TEST_PROMPTS[selectedPrompt];
@@ -70,9 +69,9 @@ export default function CompareImagesPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Image Generator Comparison</h1>
-        <p className="text-gray-400 mb-8">Nano Banana (Gemini) vs DALL-E 3</p>
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">Image Generator Test</h1>
+        <p className="text-gray-400 mb-8">Nano Banana (Gemini) - Better text rendering than DALL-E</p>
 
         {/* Controls */}
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
@@ -110,11 +109,11 @@ export default function CompareImagesPage() {
             </div>
             <div className="flex items-end">
               <button
-                onClick={generateComparison}
+                onClick={generateImage}
                 disabled={loading}
                 className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-600 rounded px-4 py-2 font-medium"
               >
-                {loading ? "Generating..." : "Generate Comparison"}
+                {loading ? "Generating..." : "Generate Image"}
               </button>
             </div>
           </div>
@@ -149,64 +148,37 @@ export default function CompareImagesPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Nano Banana */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-semibold text-green-400">
-                    🍌 Nano Banana (Gemini)
-                  </h3>
-                  {result.nanoBanana && (
-                    <span className="text-sm text-gray-400">
-                      {(result.nanoBanana.durationMs / 1000).toFixed(1)}s
-                    </span>
-                  )}
-                </div>
-                {result.nanoBanana ? (
-                  <img
-                    src={result.nanoBanana.imageDataUrl}
-                    alt="Nano Banana generated"
-                    className="w-full rounded-lg"
-                  />
-                ) : (
-                  <div className="bg-gray-700 rounded-lg h-64 flex items-center justify-center">
-                    <p className="text-gray-400">Not available</p>
-                  </div>
+            {/* Nano Banana */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-semibold text-green-400">
+                  🍌 Nano Banana (Gemini)
+                </h3>
+                {result.nanoBanana && (
+                  <span className="text-sm text-gray-400">
+                    {(result.nanoBanana.durationMs / 1000).toFixed(1)}s
+                  </span>
                 )}
               </div>
-
-              {/* DALL-E */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-semibold text-blue-400">
-                    🎨 DALL-E 3 (OpenAI)
-                  </h3>
-                  {result.dalle && (
-                    <span className="text-sm text-gray-400">
-                      {(result.dalle.durationMs / 1000).toFixed(1)}s
-                    </span>
-                  )}
+              {result.nanoBanana ? (
+                <img
+                  src={result.nanoBanana.imageDataUrl}
+                  alt="Nano Banana generated"
+                  className="w-full max-w-xl rounded-lg mx-auto"
+                />
+              ) : (
+                <div className="bg-gray-700 rounded-lg h-64 flex items-center justify-center">
+                  <p className="text-gray-400">Not available (check GEMINI_API_KEY)</p>
                 </div>
-                {result.dalle ? (
-                  <img
-                    src={result.dalle.imageDataUrl}
-                    alt="DALL-E generated"
-                    className="w-full rounded-lg"
-                  />
-                ) : (
-                  <div className="bg-gray-700 rounded-lg h-64 flex items-center justify-center">
-                    <p className="text-gray-400">Not available (needs OPENAI_API_KEY)</p>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         ))}
 
         {results.length === 0 && (
           <div className="text-center py-16 text-gray-500">
-            <p className="text-xl mb-2">No comparisons yet</p>
-            <p>Click &quot;Generate Comparison&quot; to create side-by-side images</p>
+            <p className="text-xl mb-2">No images yet</p>
+            <p>Click &quot;Generate Image&quot; to create a test image</p>
           </div>
         )}
       </div>

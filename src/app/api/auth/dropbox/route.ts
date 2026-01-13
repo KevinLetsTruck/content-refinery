@@ -12,7 +12,7 @@ const DROPBOX_APP_KEY = process.env.DROPBOX_APP_KEY;
 const DROPBOX_APP_SECRET = process.env.DROPBOX_APP_SECRET;
 const DROPBOX_REDIRECT_URI = process.env.DROPBOX_REDIRECT_URI ||
   (process.env.NODE_ENV === "production"
-    ? "https://content-refinery.onrender.com/api/auth/dropbox"
+    ? "https://content-refinery-07dc.onrender.com/api/auth/dropbox"
     : "http://localhost:3000/api/auth/dropbox");
 
 export async function GET(request: NextRequest) {

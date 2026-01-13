@@ -4,6 +4,30 @@ import { findProductInText, type Product } from '@/lib/products/catalog';
 
 const anthropic = new Anthropic();
 
+// Map CTA types to actual URLs
+const CTA_URLS: Record<string, { url: string; label: string }> = {
+  visit_store: {
+    url: 'https://store.letstruck.com',
+    label: 'Shop at store.letstruck.com'
+  },
+  book_coaching: {
+    url: 'https://letstruck.com/coaching',
+    label: 'Book coaching at letstruck.com/coaching'
+  },
+  download_guide: {
+    url: 'https://letstruck.com/guides',
+    label: 'Download at letstruck.com/guides'
+  },
+  join_community: {
+    url: 'https://letstruck.com/tribe',
+    label: 'Join at letstruck.com/tribe'
+  },
+  awareness: {
+    url: '',
+    label: ''
+  }
+};
+
 interface ContentOption {
   id: string;
   text: string;
@@ -70,6 +94,18 @@ export async function POST(request: NextRequest) {
     // Get product context if applicable
     const productContext = buildProductContext(sourceContent, sourceType);
 
+    // Get CTA URL info
+    const ctaType = interviewData?.callToAction || 'awareness';
+    const ctaInfo = CTA_URLS[ctaType] || CTA_URLS.awareness;
+    const ctaInstruction = ctaInfo.url
+      ? `\nCRITICAL CTA REQUIREMENT:
+- The CTA type is "${ctaType}"
+- You MUST include this EXACT URL in EVERY post: ${ctaInfo.url}
+- The post MUST end with a clear call to action that includes the URL
+- Example ending: "Get started: ${ctaInfo.url}" or "Learn more: ${ctaInfo.url}"
+- Do NOT use placeholder text like "[URL]" or "link in bio" - use the ACTUAL URL`
+      : '\n- No URL required for this post (awareness only)';
+
     const prompt = `Generate ${count} different social media post options for Let's Truck Health Coaching.
 
 SOURCE TYPE: ${sourceType}
@@ -79,9 +115,10 @@ INTERVIEW DATA:
 - Primary Message: ${interviewData?.primaryMessage || 'Not specified'}
 - Target Emotion: ${interviewData?.targetEmotion || 'Not specified'}
 - Supporting Evidence: ${interviewData?.supportingEvidence || 'Not specified'}
-- Call to Action: ${interviewData?.callToAction || 'Not specified'}
+- Call to Action Type: ${ctaType}
 - Target Audience: ${interviewData?.targetAudience || 'Professional truck drivers'}
 - Tone: ${interviewData?.tone || 'Direct and confident'}
+${ctaInstruction}
 
 BRAND VOICE:
 - Direct, no-BS, confident (Larry Winget inspired)
@@ -104,16 +141,17 @@ Generate ${count} DIFFERENT content variations. Each should:
 2. Match the brand voice exactly
 3. Include relevant hashtags
 4. Have a clear emotional appeal
+5. ${ctaInfo.url ? `END with a CTA that includes the URL: ${ctaInfo.url}` : 'Be awareness/engagement focused'}
 
 Respond in this exact JSON format:
 {
   "options": [
     {
       "id": "1",
-      "text": "The full post text",
+      "text": "The full post text including URL if required",
       "type": "stat",
       "emotion": "The primary emotion this content evokes",
-      "cta": "The implied call to action",
+      "cta": "The call to action text",
       "hashtags": ["relevant", "hashtags", "without", "the", "hash"]
     }
   ]

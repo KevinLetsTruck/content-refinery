@@ -216,10 +216,16 @@ export async function listAudioFiles(
       );
     }
 
+    // Log all entries for debugging
+    console.log(`[Dropbox] Raw entries (${response.entries.length}):`,
+      response.entries.map(e => ({ tag: e[".tag"], name: e.name, path: e.path_lower }))
+    );
+
     // Filter for audio files
     for (const entry of response.entries) {
       if (entry[".tag"] === "file") {
         const ext = entry.name.toLowerCase().slice(entry.name.lastIndexOf("."));
+        console.log(`[Dropbox] File: ${entry.name}, ext: ${ext}, isAudio: ${AUDIO_EXTENSIONS.includes(ext)}`);
         if (AUDIO_EXTENSIONS.includes(ext)) {
           allFiles.push({
             id: entry.id,

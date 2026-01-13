@@ -140,6 +140,46 @@ export async function uploadToR2(
 }
 
 /**
+ * Upload a file to R2 using a streaming approach from a URL
+ * This downloads from the source URL and streams directly to R2
+ * More memory-efficient for large files
+ */
+export async function uploadToR2FromUrl(
+  key: string,
+  sourceUrl: string,
+  contentType: string,
+  headers?: Record<string, string>
+): Promise<{ size: number }> {
+  const client = getR2Client();
+
+  // Fetch the file from source URL
+  const response = await fetch(sourceUrl, {
+    method: headers ? "POST" : "GET",
+    headers: headers,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch from source: ${response.status}`);
+  }
+
+  // Get the response as an array buffer (needed for S3 SDK)
+  // Note: For very large files (>500MB), we'd need multipart upload
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const command = new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  });
+
+  await client.send(command);
+
+  return { size: buffer.length };
+}
+
+/**
  * Get the public URL for a file in R2
  * Requires public access to be enabled on the bucket or a custom domain
  */

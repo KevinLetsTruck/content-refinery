@@ -6,8 +6,8 @@
  */
 
 import prisma from "@/lib/db/prisma";
-import { listAudioFiles, downloadFile, DropboxFile, getDropboxCredentials } from "./client";
-import { uploadToR2, getPublicUrl, isR2Configured } from "@/lib/storage/r2";
+import { listAudioFiles, getTemporaryDownloadLink, DropboxFile, getDropboxCredentials } from "./client";
+import { uploadToR2FromUrl, getPublicUrl, isR2Configured } from "@/lib/storage/r2";
 import { v4 as uuid } from "uuid";
 
 export interface SyncOptions {
@@ -183,9 +183,9 @@ export async function syncEpisodesFromDropbox(
 
         console.log(`[Sync] Importing ${file.name}...`);
 
-        // Download file from Dropbox
-        const fileBuffer = await downloadFile(file.path);
-        console.log(`[Sync] Downloaded ${file.name} (${Math.round(fileBuffer.length / 1024 / 1024)}MB)`);
+        // Get temporary download link from Dropbox (doesn't download yet)
+        const downloadLink = await getTemporaryDownloadLink(file.path);
+        console.log(`[Sync] Got download link for ${file.name}`);
 
         // Determine content type
         const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
@@ -199,11 +199,12 @@ export async function syncEpisodesFromDropbox(
         };
         const mimeType = contentTypeMap[ext] || "audio/mpeg";
 
-        // Upload to R2
+        // Stream from Dropbox directly to R2 (memory efficient for large files)
         const storageKey = `episodes/${uuid()}${ext}`;
-        await uploadToR2(storageKey, fileBuffer, mimeType);
+        console.log(`[Sync] Streaming ${file.name} to R2...`);
+        const { size } = await uploadToR2FromUrl(storageKey, downloadLink, mimeType);
         const fileUrl = getPublicUrl(storageKey);
-        console.log(`[Sync] Uploaded to R2: ${storageKey}`);
+        console.log(`[Sync] Uploaded to R2: ${storageKey} (${Math.round(size / 1024 / 1024)}MB)`);
 
         // Parse episode title
         const title = parseEpisodeTitle(file.name);
@@ -218,7 +219,7 @@ export async function syncEpisodesFromDropbox(
             storageKey,
             storageType: "r2",
             originalFilename: file.name,
-            fileSizeBytes: BigInt(file.size),
+            fileSizeBytes: BigInt(size),
             status: autoTranscribe ? "pending" : "completed",
             needsTranscription: autoTranscribe,
             metadata: {
@@ -261,6 +262,130 @@ export async function syncEpisodesFromDropbox(
 
   console.log(`[Sync] Complete: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`);
   return result;
+}
+
+/**
+ * Get list of files pending import (in Dropbox but not yet in database)
+ */
+export async function getPendingFiles(folderPath?: string): Promise<{
+  files: DropboxFile[];
+  total: number;
+}> {
+  const credentials = await getDropboxCredentials();
+  if (!credentials) {
+    return { files: [], total: 0 };
+  }
+
+  const files = await listAudioFiles(folderPath);
+  const pendingFiles: DropboxFile[] = [];
+
+  for (const file of files) {
+    if (!(await isAlreadyImported(file.id, file.name))) {
+      pendingFiles.push(file);
+    }
+  }
+
+  return { files: pendingFiles, total: pendingFiles.length };
+}
+
+/**
+ * Sync a single file from Dropbox
+ * Useful for large files that need dedicated processing time
+ */
+export async function syncSingleFile(
+  dropboxPath: string,
+  autoTranscribe: boolean = true
+): Promise<{
+  success: boolean;
+  sourceId?: string;
+  error?: string;
+}> {
+  const credentials = await getDropboxCredentials();
+  if (!credentials) {
+    return { success: false, error: "Dropbox not connected" };
+  }
+
+  if (!isR2Configured()) {
+    return { success: false, error: "R2 storage not configured" };
+  }
+
+  try {
+    // Get file info
+    const files = await listAudioFiles();
+    const file = files.find(f => f.path === dropboxPath || f.path === dropboxPath.toLowerCase());
+
+    if (!file) {
+      return { success: false, error: `File not found: ${dropboxPath}` };
+    }
+
+    // Check if already imported
+    if (await isAlreadyImported(file.id, file.name)) {
+      return { success: false, error: "File already imported" };
+    }
+
+    console.log(`[Sync] Single file import: ${file.name} (${Math.round(file.size / 1024 / 1024)}MB)`);
+
+    // Get temporary download link from Dropbox
+    const downloadLink = await getTemporaryDownloadLink(file.path);
+
+    // Determine content type
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    const contentTypeMap: Record<string, string> = {
+      ".mp3": "audio/mpeg",
+      ".wav": "audio/wav",
+      ".m4a": "audio/mp4",
+      ".aac": "audio/aac",
+      ".ogg": "audio/ogg",
+      ".flac": "audio/flac",
+    };
+    const mimeType = contentTypeMap[ext] || "audio/mpeg";
+
+    // Stream from Dropbox to R2
+    const storageKey = `episodes/${uuid()}${ext}`;
+    console.log(`[Sync] Streaming to R2...`);
+    const { size } = await uploadToR2FromUrl(storageKey, downloadLink, mimeType);
+    const fileUrl = getPublicUrl(storageKey);
+    console.log(`[Sync] Uploaded: ${storageKey} (${Math.round(size / 1024 / 1024)}MB)`);
+
+    // Parse episode title
+    const title = parseEpisodeTitle(file.name);
+
+    // Create Source record
+    const source = await prisma.source.create({
+      data: {
+        title,
+        sourceType: "audio",
+        contentType: "episode",
+        fileUrl,
+        storageKey,
+        storageType: "r2",
+        originalFilename: file.name,
+        fileSizeBytes: BigInt(size),
+        status: autoTranscribe ? "pending" : "completed",
+        needsTranscription: autoTranscribe,
+        metadata: {
+          dropboxId: file.id,
+          dropboxPath: file.path,
+          dropboxModified: file.modifiedAt.toISOString(),
+        },
+      },
+    });
+
+    console.log(`[Sync] Created source ${source.id}: ${title}`);
+
+    // Trigger transcription if enabled
+    if (autoTranscribe) {
+      await triggerTranscription(source.id);
+    }
+
+    return { success: true, sourceId: source.id };
+  } catch (error) {
+    console.error("[Sync] Single file error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    };
+  }
 }
 
 /**

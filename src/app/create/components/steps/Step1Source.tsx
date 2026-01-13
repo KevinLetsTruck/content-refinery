@@ -38,6 +38,14 @@ interface DropboxStatus {
   pendingTranscription: number;
 }
 
+interface PendingFile {
+  id: string;
+  name: string;
+  path: string;
+  size: number;
+  modifiedAt: string;
+}
+
 const SOURCE_OPTIONS: {
   type: SourceType;
   icon: React.ReactNode;
@@ -101,6 +109,8 @@ export function Step1Source() {
   const [dropboxStatus, setDropboxStatus] = useState<DropboxStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [syncingFile, setSyncingFile] = useState<string | null>(null);
 
   // Reset wizard state when entering step 1 fresh
   useEffect(() => {
@@ -112,9 +122,10 @@ export function Step1Source() {
   const fetchEpisodes = useCallback(async () => {
     setEpisodesLoading(true);
     try {
-      const [episodesRes, statusRes] = await Promise.all([
+      const [episodesRes, statusRes, pendingRes] = await Promise.all([
         fetch("/api/episodes?limit=20&hasTranscript=true"),
         fetch("/api/dropbox/sync"),
+        fetch("/api/dropbox/sync?pending=true"),
       ]);
 
       if (episodesRes.ok) {
@@ -125,6 +136,11 @@ export function Step1Source() {
       if (statusRes.ok) {
         const status = await statusRes.json();
         setDropboxStatus(status);
+      }
+
+      if (pendingRes.ok) {
+        const pending = await pendingRes.json();
+        setPendingFiles(pending.files || []);
       }
     } catch (error) {
       console.error("Failed to fetch episodes:", error);
@@ -176,6 +192,36 @@ export function Step1Source() {
       setSyncError(error instanceof Error ? error.message : "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // Sync a single file (for large files)
+  const handleSyncSingleFile = async (filePath: string, fileName: string) => {
+    setSyncingFile(filePath);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/dropbox/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ singleFile: filePath, autoTranscribe: true }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Sync failed");
+      }
+
+      // Show success
+      setSyncError(`Imported "${fileName}" successfully`);
+      setTimeout(() => setSyncError(null), 3000);
+
+      // Refresh the lists
+      await fetchEpisodes();
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Sync failed");
+    } finally {
+      setSyncingFile(null);
     }
   };
 
@@ -584,6 +630,52 @@ export function Step1Source() {
                   </p>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Pending files from Dropbox */}
+          {pendingFiles.length > 0 && dropboxStatus?.isConnected && (
+            <div className="mt-4 pt-4 border-t border-[#333333]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-white">
+                  Files pending import ({pendingFiles.length})
+                </span>
+              </div>
+              <div className="grid gap-2 max-h-40 overflow-y-auto">
+                {pendingFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-3 rounded border border-[#333333] bg-[#0D0D0D]"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Cloud className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white block truncate">{file.name}</span>
+                        <span className="text-xs text-[#666666]">
+                          {Math.round(file.size / 1024 / 1024)}MB
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleSyncSingleFile(file.path, file.name)}
+                      disabled={syncingFile !== null}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs rounded bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 disabled:opacity-50 transition-colors"
+                    >
+                      {syncingFile === file.path ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Syncing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3 w-3" />
+                          Import
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

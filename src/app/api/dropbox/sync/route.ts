@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncEpisodesFromDropbox, getSyncStatus } from "@/lib/dropbox/sync";
+import { syncEpisodesFromDropbox, getSyncStatus, getPendingFiles, syncSingleFile } from "@/lib/dropbox/sync";
 import { isDropboxConnected, updateFolderPath } from "@/lib/dropbox/client";
 
 export const runtime = "nodejs";
@@ -8,10 +8,20 @@ export const maxDuration = 300; // 5 minutes for downloading/uploading files
 /**
  * GET /api/dropbox/sync
  *
- * Get sync status
+ * Get sync status or pending files
+ * Query params:
+ * - pending=true: Get list of files pending import
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const getPending = searchParams.get("pending") === "true";
+
+    if (getPending) {
+      const pending = await getPendingFiles();
+      return NextResponse.json(pending);
+    }
+
     const status = await getSyncStatus();
     return NextResponse.json(status);
   } catch (error) {
@@ -32,6 +42,7 @@ export async function GET() {
  * - folderPath?: string - Override folder path
  * - autoTranscribe?: boolean - Auto-transcribe new episodes (default: true)
  * - limit?: number - Max files to process (default: 50)
+ * - singleFile?: string - Sync only this specific file path (for large files)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -44,8 +55,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { folderPath, autoTranscribe = true, limit = 50 } = body;
+    const { folderPath, autoTranscribe = true, limit = 50, singleFile } = body;
 
+    // Single file sync mode (for large files)
+    if (singleFile) {
+      console.log("[Dropbox Sync] Single file sync:", singleFile);
+      const result = await syncSingleFile(singleFile, autoTranscribe);
+      return NextResponse.json(result);
+    }
+
+    // Batch sync mode
     console.log("[Dropbox Sync] Starting sync...", { folderPath, autoTranscribe, limit });
 
     const result = await syncEpisodesFromDropbox({

@@ -299,7 +299,7 @@ export async function listFolders(
 }
 
 /**
- * Download a file from Dropbox
+ * Download a file from Dropbox (returns buffer - use for small files only)
  */
 export async function downloadFile(path: string): Promise<Buffer> {
   const credentials = await getDropboxCredentials();
@@ -327,6 +327,33 @@ export async function downloadFile(path: string): Promise<Buffer> {
 
   const arrayBuffer = await response.arrayBuffer();
   return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Get a temporary download link for a file (valid for 4 hours)
+ * Use this for large files to stream directly to R2
+ */
+export async function getTemporaryDownloadLink(path: string): Promise<string> {
+  const credentials = await getDropboxCredentials();
+  if (!credentials) {
+    throw new Error("Dropbox not connected");
+  }
+
+  interface TempLinkResponse {
+    link: string;
+    metadata: {
+      name: string;
+      size: number;
+    };
+  }
+
+  const response = await dropboxRequest<TempLinkResponse>(
+    "/files/get_temporary_link",
+    { path },
+    credentials
+  );
+
+  return response.link;
 }
 
 /**

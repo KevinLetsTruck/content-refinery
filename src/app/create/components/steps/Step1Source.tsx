@@ -153,7 +153,12 @@ export function Step1Source() {
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.error || "Sync failed");
+        // Check for permission errors - suggest reconnecting
+        const errorMsg = result.error || "Sync failed";
+        if (errorMsg.includes("scope") || errorMsg.includes("permission")) {
+          throw new Error("Permission error - click disconnect and reconnect Dropbox");
+        }
+        throw new Error(errorMsg);
       }
 
       // Refresh episodes list
@@ -171,6 +176,29 @@ export function Step1Source() {
       setSyncError(error instanceof Error ? error.message : "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // Disconnect Dropbox
+  const handleDisconnect = async () => {
+    if (!confirm("Disconnect Dropbox? You can reconnect anytime.")) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/dropbox", {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to disconnect");
+      }
+
+      // Reset status to show connect button
+      setDropboxStatus(null);
+      setSyncError(null);
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Failed to disconnect");
     }
   };
 
@@ -440,18 +468,27 @@ export function Step1Source() {
             </label>
             <div className="flex items-center gap-2">
               {dropboxStatus?.isConnected ? (
-                <button
-                  onClick={handleSync}
-                  disabled={syncing}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors disabled:opacity-50"
-                >
-                  {syncing ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 text-purple-400" />
-                  )}
-                  <span className="text-[#888888]">Sync from Dropbox</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors disabled:opacity-50"
+                  >
+                    {syncing ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 text-purple-400" />
+                    )}
+                    <span className="text-[#888888]">Sync from Dropbox</span>
+                  </button>
+                  <button
+                    onClick={handleDisconnect}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-red-500/30 hover:bg-red-500/10 transition-colors"
+                    title="Disconnect Dropbox"
+                  >
+                    <CloudOff className="h-4 w-4 text-red-400" />
+                  </button>
+                </>
               ) : (
                 <a
                   href="/api/auth/dropbox"

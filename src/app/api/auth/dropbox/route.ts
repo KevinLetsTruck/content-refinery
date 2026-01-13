@@ -10,10 +10,9 @@ import prisma from "@/lib/db/prisma";
 
 const DROPBOX_APP_KEY = process.env.DROPBOX_APP_KEY;
 const DROPBOX_APP_SECRET = process.env.DROPBOX_APP_SECRET;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const DROPBOX_REDIRECT_URI = process.env.DROPBOX_REDIRECT_URI ||
-  (process.env.NODE_ENV === "production"
-    ? "https://content-refinery-07dc.onrender.com/api/auth/dropbox"
-    : "http://localhost:3000/api/auth/dropbox");
+  `${APP_URL}/api/auth/dropbox`;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error("[Dropbox OAuth] Error:", error);
     return NextResponse.redirect(
-      new URL(`/settings/integrations?error=${encodeURIComponent(error)}`, request.url)
+      `${APP_URL}/create?dropbox_error=${encodeURIComponent(error)}`
     );
   }
 
@@ -103,14 +102,14 @@ export async function GET(request: NextRequest) {
 
       console.log("[Dropbox OAuth] Credentials stored successfully");
 
-      // Redirect to settings page with success message
+      // Redirect to create page with success message
       return NextResponse.redirect(
-        new URL("/settings/integrations?success=dropbox", request.url)
+        `${APP_URL}/create?dropbox_connected=true`
       );
     } catch (err) {
       console.error("[Dropbox OAuth] Error:", err);
       return NextResponse.redirect(
-        new URL(`/settings/integrations?error=${encodeURIComponent(err instanceof Error ? err.message : "Unknown error")}`, request.url)
+        `${APP_URL}/create?dropbox_error=${encodeURIComponent(err instanceof Error ? err.message : "Unknown error")}`
       );
     }
   }

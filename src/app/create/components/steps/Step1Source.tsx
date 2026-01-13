@@ -111,6 +111,7 @@ export function Step1Source() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [syncingFile, setSyncingFile] = useState<string | null>(null);
+  const [loadingEpisodeId, setLoadingEpisodeId] = useState<string | null>(null);
 
   // Reset wizard state when entering step 1 fresh
   useEffect(() => {
@@ -245,6 +246,52 @@ export function Step1Source() {
       setSyncError(null);
     } catch (error) {
       setSyncError(error instanceof Error ? error.message : "Failed to disconnect");
+    }
+  };
+
+  // Handle episode selection - fetch full transcript
+  const handleEpisodeSelect = async (episode: Episode) => {
+    if (!episode.hasTranscript) {
+      setSyncError("This episode doesn't have a transcript yet");
+      return;
+    }
+
+    setLoadingEpisodeId(episode.id);
+    try {
+      // Fetch the full source with transcript
+      const res = await fetch(`/api/sources/${episode.id}`);
+      if (!res.ok) {
+        throw new Error("Failed to load episode");
+      }
+
+      const data = await res.json();
+      const source = data.source;
+
+      // Get transcript text
+      let transcriptText = "";
+      if (source.transcripts && source.transcripts.length > 0) {
+        transcriptText = source.transcripts[0].fullText || "";
+      }
+
+      if (!transcriptText) {
+        throw new Error("No transcript content found");
+      }
+
+      // Set the source with the full transcript content
+      setContent(episode.title);
+      setSource(
+        "episode",
+        transcriptText,
+        episode.title,
+        episode.id,
+        { sourceId: episode.id, hasTranscript: true }
+      );
+      nextStep();
+      router.push("/create/mode");
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Failed to load episode");
+    } finally {
+      setLoadingEpisodeId(null);
     }
   };
 
@@ -582,13 +629,9 @@ export function Step1Source() {
               {episodes.map((episode) => (
                 <button
                   key={episode.id}
-                  onClick={() => {
-                    setContent(episode.title);
-                    setSource("episode", episode.title, episode.title);
-                    nextStep();
-                    router.push("/create/mode");
-                  }}
-                  className="flex items-center justify-between p-4 rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors text-left"
+                  onClick={() => handleEpisodeSelect(episode)}
+                  disabled={loadingEpisodeId !== null}
+                  className="flex items-center justify-between p-4 rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors text-left disabled:opacity-50"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Mic className="h-5 w-5 text-purple-400 flex-shrink-0" />
@@ -607,7 +650,11 @@ export function Step1Source() {
                       </div>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-[#888888] flex-shrink-0" />
+                  {loadingEpisodeId === episode.id ? (
+                    <Loader2 className="h-4 w-4 text-purple-400 animate-spin flex-shrink-0" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4 text-[#888888] flex-shrink-0" />
+                  )}
                 </button>
               ))}
             </div>

@@ -46,6 +46,8 @@ export interface CreateCampaignInput {
   // Email marketing integration
   emailSequenceId?: string; // Link to email sequence for nurture emails
   leadMagnetId?: string; // Link to lead magnet
+  // Landing page URL - REQUIRED for posts to include actual links
+  landingPageUrl?: string; // Full URL like https://content-refinery.onrender.com/lp/shut-up-digest
 }
 
 // AI-generated strategy

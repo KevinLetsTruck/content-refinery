@@ -83,13 +83,16 @@ export async function generateCampaignStrategy(
     (input.platforms.includes("instagram") ? input.postsPerDay.instagram : 0)
   );
 
+  // Determine the CTA URL - prioritize landing page URL, then product URL
+  const ctaUrl = input.landingPageUrl || input.productUrl || "https://letstruck.com";
+
   const userPrompt = `Create a complete ${input.campaignType.replace("_", " ")} campaign.
 
 CAMPAIGN DETAILS:
 - Name: ${input.name}
 - Goal: ${input.goal}
 - Product/Topic: ${input.productName || input.topic || "General health coaching"}
-- CTA URL: ${input.productUrl || "https://letstruck.com"}
+- CTA URL: ${ctaUrl}
 - Key Messages to Include: ${input.keyMessages.length > 0 ? input.keyMessages.join("; ") : "Focus on the product/topic benefits"}
 - Duration: ${input.durationDays} days
 - Start Date: ${input.startDate}
@@ -114,6 +117,10 @@ CRITICAL REQUIREMENTS:
 4. Each phase should have distinct messaging aligned with its purpose
 5. Instagram posts should describe a visual concept in visualPrompt
 6. Space YouTube content strategically (not all on the same day)
+7. MANDATORY: EVERY post with a CTA MUST include the ACTUAL URL: ${ctaUrl}
+   - Do NOT use placeholders like [URL], [LINK], or "link in bio"
+   - Include the full URL in the post content (e.g., "Get the guide: ${ctaUrl}")
+   - For Twitter, keep the URL in the content even with character limits
 
 Return this exact JSON structure:
 {
@@ -185,25 +192,53 @@ Return this exact JSON structure:
 
   try {
     const strategy: CampaignStrategy = JSON.parse(jsonStr);
-    
-    // Validate Twitter post lengths
+
+    // Ensure every post has the actual URL (replace placeholders or append)
     for (const post of strategy.posts) {
+      // Replace common placeholders with actual URL
+      post.content = post.content
+        .replace(/\[URL\]/gi, ctaUrl)
+        .replace(/\[LINK\]/gi, ctaUrl)
+        .replace(/\[CTA_URL\]/gi, ctaUrl)
+        .replace(/link in bio/gi, ctaUrl);
+
+      // If URL is not in the post content and it's a CTA-focused post, append it
+      if (!post.content.includes(ctaUrl) && !post.content.includes("http")) {
+        // Check if this is an awareness/CTA phase post
+        const ctaPhrases = ["get the", "grab the", "download", "sign up", "join", "learn more", "check out", "discover"];
+        const hasCtaPhrase = ctaPhrases.some(phrase => post.content.toLowerCase().includes(phrase));
+
+        if (hasCtaPhrase) {
+          console.warn(`[Campaign] Adding missing URL to post for day ${post.dayNumber} (${post.platform})`);
+          post.content = `${post.content}\n\n${ctaUrl}`;
+        }
+      }
+
+      // Validate Twitter post lengths
       if (post.platform === "twitter") {
-        const fullLength = post.content.length + 
+        const fullLength = post.content.length +
           post.hashtags.reduce((sum, tag) => sum + tag.length + 2, 0); // +2 for "# " and space
-        
+
         if (fullLength > 280) {
           console.warn(`[Campaign] Twitter post exceeds 280 chars (${fullLength}), truncating`);
-          // Truncate content to fit
+          // Truncate content to fit (but preserve URL)
           const hashtagLength = post.hashtags.reduce((sum, tag) => sum + tag.length + 2, 0);
           const maxContentLength = 275 - hashtagLength;
           if (post.content.length > maxContentLength) {
-            post.content = post.content.substring(0, maxContentLength - 3) + "...";
+            // Try to preserve URL when truncating
+            if (post.content.includes(ctaUrl)) {
+              const urlIndex = post.content.indexOf(ctaUrl);
+              const beforeUrl = post.content.substring(0, urlIndex).trim();
+              const truncatedBefore = beforeUrl.substring(0, maxContentLength - ctaUrl.length - 5) + "... ";
+              post.content = truncatedBefore + ctaUrl;
+            } else {
+              post.content = post.content.substring(0, maxContentLength - 3) + "...";
+            }
           }
         }
       }
     }
-    
+
     return strategy;
   } catch (error) {
     console.error("[Campaign] Failed to parse strategy JSON:", error);

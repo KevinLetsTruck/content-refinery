@@ -8,6 +8,8 @@ import {
 } from "@/lib/images/dalle";
 import { getConstantContactClient } from "@/lib/constant-contact/client";
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.RENDER_EXTERNAL_URL || "https://content-refinery-07dc.onrender.com";
+
 /**
  * Create a new campaign and generate all content
  */
@@ -21,6 +23,22 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
   const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + input.durationDays - 1);
 
+  // Get landing page URL from lead magnet if provided
+  let landingPageUrl = input.landingPageUrl;
+  if (!landingPageUrl && input.leadMagnetId) {
+    const leadMagnet = await prisma.leadMagnet.findUnique({
+      where: { id: input.leadMagnetId },
+      select: { slug: true },
+    });
+    if (leadMagnet?.slug) {
+      landingPageUrl = `${BASE_URL}/lp/${leadMagnet.slug}`;
+      console.log(`[Campaign] Generated landing page URL from lead magnet: ${landingPageUrl}`);
+    }
+  }
+
+  // Update input with the resolved landing page URL
+  const resolvedInput = { ...input, landingPageUrl };
+
   // Create campaign record
   const campaign = await prisma.campaign.create({
     data: {
@@ -30,6 +48,7 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
       goal: input.goal,
       productName: input.productName,
       productUrl: input.productUrl,
+      ctaUrl: landingPageUrl, // Store the resolved landing page URL
       topic: input.topic,
       keyMessages: input.keyMessages,
       startDate,
@@ -67,8 +86,8 @@ export async function createCampaign(input: CreateCampaignInput): Promise<{
     }
   }
 
-  // Generate content in background
-  generateCampaignContent(campaign.id, input).catch((error) => {
+  // Generate content in background (use resolvedInput with landing page URL)
+  generateCampaignContent(campaign.id, resolvedInput).catch((error) => {
     console.error(`[Campaign] Generation failed for ${campaign.id}:`, error);
   });
 

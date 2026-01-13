@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
+// Helper to convert BigInt values to numbers for JSON serialization
+function serializeBigInt<T>(obj: T): T {
+  return JSON.parse(
+    JSON.stringify(obj, (_, value) =>
+      typeof value === "bigint" ? Number(value) : value
+    )
+  );
+}
+
 // GET /api/sources/[id] - Get a single source
 export async function GET(
   request: NextRequest,
@@ -8,7 +17,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
+
     const source = await prisma.source.findUnique({
       where: { id },
       include: {
@@ -28,7 +37,8 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ source });
+    // Convert BigInt fields to numbers for JSON serialization
+    return NextResponse.json({ source: serializeBigInt(source) });
   } catch (error) {
     console.error("Error fetching source:", error);
     return NextResponse.json(

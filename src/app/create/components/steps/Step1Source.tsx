@@ -262,6 +262,67 @@ const CONTENT_CATEGORY_OPTIONS: {
   },
 ];
 
+// Reusable Category Selector Component
+function CategorySelector({
+  contentCategory,
+  setContentCategory,
+  compact = false
+}: {
+  contentCategory: ContentCategory;
+  setContentCategory: (category: ContentCategory) => void;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {CONTENT_CATEGORY_OPTIONS.map(({ category, icon, title, color }) => (
+          <button
+            key={category}
+            onClick={() => setContentCategory(category)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all ${
+              contentCategory === category
+                ? "bg-[#FF4500] text-white"
+                : "bg-[#0D0D0D] border border-[#333333] hover:border-[#444444] text-[#888888]"
+            }`}
+          >
+            <span className={contentCategory === category ? "text-white" : color}>
+              {icon}
+            </span>
+            <span>{title}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-3 text-white">
+        Content Category
+      </label>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {CONTENT_CATEGORY_OPTIONS.map(({ category, icon, title, description, color }) => (
+          <button
+            key={category}
+            onClick={() => setContentCategory(category)}
+            className={`p-3 rounded-lg border text-left transition-all ${
+              contentCategory === category
+                ? "border-[#FF4500] bg-[#FF4500]/10"
+                : "border-[#333333] hover:border-[#444444]"
+            }`}
+          >
+            <div className={`mb-1 ${contentCategory === category ? "text-[#FF4500]" : color}`}>
+              {icon}
+            </div>
+            <p className="text-sm font-medium text-white">{title}</p>
+            <p className="text-xs text-[#666666] mt-0.5 hidden sm:block">{description}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Step1Source() {
   const router = useRouter();
   const {
@@ -639,6 +700,16 @@ ${article.fullContent}
             <p className="text-sm text-[#888888] mt-1 break-words">
               Just type your idea and choose Quick Post or Campaign mode.
             </p>
+
+            {/* Content Category - Quick Selector */}
+            <div className="mt-4">
+              <CategorySelector
+                contentCategory={contentCategory}
+                setContentCategory={setContentCategory}
+                compact
+              />
+            </div>
+
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
@@ -828,10 +899,17 @@ ${article.fullContent}
 
       {/* Guide Selector */}
       {selectedType === "guide" && (
-        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
-          <label className="block text-sm font-medium mb-4 text-white">
-            Select a guide to extract content from
-          </label>
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300 space-y-6">
+          {/* Content Category */}
+          <CategorySelector
+            contentCategory={contentCategory}
+            setContentCategory={setContentCategory}
+          />
+
+          <div>
+            <label className="block text-sm font-medium mb-4 text-white">
+              Select a guide to extract content from
+            </label>
           <div className="grid gap-3">
             {[
               "Shut Up and Digest",
@@ -853,15 +931,23 @@ ${article.fullContent}
               </button>
             ))}
           </div>
+          </div>
         </div>
       )}
 
       {/* Product Selector */}
       {selectedType === "product" && (
-        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
-          <label className="block text-sm font-medium mb-4 text-white">
-            Select a product to spotlight
-          </label>
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300 space-y-6">
+          {/* Content Category */}
+          <CategorySelector
+            contentCategory={contentCategory}
+            setContentCategory={setContentCategory}
+          />
+
+          <div>
+            <label className="block text-sm font-medium mb-4 text-white">
+              Select a product to spotlight
+            </label>
           <div className="grid gap-3 mb-4">
             {[
               "Cardio Miracle",
@@ -903,15 +989,23 @@ ${article.fullContent}
               </button>
             </div>
           </div>
+          </div>
         </div>
       )}
 
       {/* Success Story Input */}
       {selectedType === "success_story" && (
-        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
-          <label className="block text-sm font-medium mb-2 text-white">
-            Share the success story
-          </label>
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300 space-y-6">
+          {/* Content Category */}
+          <CategorySelector
+            contentCategory={contentCategory}
+            setContentCategory={setContentCategory}
+          />
+
+          <div>
+            <label className="block text-sm font-medium mb-2 text-white">
+              Share the success story
+            </label>
           <textarea
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
@@ -930,12 +1024,19 @@ ${article.fullContent}
             Continue
             <ArrowRight className="h-4 w-4" />
           </button>
+          </div>
         </div>
       )}
 
       {/* Episode Selector */}
       {selectedType === "episode" && (
-        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300 space-y-6">
+          {/* Content Category */}
+          <CategorySelector
+            contentCategory={contentCategory}
+            setContentCategory={setContentCategory}
+          />
+
           {/* Header with sync button */}
           <div className="flex items-center justify-between mb-4">
             <label className="block text-sm font-medium text-white">
@@ -1132,10 +1233,17 @@ ${article.fullContent}
 
       {/* TruckTales Selector */}
       {selectedType === "trucktales" && (
-        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
-          <label className="block text-sm font-medium mb-4 text-white">
-            Select a story
-          </label>
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300 space-y-6">
+          {/* Content Category */}
+          <CategorySelector
+            contentCategory={contentCategory}
+            setContentCategory={setContentCategory}
+          />
+
+          <div>
+            <label className="block text-sm font-medium mb-4 text-white">
+              Select a story
+            </label>
           <div className="grid gap-3 mb-4">
             {[
               "The Long Haul Home",
@@ -1163,12 +1271,19 @@ ${article.fullContent}
           <p className="text-sm text-[#666666]">
             Stories from TruckTales app will sync automatically.
           </p>
+          </div>
         </div>
       )}
 
       {/* Feedly Selector */}
       {selectedType === "feedly" && (
-        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300 space-y-6">
+          {/* Content Category */}
+          <CategorySelector
+            contentCategory={contentCategory}
+            setContentCategory={setContentCategory}
+          />
+
           {/* Not configured state */}
           {feedlyConfigured === false && (
             <div className="text-center py-8">

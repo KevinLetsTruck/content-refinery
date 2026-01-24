@@ -12,6 +12,7 @@ export type ContentType = 'stat' | 'quote' | 'hook' | 'tip' | 'testimonial' | 't
 export type ContentLength = 'short' | 'medium' | 'long' | 'article';
 export type QuickIdeaType = 'idea' | 'news_article' | 'stat' | 'quote' | 'tip';
 export type PublishOption = 'now' | 'schedule' | 'queue' | 'draft';
+export type ContentCategory = 'health' | 'trucking' | 'finance' | 'business' | 'politics' | 'general';
 
 // Backward compatibility aliases
 export type WizardStep = number;
@@ -202,6 +203,7 @@ export interface WizardState {
   // Quick Idea Options
   quickIdeaType: QuickIdeaType;
   contentLength: ContentLength;
+  contentCategory: ContentCategory;
 
   // Campaign config (campaign mode)
   campaignConfig: CampaignConfig;
@@ -292,6 +294,7 @@ export interface WizardState {
   setSource: (type: SourceType, content: string, title?: string, id?: string, data?: Record<string, unknown>) => void;
   setQuickIdeaType: (type: QuickIdeaType) => void;
   setContentLength: (length: ContentLength) => void;
+  setContentCategory: (category: ContentCategory) => void;
 
   // Actions - Campaign Config
   updateCampaignConfig: (config: Partial<CampaignConfig>) => void;
@@ -368,6 +371,7 @@ const initialState = {
 
   quickIdeaType: 'idea' as QuickIdeaType,
   contentLength: 'short' as ContentLength,
+  contentCategory: 'health' as ContentCategory,
 
   campaignConfig: { ...DEFAULT_CAMPAIGN_CONFIG },
 
@@ -516,6 +520,7 @@ export const useWizardStore = create<WizardState>()(
       // Quick Idea Options Actions
       setQuickIdeaType: (type) => set({ quickIdeaType: type }),
       setContentLength: (length) => set({ contentLength: length }),
+      setContentCategory: (category) => set({ contentCategory: category }),
 
       // Campaign Config Actions
       updateCampaignConfig: (config) => set((state) => ({

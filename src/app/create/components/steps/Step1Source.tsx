@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useWizardStore, SourceType, QuickIdeaType, ContentLength } from "../../store";
+import { useWizardStore, SourceType, QuickIdeaType, ContentLength, ContentCategory } from "../../store";
 import {
   Lightbulb,
   BookOpen,
@@ -27,6 +27,12 @@ import {
   Rss,
   ExternalLink,
   ChevronLeft,
+  Heart,
+  Truck,
+  DollarSign,
+  Briefcase,
+  Vote,
+  Globe,
 } from "lucide-react";
 
 interface Episode {
@@ -205,6 +211,57 @@ const CONTENT_LENGTH_OPTIONS: {
   },
 ];
 
+const CONTENT_CATEGORY_OPTIONS: {
+  category: ContentCategory;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  color: string;
+}[] = [
+  {
+    category: "health",
+    icon: <Heart className="h-4 w-4" />,
+    title: "Health",
+    description: "Driver health, nutrition, supplements",
+    color: "text-red-400",
+  },
+  {
+    category: "trucking",
+    icon: <Truck className="h-4 w-4" />,
+    title: "Trucking",
+    description: "Industry news, regulations, lifestyle",
+    color: "text-blue-400",
+  },
+  {
+    category: "finance",
+    icon: <DollarSign className="h-4 w-4" />,
+    title: "Personal Finance",
+    description: "Money, taxes, retirement, investing",
+    color: "text-green-400",
+  },
+  {
+    category: "business",
+    icon: <Briefcase className="h-4 w-4" />,
+    title: "Small Business",
+    description: "O/O business tips, entrepreneurship",
+    color: "text-purple-400",
+  },
+  {
+    category: "politics",
+    icon: <Vote className="h-4 w-4" />,
+    title: "Politics",
+    description: "Policy, regulations, advocacy",
+    color: "text-orange-400",
+  },
+  {
+    category: "general",
+    icon: <Globe className="h-4 w-4" />,
+    title: "General",
+    description: "Other topics, commentary",
+    color: "text-gray-400",
+  },
+];
+
 export function Step1Source() {
   const router = useRouter();
   const {
@@ -219,6 +276,8 @@ export function Step1Source() {
     setQuickIdeaType,
     contentLength,
     setContentLength,
+    contentCategory,
+    setContentCategory,
   } = useWizardStore();
   const [selectedType, setSelectedType] = useState<SourceType | null>(sourceType);
   const [content, setContent] = useState(sourceContent);
@@ -689,6 +748,34 @@ ${article.fullContent}
                   >
                     <p className="text-sm font-medium text-white">{title}</p>
                     <p className="text-xs text-[#666666] mt-0.5">{wordRange}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Content Category Selector */}
+            <div>
+              <label className="block text-sm font-medium mb-3 text-white">
+                Topic category
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {CONTENT_CATEGORY_OPTIONS.map(({ category, icon, title, description, color }) => (
+                  <button
+                    key={category}
+                    onClick={() => setContentCategory(category)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      contentCategory === category
+                        ? "border-[#FF4500] bg-[#FF4500]/10"
+                        : "border-[#333333] hover:border-[#444444]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={contentCategory === category ? "text-[#FF4500]" : color}>
+                        {icon}
+                      </span>
+                      <p className="text-sm font-medium text-white">{title}</p>
+                    </div>
+                    <p className="text-xs text-[#666666] hidden sm:block">{description}</p>
                   </button>
                 ))}
               </div>

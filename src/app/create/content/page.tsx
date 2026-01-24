@@ -44,6 +44,9 @@ export default function ContentPage() {
     getSteps,
     quickLandingPage,
     setQuickLandingPage,
+    quickIdeaType,
+    contentLength,
+    contentCategory,
   } = useWizardStore();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -139,6 +142,9 @@ export default function ContentPage() {
           sourceContent,
           interviewData,
           landingPageUrl, // Pass the landing page URL to content generation
+          quickIdeaType,
+          contentLength,
+          contentCategory,
           count: 3,
         }),
       });

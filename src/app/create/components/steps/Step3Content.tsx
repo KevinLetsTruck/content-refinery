@@ -7,6 +7,7 @@ import { Sparkles, Check, Edit3, RefreshCw, Combine, Loader2 } from "lucide-reac
 export function Step3Content() {
   const {
     sourceContent,
+    sourceType,
     interviewData,
     contentOptions,
     setContentOptions,
@@ -16,6 +17,9 @@ export function Step3Content() {
     editContent,
     setLoading,
     isLoading,
+    quickIdeaType,
+    contentLength,
+    contentCategory,
   } = useWizardStore();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -36,8 +40,12 @@ export function Step3Content() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sourceType,
           sourceContent,
           interviewData,
+          quickIdeaType,
+          contentLength,
+          contentCategory,
         }),
       });
 

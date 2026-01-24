@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { postTweet, postThread, uploadMedia, isConfigured as isTwitterConfigured } from '@/lib/social/twitter';
+import { postToFacebook, isConfigured as isMetaConfigured } from '@/lib/social/meta';
 import { findProductInText } from '@/lib/products/catalog';
 
 interface PublishResult {
@@ -31,15 +32,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       content,
+      hashtags: topLevelHashtags,
+      platforms: topLevelPlatforms,
       visuals,
       publishOption,
       scheduledTime,
     } = body;
 
-    // Extract from content object (frontend structure)
-    const text = content?.text || '';
-    const hashtags = content?.hashtags || [];
-    const platforms = content?.platforms || [];
+    // Handle both formats:
+    // 1. Frontend wizard: content is a string, hashtags/platforms at top level
+    // 2. Alternative: content is an object with text, hashtags, platforms nested
+    const text = typeof content === 'string' ? content : (content?.text || '');
+    const hashtags = topLevelHashtags || content?.hashtags || [];
+    const platforms = topLevelPlatforms || content?.platforms || [];
+
+    console.log('[Publish] Received request:', {
+      textLength: text.length,
+      platformCount: platforms.length,
+      platforms,
+      publishOption
+    });
 
     const results: PublishResult[] = [];
 
@@ -129,6 +141,37 @@ export async function POST(request: NextRequest) {
               } catch (twitterError) {
                 console.error('[Publish] Twitter error:', twitterError);
                 publishError = twitterError instanceof Error ? twitterError.message : 'Twitter publishing failed';
+              }
+            }
+          } else if (platform === 'facebook') {
+            // Publish to Facebook
+            const metaConfig = isMetaConfigured();
+            if (!metaConfig.facebook) {
+              publishError = 'Facebook not configured';
+            } else {
+              try {
+                // Build the full post text with product link and hashtags
+                const textWithProductLink = addProductLink(text);
+                const hashtagString = hashtags.length > 0
+                  ? '\n\n' + hashtags.map((tag: string) => `#${tag}`).join(' ')
+                  : '';
+                const fullText = textWithProductLink + hashtagString;
+
+                // Get image URL if available
+                const imageUrl = visual?.imageUrl || visual?.gammaUrl;
+                const validImageUrl = imageUrl && !imageUrl.includes('gamma.app') ? imageUrl : undefined;
+
+                console.log('[Publish] Posting to Facebook, text length:', fullText.length);
+                const result = await postToFacebook({
+                  message: fullText,
+                  imageUrl: validImageUrl,
+                });
+                publishedUrl = result.url;
+                publishSuccess = true;
+                console.log('[Publish] Facebook post published:', result.url);
+              } catch (facebookError) {
+                console.error('[Publish] Facebook error:', facebookError);
+                publishError = facebookError instanceof Error ? facebookError.message : 'Facebook publishing failed';
               }
             }
           } else {

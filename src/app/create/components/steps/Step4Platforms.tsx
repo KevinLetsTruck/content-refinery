@@ -242,7 +242,7 @@ export function Step4Platforms() {
             <div className="mt-3 pt-3 border-t flex items-start gap-2 text-amber-600 dark:text-amber-400">
               <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <p className="text-xs">
-                Generating {enabledPlatforms.length} visuals will use more Gamma credits. 
+                Generating {enabledPlatforms.length} visuals may take longer.
                 Consider starting with 1-2 platforms.
               </p>
             </div>

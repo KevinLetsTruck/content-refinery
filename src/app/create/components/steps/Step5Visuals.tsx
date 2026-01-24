@@ -57,81 +57,44 @@ export function Step5Visuals() {
     }
   }, []);
 
-  // Platforms that need direct image URLs (not Gamma viewer pages)
-  const NEEDS_DIRECT_IMAGE = ["twitter"];
-
   const generateAllVisuals = async () => {
     setGeneratingAll(true);
     setLoading(true);
 
     for (const platform of enabledPlatforms) {
       setVisual(platform.platform, { status: "generating" });
-      
+
       try {
-        const needsDirectImage = NEEDS_DIRECT_IMAGE.includes(platform.platform);
-        console.log(`[Step5] Generating visual for ${platform.platform} (${platform.format}), direct: ${needsDirectImage}...`);
-        
-        if (needsDirectImage) {
-          // Use Cloudflare AI for platforms that need direct image URLs
-          const response = await fetch("/api/images/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              text: contentText,
-              contentType: selectedContent?.type || "educational",
-              platform: platform.platform,
-            }),
+        console.log(`[Step5] Generating visual for ${platform.platform} (${platform.format}) using Nano Banana...`);
+
+        // Use Nano Banana (Google Gemini) for all platforms
+        const response = await fetch("/api/images/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: contentText,
+            contentType: selectedContent?.type || "educational",
+            platform: platform.platform,
+          }),
+        });
+
+        const data = await response.json();
+        console.log(`[Step5] Nano Banana Response for ${platform.platform}:`, data);
+
+        if (response.ok && data.imageUrl) {
+          setVisual(platform.platform, {
+            status: "completed",
+            generationId: data.filename,
+            gammaUrl: data.imageUrl, // Using gammaUrl field to store R2 image URL
+            imageUrl: data.imageUrl, // Also store in imageUrl for clarity
           });
-
-          const data = await response.json();
-          console.log(`[Step5] CF AI Response for ${platform.platform}:`, data);
-
-          if (response.ok && data.imageUrl) {
-            setVisual(platform.platform, {
-              status: "completed",
-              generationId: data.filename,
-              gammaUrl: data.imageUrl, // Using gammaUrl field to store R2 image URL
-              imageUrl: data.imageUrl, // Also store in imageUrl for clarity
-            });
-          } else {
-            const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
-            console.error(`[Step5] CF AI failed for ${platform.platform}:`, errorMessage);
-            setVisual(platform.platform, {
-              status: "failed",
-              error: errorMessage,
-            });
-          }
         } else {
-          // Use Gamma for other platforms (creates viewable cards)
-          const response = await fetch("/api/gamma/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              text: contentText,
-              contentType: selectedContent?.type || "educational",
-              format: platform.format,
-              platform: platform.platform,
-              waitForResult: true,
-            }),
+          const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+          console.error(`[Step5] Nano Banana failed for ${platform.platform}:`, errorMessage);
+          setVisual(platform.platform, {
+            status: "failed",
+            error: errorMessage,
           });
-
-          const data = await response.json();
-          console.log(`[Step5] Gamma Response for ${platform.platform}:`, data);
-
-          if (response.ok && data.gammaUrl) {
-            setVisual(platform.platform, {
-              status: "completed",
-              generationId: data.generationId,
-              gammaUrl: data.gammaUrl,
-            });
-          } else {
-            const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
-            console.error(`[Step5] Generation failed for ${platform.platform}:`, errorMessage);
-            setVisual(platform.platform, {
-              status: "failed",
-              error: errorMessage,
-            });
-          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Network error";
@@ -154,70 +117,36 @@ export function Step5Visuals() {
     setVisual(platform, { status: "generating" });
 
     try {
-      const needsDirectImage = NEEDS_DIRECT_IMAGE.includes(platform);
-      console.log(`[Step5] Regenerating visual for ${platform} (${config.format}), direct: ${needsDirectImage}...`);
-      
-      if (needsDirectImage) {
-        // Use Nano Banana for platforms that need direct image URLs
-        const response = await fetch("/api/images/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: contentText,
-            contentType: selectedContent?.type || "educational",
-            platform: platform,
-          }),
+      console.log(`[Step5] Regenerating visual for ${platform} (${config.format}) using Nano Banana...`);
+
+      // Use Nano Banana (Google Gemini) for all platforms
+      const response = await fetch("/api/images/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: contentText,
+          contentType: selectedContent?.type || "educational",
+          platform: platform,
+        }),
+      });
+
+      const data = await response.json();
+      console.log(`[Step5] Nano Banana Regenerate response for ${platform}:`, data);
+
+      if (response.ok && data.imageUrl) {
+        setVisual(platform, {
+          status: "completed",
+          generationId: data.filename,
+          gammaUrl: data.imageUrl,
+          imageUrl: data.imageUrl,
         });
-
-        const data = await response.json();
-        console.log(`[Step5] CF AI Regenerate response for ${platform}:`, data);
-
-        if (response.ok && data.imageUrl) {
-          setVisual(platform, {
-            status: "completed",
-            generationId: data.filename,
-            gammaUrl: data.imageUrl,
-            imageUrl: data.imageUrl,
-          });
-        } else {
-          const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
-          console.error(`[Step5] CF AI Regeneration failed for ${platform}:`, errorMessage);
-          setVisual(platform, {
-            status: "failed",
-            error: errorMessage,
-          });
-        }
       } else {
-        // Use Gamma for other platforms
-        const response = await fetch("/api/gamma/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: contentText,
-            contentType: selectedContent?.type || "educational",
-            format: config.format,
-            platform: platform,
-            waitForResult: true,
-          }),
+        const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
+        console.error(`[Step5] Nano Banana Regeneration failed for ${platform}:`, errorMessage);
+        setVisual(platform, {
+          status: "failed",
+          error: errorMessage,
         });
-
-        const data = await response.json();
-        console.log(`[Step5] Gamma Regenerate response for ${platform}:`, data);
-
-        if (response.ok && data.gammaUrl) {
-          setVisual(platform, {
-            status: "completed",
-            generationId: data.generationId,
-            gammaUrl: data.gammaUrl,
-          });
-        } else {
-          const errorMessage = data.error || `Generation failed (HTTP ${response.status})`;
-          console.error(`[Step5] Regeneration failed for ${platform}:`, errorMessage);
-          setVisual(platform, {
-            status: "failed",
-            error: errorMessage,
-          });
-        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Network error";
@@ -250,7 +179,7 @@ export function Step5Visuals() {
         <div>
           <h2 className="text-xl font-semibold">Creating Your Visuals</h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Gamma is generating on-brand graphics for each platform
+            AI is generating on-brand graphics for each platform
           </p>
         </div>
         
@@ -272,8 +201,7 @@ export function Step5Visuals() {
           <div className="text-sm">
             <p className="font-medium text-blue-700 dark:text-blue-300">Visual Generation</p>
             <p className="text-muted-foreground mt-1">
-              <strong>Twitter/X:</strong> AI-generated images (Cloudflare AI) - auto-attached to posts.<br/>
-              <strong>Other platforms:</strong> Gamma visual cards - viewable and shareable links.
+              AI-generated images are created using Google Gemini and automatically attached to your posts.
             </p>
           </div>
         </div>
@@ -323,45 +251,27 @@ export function Step5Visuals() {
                   </div>
                 )}
 
-                {visual?.status === "completed" && (visual.imageUrl || visual.gammaUrl) && (
+                {visual?.status === "completed" && visual.imageUrl && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-                    {visual.imageUrl ? (
-                      <>
-                        {/* Show actual image preview for CF AI images */}
-                        <img 
-                          src={visual.imageUrl} 
-                          alt={`${PLATFORM_NAMES[platform.platform]} visual`}
-                          className="absolute inset-0 w-full h-full object-cover opacity-50"
-                        />
-                        <div className="relative z-10 text-center">
-                          <Check className="h-12 w-12 text-green-500 mx-auto" />
-                          <p className="text-sm font-medium mt-3">Image Ready</p>
-                          <a
-                            href={visual.imageUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-primary text-sm mt-2 hover:underline"
-                          >
-                            View Image
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon className="h-12 w-12 text-primary/40" />
-                        <p className="text-sm font-medium mt-3">Visual Card Ready</p>
-                        <a
-                          href={visual.gammaUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary text-sm mt-2 hover:underline"
-                        >
-                          View in Gamma
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </>
-                    )}
+                    {/* Show actual image preview */}
+                    <img
+                      src={visual.imageUrl}
+                      alt={`${PLATFORM_NAMES[platform.platform]} visual`}
+                      className="absolute inset-0 w-full h-full object-cover opacity-50"
+                    />
+                    <div className="relative z-10 text-center">
+                      <Check className="h-12 w-12 text-green-500 mx-auto" />
+                      <p className="text-sm font-medium mt-3">Image Ready</p>
+                      <a
+                        href={visual.imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-primary text-sm mt-2 hover:underline"
+                      >
+                        View Image
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
                   </div>
                 )}
 
@@ -391,14 +301,14 @@ export function Step5Visuals() {
                   Regenerate
                 </button>
 
-                {(visual?.imageUrl || visual?.gammaUrl) && (
+                {visual?.imageUrl && (
                   <a
-                    href={visual.imageUrl || visual.gammaUrl}
+                    href={visual.imageUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-sm text-primary hover:underline"
                   >
-                    {visual.imageUrl ? "View Image" : "Open Gamma"}
+                    View Image
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}

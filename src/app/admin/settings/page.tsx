@@ -14,9 +14,37 @@ interface CCStatus {
   authUrl?: string;
 }
 
+interface MetaStatus {
+  configured: boolean;
+  facebook?: {
+    connected: boolean;
+    pageId?: string;
+    pageName?: string;
+    followers?: number;
+    error?: string;
+  };
+  instagram?: {
+    connected: boolean;
+    accountId?: string;
+    username?: string;
+    followers?: number;
+    error?: string;
+  };
+  tokenInfo?: {
+    isValid: boolean;
+    type?: string;
+    expiresAt?: string | null;
+    scopes?: string[];
+  };
+  error?: string;
+  connectUrl?: string;
+}
+
 export default function SettingsPage() {
   const [ccStatus, setCCStatus] = useState<CCStatus | null>(null);
+  const [metaStatus, setMetaStatus] = useState<MetaStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [metaLoading, setMetaLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [message, setMessage] = useState("");
@@ -25,11 +53,15 @@ export default function SettingsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("cc_success")) {
-      setMessage("✅ Successfully connected to Constant Contact!");
+      setMessage("Successfully connected to Constant Contact!");
       window.history.replaceState({}, "", "/admin/settings");
     }
     if (params.get("cc_error")) {
-      setMessage(`❌ Error: ${params.get("cc_error")}`);
+      setMessage(`Error: ${params.get("cc_error")}`);
+      window.history.replaceState({}, "", "/admin/settings");
+    }
+    if (params.get("meta_success")) {
+      setMessage("Successfully connected to Meta (Facebook/Instagram)!");
       window.history.replaceState({}, "", "/admin/settings");
     }
   }, []);
@@ -39,16 +71,34 @@ export default function SettingsPage() {
     fetchStatus();
   }, []);
 
+  // Fetch Meta status
+  useEffect(() => {
+    fetchMetaStatus();
+  }, []);
+
   const fetchStatus = async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/constantcontact");
       const data = await response.json();
       setCCStatus(data);
-    } catch (error) {
+    } catch {
       setCCStatus({ connected: false, error: "Failed to fetch status" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMetaStatus = async () => {
+    setMetaLoading(true);
+    try {
+      const response = await fetch("/api/meta/status");
+      const data = await response.json();
+      setMetaStatus(data);
+    } catch {
+      setMetaStatus({ configured: false, error: "Failed to fetch status" });
+    } finally {
+      setMetaLoading(false);
     }
   };
 
@@ -161,6 +211,116 @@ export default function SettingsPage() {
               </a>
               {ccStatus?.error && (
                 <p className="text-red-500 text-sm mt-2">{ccStatus.error}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Meta (Facebook & Instagram) Section */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <svg className="w-6 h-6 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+            Meta (Facebook & Instagram)
+          </h2>
+
+          {metaLoading ? (
+            <div className="text-gray-500">Loading...</div>
+          ) : metaStatus?.configured && (metaStatus.facebook?.connected || metaStatus.instagram?.connected) ? (
+            <div>
+              {/* Facebook Status */}
+              <div className="mb-4">
+                <h3 className="font-semibold text-gray-700 mb-2">Facebook Page</h3>
+                {metaStatus.facebook?.connected ? (
+                  <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">{metaStatus.facebook.pageName}</span>
+                    {metaStatus.facebook.followers && (
+                      <span className="text-gray-500">({metaStatus.facebook.followers.toLocaleString()} followers)</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-yellow-600 bg-yellow-50 p-3 rounded-lg">
+                    Not connected - {metaStatus.facebook?.error || "FACEBOOK_PAGE_ID not set"}
+                  </div>
+                )}
+              </div>
+
+              {/* Instagram Status */}
+              <div className="mb-4">
+                <h3 className="font-semibold text-gray-700 mb-2">Instagram Business</h3>
+                {metaStatus.instagram?.connected ? (
+                  <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">@{metaStatus.instagram.username}</span>
+                    {metaStatus.instagram.followers && (
+                      <span className="text-gray-500">({metaStatus.instagram.followers.toLocaleString()} followers)</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-yellow-600 bg-yellow-50 p-3 rounded-lg">
+                    Not connected - {metaStatus.instagram?.error || "INSTAGRAM_BUSINESS_ACCOUNT_ID not set"}
+                  </div>
+                )}
+              </div>
+
+              {/* Token Info */}
+              {metaStatus.tokenInfo && (
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="font-semibold text-gray-700 mb-2">Token Status</h3>
+                  <div className={`p-3 rounded-lg ${metaStatus.tokenInfo.isValid ? "bg-green-50" : "bg-red-50"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={metaStatus.tokenInfo.isValid ? "text-green-600" : "text-red-600"}>
+                        {metaStatus.tokenInfo.isValid ? "Valid" : "Invalid"}
+                      </span>
+                      <span className="text-gray-500">|</span>
+                      <span className="text-gray-600">Type: {metaStatus.tokenInfo.type || "Unknown"}</span>
+                      {metaStatus.tokenInfo.expiresAt && (
+                        <>
+                          <span className="text-gray-500">|</span>
+                          <span className="text-gray-600">
+                            Expires: {new Date(metaStatus.tokenInfo.expiresAt).toLocaleDateString()}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {metaStatus.tokenInfo.scopes && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        Scopes: {metaStatus.tokenInfo.scopes.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Reconnect Option */}
+              <div className="border-t pt-4 mt-4">
+                <a
+                  href="/api/auth/meta"
+                  className="inline-block px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm"
+                >
+                  Reconnect / Change Page
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-gray-600 mb-4">
+                Connect your Facebook Page and Instagram Business account to publish content directly from Content Refinery.
+              </p>
+              <a
+                href="/api/auth/meta"
+                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Connect Meta (Facebook & Instagram)
+              </a>
+              {metaStatus?.error && (
+                <p className="text-red-500 text-sm mt-2">{metaStatus.error}</p>
               )}
             </div>
           )}

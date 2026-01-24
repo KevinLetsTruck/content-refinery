@@ -453,10 +453,162 @@ export async function getInstagramAccountInfo(): Promise<{
  */
 export async function deleteFacebookPost(postId: string): Promise<boolean> {
   const config = getConfig();
-  
+
   const url = `${GRAPH_API_BASE}/${postId}?access_token=${config.accessToken}`;
-  
+
   const response = await fetch(url, { method: "DELETE" });
-  
+
   return response.ok;
+}
+
+/**
+ * Validate the access token and get debug info
+ * Useful for checking if token is still valid and what permissions it has
+ */
+export async function debugToken(): Promise<{
+  isValid: boolean;
+  appId?: string;
+  type?: string;
+  expiresAt?: Date | null;
+  scopes?: string[];
+  error?: string;
+}> {
+  const config = getConfig();
+  const appId = process.env.META_APP_ID;
+  const appSecret = process.env.META_APP_SECRET;
+
+  if (!appId || !appSecret) {
+    return {
+      isValid: false,
+      error: "META_APP_ID or META_APP_SECRET not configured for token debugging",
+    };
+  }
+
+  try {
+    const url = `${GRAPH_API_BASE}/debug_token?input_token=${config.accessToken}&access_token=${appId}|${appSecret}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.error) {
+      return {
+        isValid: false,
+        error: data.error.message,
+      };
+    }
+
+    const tokenData = data.data;
+
+    return {
+      isValid: tokenData.is_valid,
+      appId: tokenData.app_id,
+      type: tokenData.type, // "PAGE" for page tokens, "USER" for user tokens
+      expiresAt: tokenData.expires_at ? new Date(tokenData.expires_at * 1000) : null,
+      scopes: tokenData.scopes,
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Get connection status with detailed information
+ */
+export async function getConnectionStatus(): Promise<{
+  facebook: {
+    connected: boolean;
+    pageId?: string;
+    pageName?: string;
+    followers?: number;
+    error?: string;
+  };
+  instagram: {
+    connected: boolean;
+    accountId?: string;
+    username?: string;
+    followers?: number;
+    error?: string;
+  };
+  tokenInfo?: {
+    isValid: boolean;
+    type?: string;
+    expiresAt?: Date | null;
+    scopes?: string[];
+  };
+}> {
+  const result: {
+    facebook: {
+      connected: boolean;
+      pageId?: string;
+      pageName?: string;
+      followers?: number;
+      error?: string;
+    };
+    instagram: {
+      connected: boolean;
+      accountId?: string;
+      username?: string;
+      followers?: number;
+      error?: string;
+    };
+    tokenInfo?: {
+      isValid: boolean;
+      type?: string;
+      expiresAt?: Date | null;
+      scopes?: string[];
+    };
+  } = {
+    facebook: { connected: false },
+    instagram: { connected: false },
+  };
+
+  // Check token validity
+  try {
+    const tokenDebug = await debugToken();
+    result.tokenInfo = {
+      isValid: tokenDebug.isValid,
+      type: tokenDebug.type,
+      expiresAt: tokenDebug.expiresAt,
+      scopes: tokenDebug.scopes,
+    };
+  } catch {
+    // Token debug failed, continue without it
+  }
+
+  // Check Facebook
+  try {
+    const pageInfo = await getFacebookPageInfo();
+    result.facebook = {
+      connected: true,
+      pageId: pageInfo.id,
+      pageName: pageInfo.name,
+      followers: pageInfo.followers,
+    };
+  } catch (error) {
+    result.facebook = {
+      connected: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+
+  // Check Instagram
+  try {
+    const igInfo = await getInstagramAccountInfo();
+    result.instagram = {
+      connected: true,
+      accountId: igInfo.id,
+      username: igInfo.username,
+      followers: igInfo.followers,
+    };
+  } catch (error) {
+    result.instagram = {
+      connected: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+
+  return result;
 }

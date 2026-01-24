@@ -103,28 +103,31 @@ export default function ReviewPage() {
       });
     }
 
-    // Check for email sequence if enabled
-    if (campaignConfig.includeEmail && !emailSequence) {
-      issues.push({
-        type: "warning",
-        message: "Email sequence not configured",
-      });
-    }
+    // Campaign-specific checks (only show for campaign mode)
+    if (mode === "campaign") {
+      // Check for email sequence if enabled
+      if (campaignConfig.includeEmail && !emailSequence) {
+        issues.push({
+          type: "warning",
+          message: "Email sequence not configured",
+        });
+      }
 
-    // Check for landing page if applicable
-    if ((sourceType === "guide" || sourceType === "product") && !landingPageConfig) {
-      issues.push({
-        type: "warning",
-        message: "Landing page not configured",
-      });
-    }
+      // Check for landing page if applicable
+      if ((sourceType === "guide" || sourceType === "product") && !landingPageConfig) {
+        issues.push({
+          type: "warning",
+          message: "Landing page not configured",
+        });
+      }
 
-    // Info checks
-    if (campaignConfig.duration > 14) {
-      issues.push({
-        type: "info",
-        message: `Long campaign (${campaignConfig.duration} days) - consider breaking into phases`,
-      });
+      // Info checks
+      if (campaignConfig.duration > 14) {
+        issues.push({
+          type: "info",
+          message: `Long campaign (${campaignConfig.duration} days) - consider breaking into phases`,
+        });
+      }
     }
 
     setComplianceChecks(issues);
@@ -173,9 +176,13 @@ export default function ReviewPage() {
         Back
       </button>
 
-      <h1 className="text-3xl font-bold mb-2 text-white">Review Your Campaign</h1>
+      <h1 className="text-3xl font-bold mb-2 text-white">
+        {mode === "campaign" ? "Review Your Campaign" : "Review Your Post"}
+      </h1>
       <p className="text-[#888888] mb-8">
-        Check everything looks good before generating your content.
+        {mode === "campaign"
+          ? "Check everything looks good before generating your content."
+          : "Check everything looks good before publishing."}
       </p>
 
       {/* Compliance Checks */}
@@ -205,42 +212,65 @@ export default function ReviewPage() {
         </div>
       )}
 
-      {/* Campaign Overview */}
+      {/* Post/Campaign Overview */}
       <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Campaign Overview</h2>
-          <button
-            onClick={() => router.push("/create/configure")}
-            className="flex items-center gap-1 text-sm text-[#FF4500] hover:underline"
-          >
-            <Edit2 className="w-3 h-3" />
-            Edit
-          </button>
+          <h2 className="text-lg font-semibold text-white">
+            {mode === "campaign" ? "Campaign Overview" : "Post Overview"}
+          </h2>
+          {mode === "campaign" && (
+            <button
+              onClick={() => router.push("/create/configure")}
+              className="flex items-center gap-1 text-sm text-[#FF4500] hover:underline"
+            >
+              <Edit2 className="w-3 h-3" />
+              Edit
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-[#888888]">Name</p>
-            <p className="font-medium text-white">
-              {contentStrategy?.campaignName || campaignConfig.name || sourceTitle}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-[#888888]">Source</p>
-            <p className="font-medium capitalize text-white">
-              {sourceType?.replace("_", " ")}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-[#888888]">Duration</p>
-            <p className="font-medium text-white">{campaignConfig.duration} days</p>
-          </div>
-          <div>
-            <p className="text-sm text-[#888888]">CTA Type</p>
-            <p className="font-medium capitalize text-white">
-              {campaignConfig.ctaType?.replace("_", " ")}
-            </p>
-          </div>
+          {mode === "campaign" ? (
+            <>
+              <div>
+                <p className="text-sm text-[#888888]">Name</p>
+                <p className="font-medium text-white">
+                  {contentStrategy?.campaignName || campaignConfig.name || sourceTitle}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-[#888888]">Source</p>
+                <p className="font-medium capitalize text-white">
+                  {sourceType?.replace("_", " ")}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-[#888888]">Duration</p>
+                <p className="font-medium text-white">{campaignConfig.duration} days</p>
+              </div>
+              <div>
+                <p className="text-sm text-[#888888]">CTA Type</p>
+                <p className="font-medium capitalize text-white">
+                  {campaignConfig.ctaType?.replace("_", " ")}
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="text-sm text-[#888888]">Content Type</p>
+                <p className="font-medium capitalize text-white">
+                  {sourceType?.replace("_", " ") || "Quick Post"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-[#888888]">Platforms</p>
+                <p className="font-medium text-white">
+                  {enabledPlatforms.length} selected
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -418,38 +448,47 @@ export default function ReviewPage() {
       <div className="bg-gradient-to-br from-[#1A1A1A] to-[#0D0D0D] border border-[#333333] rounded-xl p-6 mb-8">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-5 h-5 text-[#FF4500]" />
-          <h2 className="text-lg font-semibold text-white">What We&apos;ll Generate</h2>
+          <h2 className="text-lg font-semibold text-white">
+            {mode === "campaign" ? "What We'll Generate" : "Ready to Publish"}
+          </h2>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-[#0D0D0D] rounded-lg">
-            <p className="text-2xl font-bold text-white">
-              {mode === "campaign"
-                ? Object.entries(campaignConfig.frequency)
-                    .filter(([platform]) =>
-                      enabledPlatforms.some((p) =>
-                        p.platform.includes(platform) || platform.includes(p.platform.replace("instagram_feed", "instagram"))
-                      )
+        {mode === "campaign" ? (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-[#0D0D0D] rounded-lg">
+              <p className="text-2xl font-bold text-white">
+                {Object.entries(campaignConfig.frequency)
+                  .filter(([platform]) =>
+                    enabledPlatforms.some((p) =>
+                      p.platform.includes(platform) || platform.includes(p.platform.replace("instagram_feed", "instagram"))
                     )
-                    .reduce((sum, [, count]) => sum + (count || 0), 0) *
-                  campaignConfig.duration
-                : enabledPlatforms.length}
-            </p>
-            <p className="text-sm text-[#888888]">Posts</p>
+                  )
+                  .reduce((sum, [, count]) => sum + (count || 0), 0) *
+                  campaignConfig.duration}
+              </p>
+              <p className="text-sm text-[#888888]">Posts</p>
+            </div>
+            <div className="text-center p-4 bg-[#0D0D0D] rounded-lg">
+              <p className="text-2xl font-bold text-white">
+                {emailSequence ? emailSequence.length : 0}
+              </p>
+              <p className="text-sm text-[#888888]">Emails</p>
+            </div>
+            <div className="text-center p-4 bg-[#0D0D0D] rounded-lg">
+              <p className="text-2xl font-bold text-white">
+                {landingPageConfig ? 1 : 0}
+              </p>
+              <p className="text-sm text-[#888888]">Landing Page</p>
+            </div>
           </div>
+        ) : (
           <div className="text-center p-4 bg-[#0D0D0D] rounded-lg">
-            <p className="text-2xl font-bold text-white">
-              {emailSequence ? emailSequence.length : 0}
+            <p className="text-2xl font-bold text-white">{enabledPlatforms.length}</p>
+            <p className="text-sm text-[#888888]">
+              {enabledPlatforms.length === 1 ? "Platform" : "Platforms"}
             </p>
-            <p className="text-sm text-[#888888]">Emails</p>
           </div>
-          <div className="text-center p-4 bg-[#0D0D0D] rounded-lg">
-            <p className="text-2xl font-bold text-white">
-              {landingPageConfig ? 1 : 0}
-            </p>
-            <p className="text-sm text-[#888888]">Landing Page</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Continue Button */}

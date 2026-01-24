@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { findProductInText, type Product } from '@/lib/products/catalog';
+import { findProductInText, getProductById, type Product } from '@/lib/products/catalog';
 
 const anthropic = new Anthropic();
 
@@ -29,6 +29,53 @@ const CTA_URLS: Record<string, { url: string; label: string }> = {
     label: ''
   }
 };
+
+/**
+ * Build product-focused CTA instructions when a specific product is selected
+ */
+function buildProductCtaInstructions(interviewData: Record<string, unknown>): string {
+  const productId = interviewData?.selectedProductId as string | undefined;
+  const productName = interviewData?.selectedProductName as string | undefined;
+  const productUrl = interviewData?.selectedProductUrl as string | undefined;
+  const productPrice = interviewData?.selectedProductPrice as string | undefined;
+
+  if (!productId || !productName || !productUrl) {
+    return '';
+  }
+
+  // Try to get full product details
+  const product = getProductById(productId);
+  const benefits = product?.benefits || [];
+  const description = product?.description || '';
+
+  return `
+SELECTED PRODUCT FOR CTA:
+- Product: ${productName}
+- Price: $${productPrice}
+- URL: ${productUrl}
+${description ? `- Description: ${description}` : ''}
+${benefits.length > 0 ? `- Key Benefits:\n${benefits.map(b => `  • ${b}`).join('\n')}` : ''}
+
+PRODUCT CTA INSTRUCTIONS (CRITICAL):
+1. Create a COMPELLING purchase-focused CTA that drives urgency
+2. Use the EXACT product URL: ${productUrl}
+3. Mention the product name naturally in the content
+4. Highlight 1-2 key benefits that relate to the content topic
+5. Use persuasive language:
+   - "Grab yours now"
+   - "Get your ${productName} today"
+   - "Don't wait another day"
+   - "Your gut/heart/energy deserves this"
+   - "Start your transformation"
+6. Price anchoring is OK: "For less than a day's per diem" or "Under $${productPrice}"
+
+CTA EXAMPLES FOR ${productName}:
+- "Ready to fix this? Get ${productName}: ${productUrl}"
+- "Your solution is one click away. ${productName}: ${productUrl}"
+- "Stop suffering. Start with ${productName}: ${productUrl}"
+- "Kevin's daily stack includes this for a reason. Get yours: ${productUrl}"
+`;
+}
 
 interface ContentOption {
   id: string;
@@ -135,13 +182,23 @@ export async function POST(request: NextRequest) {
     const ctaType = interviewData?.callToAction || 'awareness';
     const ctaInfo = CTA_URLS[ctaType] || CTA_URLS.awareness;
 
+    // Check if a specific product was selected for visit_store CTA
+    const selectedProductUrl = interviewData?.selectedProductUrl as string | undefined;
+    const hasSelectedProduct = ctaType === 'Visit Store' && selectedProductUrl;
+
     // Determine the actual URL to use
-    // Priority: 1. Landing page URL passed in, 2. Static CTA URL, 3. None
-    const actualUrl = landingPageUrl || ctaInfo.url;
+    // Priority: 1. Selected product URL, 2. Landing page URL passed in, 3. Static CTA URL, 4. None
+    const actualUrl = selectedProductUrl || landingPageUrl || ctaInfo.url;
+
+    // Build product-specific CTA instructions if a product was selected
+    const productCtaInstructions = hasSelectedProduct ? buildProductCtaInstructions(interviewData || {}) : '';
 
     // Build CTA instruction based on whether we have a URL
     let ctaInstruction: string;
-    if (actualUrl) {
+    if (hasSelectedProduct && productCtaInstructions) {
+      // Product-specific CTA with enhanced selling instructions
+      ctaInstruction = productCtaInstructions;
+    } else if (actualUrl) {
       // We have a URL to include (either landing page or static)
       ctaInstruction = `\nCRITICAL CTA REQUIREMENT:
 - The CTA type is "${ctaType}"
@@ -187,6 +244,7 @@ INTERVIEW DATA:
 - Call to Action Type: ${ctaType}
 - Target Audience: ${interviewData?.targetAudience || 'Professional truck drivers'}
 - Tone: ${interviewData?.tone || 'Direct and confident'}
+${hasSelectedProduct ? `- Selected Product: ${interviewData?.selectedProductName} ($${interviewData?.selectedProductPrice})` : ''}
 
 ${lengthInstruction}
 ${ctaInstruction}

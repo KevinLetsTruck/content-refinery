@@ -220,6 +220,11 @@ export interface WizardState {
     // Guide-specific (for download_guide CTA)
     guideTitle?: string;
     guideTopic?: string;
+    // Product-specific (for visit_store CTA)
+    selectedProductId?: string;
+    selectedProductName?: string;
+    selectedProductUrl?: string;
+    selectedProductPrice?: string;
   };
 
   // Quick landing page (for download_guide CTA in quick post mode)

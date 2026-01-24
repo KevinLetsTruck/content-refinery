@@ -5,6 +5,8 @@ import { findProductInText, type Product } from '@/lib/products/catalog';
 const anthropic = new Anthropic();
 
 // Map CTA types to actual URLs
+// Note: download_guide intentionally has no URL - in quick post mode there's no landing page.
+// For campaigns with actual landing pages, the URL is passed separately.
 const CTA_URLS: Record<string, { url: string; label: string }> = {
   visit_store: {
     url: 'https://store.letstruck.com',
@@ -15,8 +17,8 @@ const CTA_URLS: Record<string, { url: string; label: string }> = {
     label: 'Book coaching at letstruck.com/coaching'
   },
   download_guide: {
-    url: 'https://letstruck.com/guides',
-    label: 'Download at letstruck.com/guides'
+    url: '',
+    label: 'Get the free guide'
   },
   join_community: {
     url: 'https://letstruck.com/tribe',
@@ -97,14 +99,28 @@ export async function POST(request: NextRequest) {
     // Get CTA URL info
     const ctaType = interviewData?.callToAction || 'awareness';
     const ctaInfo = CTA_URLS[ctaType] || CTA_URLS.awareness;
-    const ctaInstruction = ctaInfo.url
-      ? `\nCRITICAL CTA REQUIREMENT:
+
+    // Build CTA instruction based on whether we have a URL
+    let ctaInstruction: string;
+    if (ctaInfo.url) {
+      // We have a real URL to include
+      ctaInstruction = `\nCRITICAL CTA REQUIREMENT:
 - The CTA type is "${ctaType}"
 - You MUST include this EXACT URL in EVERY post: ${ctaInfo.url}
 - The post MUST end with a clear call to action that includes the URL
 - Example ending: "Get started: ${ctaInfo.url}" or "Learn more: ${ctaInfo.url}"
-- Do NOT use placeholder text like "[URL]" or "link in bio" - use the ACTUAL URL`
-      : '\n- No URL required for this post (awareness only)';
+- Do NOT use placeholder text like "[URL]" or "link in bio" - use the ACTUAL URL`;
+    } else if (ctaType === 'download_guide') {
+      // Guide CTA but no URL - encourage engagement without a broken link
+      ctaInstruction = `\nCTA REQUIREMENT:
+- The CTA type is "${ctaType}"
+- End with a soft CTA that encourages engagement WITHOUT a URL
+- Examples: "Comment 'GUIDE' to learn how to get the free guide", "Follow for more health tips for the road", "Save this post for later"
+- Do NOT include any URLs or "link in bio" - this is a standalone engagement post`;
+    } else {
+      // Awareness only - no CTA needed
+      ctaInstruction = '\n- No URL required for this post (awareness/engagement only)';
+    }
 
     const prompt = `Generate ${count} different social media post options for Let's Truck Health Coaching.
 

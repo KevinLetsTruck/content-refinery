@@ -24,6 +24,9 @@ import {
   FileText,
   AlignLeft,
   AlignJustify,
+  Rss,
+  ExternalLink,
+  ChevronLeft,
 } from "lucide-react";
 
 interface Episode {
@@ -51,6 +54,29 @@ interface PendingFile {
   modifiedAt: string;
 }
 
+interface FeedlyBoard {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+interface FeedlyArticle {
+  id: string;
+  title: string;
+  published: number;
+  publishedFormatted: string;
+  url?: string;
+  source: string;
+  sourceUrl?: string;
+  author?: string;
+  summary?: string;
+  contentPreview: string;
+  fullContent: string;
+  topics: string[];
+  keywords: string[];
+  engagement?: number;
+}
+
 const SOURCE_OPTIONS: {
   type: SourceType;
   icon: React.ReactNode;
@@ -64,6 +90,13 @@ const SOURCE_OPTIONS: {
     title: "Quick Idea",
     description: "Start with a topic, quote, stat, or tip",
     color: "bg-[#F4A300]/20 text-[#F4A300]",
+  },
+  {
+    type: "feedly",
+    icon: <Rss className="h-6 w-6" />,
+    title: "From Feedly",
+    description: "Pull articles from your saved boards",
+    color: "bg-green-500/20 text-green-400",
   },
   {
     type: "guide",
@@ -200,6 +233,15 @@ export function Step1Source() {
   const [syncingFile, setSyncingFile] = useState<string | null>(null);
   const [loadingEpisodeId, setLoadingEpisodeId] = useState<string | null>(null);
 
+  // Feedly state
+  const [feedlyBoards, setFeedlyBoards] = useState<FeedlyBoard[]>([]);
+  const [feedlyArticles, setFeedlyArticles] = useState<FeedlyArticle[]>([]);
+  const [feedlyLoading, setFeedlyLoading] = useState(false);
+  const [feedlyConfigured, setFeedlyConfigured] = useState<boolean | null>(null);
+  const [feedlyError, setFeedlyError] = useState<string | null>(null);
+  const [selectedBoard, setSelectedBoard] = useState<FeedlyBoard | null>(null);
+  const [loadingArticleId, setLoadingArticleId] = useState<string | null>(null);
+
   // Reset wizard state when entering step 1 fresh
   useEffect(() => {
     // Reset the entire wizard when landing on step 1
@@ -242,6 +284,104 @@ export function Step1Source() {
       fetchEpisodes();
     }
   }, [selectedType, fetchEpisodes]);
+
+  // Fetch Feedly boards when feedly is selected
+  const fetchFeedlyBoards = useCallback(async () => {
+    setFeedlyLoading(true);
+    setFeedlyError(null);
+    try {
+      const res = await fetch("/api/feedly/boards");
+      const data = await res.json();
+
+      setFeedlyConfigured(data.configured);
+      if (data.configured && data.boards) {
+        setFeedlyBoards(data.boards);
+      } else if (data.error) {
+        setFeedlyError(data.error);
+      }
+    } catch (error) {
+      console.error("Failed to fetch Feedly boards:", error);
+      setFeedlyError("Failed to connect to Feedly");
+    } finally {
+      setFeedlyLoading(false);
+    }
+  }, []);
+
+  // Fetch articles from selected board
+  const fetchBoardArticles = useCallback(async (boardId: string) => {
+    setFeedlyLoading(true);
+    setFeedlyError(null);
+    try {
+      const res = await fetch(`/api/feedly/articles?boardId=${encodeURIComponent(boardId)}&count=30`);
+      const data = await res.json();
+
+      if (data.articles) {
+        setFeedlyArticles(data.articles);
+      } else if (data.error) {
+        setFeedlyError(data.error);
+      }
+    } catch (error) {
+      console.error("Failed to fetch Feedly articles:", error);
+      setFeedlyError("Failed to load articles");
+    } finally {
+      setFeedlyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedType === "feedly" && feedlyConfigured === null) {
+      fetchFeedlyBoards();
+    }
+  }, [selectedType, feedlyConfigured, fetchFeedlyBoards]);
+
+  // Handle board selection
+  const handleBoardSelect = (board: FeedlyBoard) => {
+    setSelectedBoard(board);
+    setFeedlyArticles([]);
+    fetchBoardArticles(board.id);
+  };
+
+  // Handle article selection
+  const handleArticleSelect = (article: FeedlyArticle) => {
+    setLoadingArticleId(article.id);
+
+    // Build the content with article metadata
+    const articleContent = `
+Title: ${article.title}
+Source: ${article.source}
+URL: ${article.url || "N/A"}
+Published: ${article.publishedFormatted}
+${article.author ? `Author: ${article.author}` : ""}
+
+${article.fullContent}
+    `.trim();
+
+    // Set as news_article type automatically
+    setQuickIdeaType("news_article");
+
+    // Set the source
+    setSource(
+      "feedly",
+      articleContent,
+      article.title,
+      article.id,
+      {
+        feedlyArticleId: article.id,
+        url: article.url,
+        source: article.source,
+      }
+    );
+
+    setLoadingArticleId(null);
+    nextStep();
+    router.push("/create/mode");
+  };
+
+  // Go back to board selection
+  const handleBackToBoards = () => {
+    setSelectedBoard(null);
+    setFeedlyArticles([]);
+  };
 
   // Sync from Dropbox
   const handleSync = async () => {
@@ -936,6 +1076,189 @@ export function Step1Source() {
           <p className="text-sm text-[#666666]">
             Stories from TruckTales app will sync automatically.
           </p>
+        </div>
+      )}
+
+      {/* Feedly Selector */}
+      {selectedType === "feedly" && (
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 animate-in slide-in-from-bottom-4 duration-300">
+          {/* Not configured state */}
+          {feedlyConfigured === false && (
+            <div className="text-center py-8">
+              <Rss className="h-12 w-12 text-[#444444] mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">Feedly Not Configured</h3>
+              <p className="text-[#888888] mb-4">
+                Add your Feedly access token to pull articles from your boards.
+              </p>
+              <p className="text-sm text-[#666666]">
+                Add <code className="bg-[#0D0D0D] px-2 py-1 rounded">FEEDLY_ACCESS_TOKEN</code> to your environment variables.
+              </p>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {feedlyLoading && !selectedBoard && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-green-400" />
+              <span className="ml-2 text-[#888888]">Loading boards...</span>
+            </div>
+          )}
+
+          {/* Error state */}
+          {feedlyError && (
+            <div className="flex items-center gap-2 p-3 rounded mb-4 bg-red-500/10 border border-red-500/30">
+              <AlertCircle className="h-4 w-4 text-red-400" />
+              <span className="text-sm text-red-400">{feedlyError}</span>
+            </div>
+          )}
+
+          {/* Board selection */}
+          {feedlyConfigured && !selectedBoard && !feedlyLoading && (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-medium text-white">
+                  Select a board
+                </label>
+                <button
+                  onClick={fetchFeedlyBoards}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4 text-green-400" />
+                  <span className="text-[#888888]">Refresh</span>
+                </button>
+              </div>
+
+              {feedlyBoards.length > 0 ? (
+                <div className="grid gap-3 max-h-80 overflow-y-auto">
+                  {feedlyBoards.map((board) => (
+                    <button
+                      key={board.id}
+                      onClick={() => handleBoardSelect(board)}
+                      className="flex items-center justify-between p-4 rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Rss className="h-5 w-5 text-green-400" />
+                        <div>
+                          <span className="font-medium text-white block">{board.label}</span>
+                          {board.description && (
+                            <span className="text-xs text-[#666666]">{board.description}</span>
+                          )}
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-[#888888]" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Rss className="h-8 w-8 text-[#444444] mx-auto mb-2" />
+                  <p className="text-[#666666]">No boards found.</p>
+                  <p className="text-sm text-[#444444] mt-1">
+                    Save articles to boards in Feedly to see them here.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Article selection */}
+          {feedlyConfigured && selectedBoard && (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <button
+                  onClick={handleBackToBoards}
+                  className="flex items-center gap-2 text-sm text-[#888888] hover:text-white transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back to boards
+                </button>
+                <div className="flex items-center gap-2">
+                  <Rss className="h-4 w-4 text-green-400" />
+                  <span className="text-sm font-medium text-white">{selectedBoard.label}</span>
+                </div>
+              </div>
+
+              {feedlyLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-green-400" />
+                  <span className="ml-2 text-[#888888]">Loading articles...</span>
+                </div>
+              ) : feedlyArticles.length > 0 ? (
+                <div className="grid gap-3 max-h-96 overflow-y-auto">
+                  {feedlyArticles.map((article) => (
+                    <button
+                      key={article.id}
+                      onClick={() => handleArticleSelect(article)}
+                      disabled={loadingArticleId !== null}
+                      className="flex flex-col p-4 rounded border border-[#333333] hover:bg-[#0D0D0D] hover:border-[#444444] transition-colors text-left disabled:opacity-50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-white block line-clamp-2">{article.title}</span>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-xs text-green-400">{article.source}</span>
+                            <span className="text-xs text-[#444444]">•</span>
+                            <span className="text-xs text-[#666666]">{article.publishedFormatted}</span>
+                          </div>
+                        </div>
+                        {loadingArticleId === article.id ? (
+                          <Loader2 className="h-4 w-4 text-green-400 animate-spin flex-shrink-0" />
+                        ) : (
+                          <ArrowRight className="h-4 w-4 text-[#888888] flex-shrink-0" />
+                        )}
+                      </div>
+                      {article.contentPreview && (
+                        <p className="text-sm text-[#666666] mt-2 line-clamp-2">
+                          {article.contentPreview}
+                        </p>
+                      )}
+                      {article.topics.length > 0 && (
+                        <div className="flex gap-1 mt-2 flex-wrap">
+                          {article.topics.slice(0, 3).map((topic) => (
+                            <span
+                              key={topic}
+                              className="text-xs px-2 py-0.5 rounded bg-[#333333] text-[#888888]"
+                            >
+                              {topic}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {article.url && (
+                        <a
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1 text-xs text-green-400 hover:underline mt-2"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          View original
+                        </a>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Newspaper className="h-8 w-8 text-[#444444] mx-auto mb-2" />
+                  <p className="text-[#666666]">No articles in this board.</p>
+                  <p className="text-sm text-[#444444] mt-1">
+                    Save articles to this board in Feedly.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Help text */}
+          {feedlyConfigured && !feedlyLoading && (
+            <div className="mt-4 pt-4 border-t border-[#333333]">
+              <p className="text-xs text-[#666666]">
+                Select an article to create content with AI-powered commentary in Kevin's voice.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

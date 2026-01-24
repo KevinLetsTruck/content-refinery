@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 // Types
 // ============================================
 
-export type SourceType = 'quick_idea' | 'guide' | 'episode' | 'product' | 'success_story' | 'trucktales';
+export type SourceType = 'quick_idea' | 'feedly' | 'guide' | 'episode' | 'product' | 'success_story' | 'trucktales';
 export type WizardMode = 'quick_post' | 'campaign';
 export type Platform = 'instagram_feed' | 'instagram_story' | 'facebook' | 'linkedin' | 'twitter' | 'tiktok';
 export type ContentType = 'stat' | 'quote' | 'hook' | 'tip' | 'testimonial' | 'teaser' | 'educational' | 'news_commentary' | 'article';
@@ -175,6 +175,7 @@ const SOURCE_DEFAULTS: Record<SourceType, Partial<CampaignConfig>> = {
   product: { duration: 7, includeEmail: false },
   episode: { duration: 5, includeEmail: false },
   quick_idea: { duration: 7, includeEmail: false },
+  feedly: { duration: 7, includeEmail: false },
   success_story: { duration: 5, includeEmail: false },
   trucktales: { duration: 7, includeEmail: false },
 };

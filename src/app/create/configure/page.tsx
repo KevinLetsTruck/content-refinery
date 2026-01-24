@@ -12,6 +12,7 @@ import EpisodeConfig from "./components/EpisodeConfig";
 import IdeaConfig from "./components/IdeaConfig";
 import SuccessStoryConfig from "./components/SuccessStoryConfig";
 import TruckTalesConfig from "./components/TruckTalesConfig";
+import FeedlyConfig from "./components/FeedlyConfig";
 
 const CONFIG_COMPONENTS: Record<
   SourceType,
@@ -25,6 +26,7 @@ const CONFIG_COMPONENTS: Record<
   product: ProductConfig,
   episode: EpisodeConfig,
   quick_idea: IdeaConfig,
+  feedly: FeedlyConfig,
   success_story: SuccessStoryConfig,
   trucktales: TruckTalesConfig,
 };

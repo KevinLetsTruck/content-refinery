@@ -91,7 +91,7 @@ ${!product.form ? '- Be generic about dosage - say "one serving" or "as directed
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sourceType, sourceContent, interviewData, count = 3 } = body;
+    const { sourceType, sourceContent, interviewData, landingPageUrl, count = 3 } = body;
 
     // Get product context if applicable
     const productContext = buildProductContext(sourceContent, sourceType);
@@ -100,15 +100,19 @@ export async function POST(request: NextRequest) {
     const ctaType = interviewData?.callToAction || 'awareness';
     const ctaInfo = CTA_URLS[ctaType] || CTA_URLS.awareness;
 
+    // Determine the actual URL to use
+    // Priority: 1. Landing page URL passed in, 2. Static CTA URL, 3. None
+    const actualUrl = landingPageUrl || ctaInfo.url;
+
     // Build CTA instruction based on whether we have a URL
     let ctaInstruction: string;
-    if (ctaInfo.url) {
-      // We have a real URL to include
+    if (actualUrl) {
+      // We have a URL to include (either landing page or static)
       ctaInstruction = `\nCRITICAL CTA REQUIREMENT:
 - The CTA type is "${ctaType}"
-- You MUST include this EXACT URL in EVERY post: ${ctaInfo.url}
+- You MUST include this EXACT URL in EVERY post: ${actualUrl}
 - The post MUST end with a clear call to action that includes the URL
-- Example ending: "Get started: ${ctaInfo.url}" or "Learn more: ${ctaInfo.url}"
+- Example ending: "Get your free guide: ${actualUrl}" or "Download now: ${actualUrl}"
 - Do NOT use placeholder text like "[URL]" or "link in bio" - use the ACTUAL URL`;
     } else if (ctaType === 'download_guide') {
       // Guide CTA but no URL - encourage engagement without a broken link
@@ -157,7 +161,7 @@ Generate ${count} DIFFERENT content variations. Each should:
 2. Match the brand voice exactly
 3. Include relevant hashtags
 4. Have a clear emotional appeal
-5. ${ctaInfo.url ? `END with a CTA that includes the URL: ${ctaInfo.url}` : 'Be awareness/engagement focused'}
+5. ${actualUrl ? `END with a CTA that includes the URL: ${actualUrl}` : 'Be awareness/engagement focused'}
 
 Respond in this exact JSON format:
 {

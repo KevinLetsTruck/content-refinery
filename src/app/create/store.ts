@@ -210,7 +210,19 @@ export interface WizardState {
     callToAction: string;
     targetAudience: string;
     tone: string;
+    // Guide-specific (for download_guide CTA)
+    guideTitle?: string;
+    guideTopic?: string;
   };
+
+  // Quick landing page (for download_guide CTA in quick post mode)
+  quickLandingPage: {
+    generating: boolean;
+    url?: string;
+    gammaUrl?: string;
+    guideUrl?: string;
+    error?: string;
+  } | null;
 
   // Content strategy (campaign mode)
   contentStrategy: ContentStrategy | null;
@@ -296,6 +308,9 @@ export interface WizardState {
   // Actions - Landing Page
   setLandingPageConfig: (config: LandingPageConfig) => void;
 
+  // Actions - Quick Landing Page (for download_guide CTA)
+  setQuickLandingPage: (data: WizardState['quickLandingPage']) => void;
+
   // Actions - Email Sequence
   setEmailSequence: (sequence: EmailSequenceConfig) => void;
 
@@ -349,7 +364,11 @@ const initialState = {
     callToAction: '',
     targetAudience: '',
     tone: '',
+    guideTitle: '',
+    guideTopic: '',
   },
+
+  quickLandingPage: null,
 
   contentStrategy: null,
 
@@ -534,6 +553,9 @@ export const useWizardStore = create<WizardState>()(
 
       // Landing Page Actions
       setLandingPageConfig: (config) => set({ landingPageConfig: config }),
+
+      // Quick Landing Page Actions
+      setQuickLandingPage: (data) => set({ quickLandingPage: data }),
 
       // Email Sequence Actions
       setEmailSequence: (sequence) => set({ emailSequence: sequence }),

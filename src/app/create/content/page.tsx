@@ -42,9 +42,12 @@ export default function ContentPage() {
     currentStep,
     goToStep,
     getSteps,
+    quickLandingPage,
+    setQuickLandingPage,
   } = useWizardStore();
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingLandingPage, setIsGeneratingLandingPage] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState("");
 
@@ -74,6 +77,59 @@ export default function ContentPage() {
 
   const generateContent = async () => {
     setIsGenerating(true);
+
+    let landingPageUrl: string | undefined;
+
+    // If download_guide CTA is selected and we have guide info, generate landing page first
+    if (
+      interviewData.callToAction === "download_guide" &&
+      interviewData.guideTitle &&
+      interviewData.guideTopic &&
+      !quickLandingPage?.url // Don't regenerate if we already have one
+    ) {
+      setIsGeneratingLandingPage(true);
+      setQuickLandingPage({ generating: true });
+
+      try {
+        const lpResponse = await fetch("/api/create/landing-page", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            guideTitle: interviewData.guideTitle,
+            guideTopic: interviewData.guideTopic,
+            generateGuide: true, // Also generate the PDF guide
+          }),
+        });
+
+        if (lpResponse.ok) {
+          const lpData = await lpResponse.json();
+          landingPageUrl = lpData.url;
+          setQuickLandingPage({
+            generating: false,
+            url: lpData.url,
+            gammaUrl: lpData.landingPage?.gammaUrl,
+            guideUrl: lpData.guide?.gammaUrl,
+          });
+        } else {
+          const error = await lpResponse.json();
+          setQuickLandingPage({
+            generating: false,
+            error: error.error || "Failed to generate landing page",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to generate landing page:", error);
+        setQuickLandingPage({
+          generating: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+      setIsGeneratingLandingPage(false);
+    } else if (quickLandingPage?.url) {
+      // Use existing landing page URL
+      landingPageUrl = quickLandingPage.url;
+    }
+
     try {
       const response = await fetch("/api/create/generate", {
         method: "POST",
@@ -82,6 +138,7 @@ export default function ContentPage() {
           sourceType,
           sourceContent,
           interviewData,
+          landingPageUrl, // Pass the landing page URL to content generation
           count: 3,
         }),
       });
@@ -156,7 +213,14 @@ export default function ContentPage() {
       {isGenerating && (
         <div className="flex flex-col items-center justify-center py-16">
           <div className="w-12 h-12 border-4 border-[#FF4500]/20 border-t-[#FF4500] rounded-full animate-spin mb-4" />
-          <p className="text-[#888888]">Generating content options...</p>
+          <p className="text-[#888888]">
+            {isGeneratingLandingPage
+              ? "Creating your landing page and guide..."
+              : "Generating content options..."}
+          </p>
+          {isGeneratingLandingPage && (
+            <p className="text-xs text-[#666666] mt-2">This may take a minute</p>
+          )}
         </div>
       )}
 

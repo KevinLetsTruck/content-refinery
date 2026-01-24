@@ -88,10 +88,45 @@ ${!product.form ? '- Be generic about dosage - say "one serving" or "as directed
 `;
 }
 
+// Content length configuration
+const CONTENT_LENGTH_CONFIG: Record<string, { minWords: number; maxWords: number; description: string }> = {
+  short: { minWords: 50, maxWords: 150, description: "a concise social media post" },
+  medium: { minWords: 150, maxWords: 400, description: "a longer social post or LinkedIn update" },
+  long: { minWords: 400, maxWords: 700, description: "a detailed thread-style post or longer narrative" },
+  article: { minWords: 700, maxWords: 1500, description: "a full article or blog post" },
+};
+
+// Quick idea type descriptions
+const QUICK_IDEA_TYPE_INSTRUCTIONS: Record<string, string> = {
+  idea: "Transform this idea into compelling content that educates and engages.",
+  news_article: `This is a news article that needs to be SUMMARIZED with COMMENTARY in Kevin's voice.
+Your task:
+1. First, summarize the key points of the article (2-3 sentences max)
+2. Then provide Kevin's perspective and commentary on the topic
+3. Connect it to health implications for professional drivers where relevant
+4. Challenge mainstream narratives where appropriate
+5. Don't just summarize - add VALUE through analysis and insight`,
+  stat: "Lead with this statistic and make it impactful. Explain why it matters to drivers.",
+  quote: "Present this as a powerful quotable statement. Add context or expand on the idea.",
+  tip: "Turn this into actionable advice. Make it specific and immediately useful for drivers on the road.",
+};
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sourceType, sourceContent, interviewData, landingPageUrl, count = 3 } = body;
+    const {
+      sourceType,
+      sourceContent,
+      interviewData,
+      landingPageUrl,
+      quickIdeaType = 'idea',
+      contentLength = 'short',
+      count = 3
+    } = body;
+
+    // Get content length config
+    const lengthConfig = CONTENT_LENGTH_CONFIG[contentLength] || CONTENT_LENGTH_CONFIG.short;
+    const ideaTypeInstruction = QUICK_IDEA_TYPE_INSTRUCTIONS[quickIdeaType] || QUICK_IDEA_TYPE_INSTRUCTIONS.idea;
 
     // Get product context if applicable
     const productContext = buildProductContext(sourceContent, sourceType);
@@ -126,10 +161,24 @@ export async function POST(request: NextRequest) {
       ctaInstruction = '\n- No URL required for this post (awareness/engagement only)';
     }
 
-    const prompt = `Generate ${count} different social media post options for Let's Truck Health Coaching.
+    // Build length instruction based on content type
+    const lengthInstruction = contentLength === 'article'
+      ? `LENGTH REQUIREMENT: Write ${lengthConfig.description} (${lengthConfig.minWords}-${lengthConfig.maxWords}+ words).
+This should be a comprehensive piece with:
+- A compelling hook/opening
+- Multiple paragraphs with clear structure
+- Supporting evidence and examples
+- A strong conclusion
+- Proper formatting with paragraph breaks`
+      : `LENGTH REQUIREMENT: Write ${lengthConfig.description} (${lengthConfig.minWords}-${lengthConfig.maxWords} words).`;
 
-SOURCE TYPE: ${sourceType}
-SOURCE CONTENT: ${sourceContent}
+    const prompt = `Generate ${count} different content options for Let's Truck Health Coaching.
+
+CONTENT TYPE: ${quickIdeaType}
+${ideaTypeInstruction}
+
+SOURCE CONTENT:
+${sourceContent}
 ${productContext}
 INTERVIEW DATA:
 - Primary Message: ${interviewData?.primaryMessage || 'Not specified'}
@@ -138,28 +187,39 @@ INTERVIEW DATA:
 - Call to Action Type: ${ctaType}
 - Target Audience: ${interviewData?.targetAudience || 'Professional truck drivers'}
 - Tone: ${interviewData?.tone || 'Direct and confident'}
+
+${lengthInstruction}
 ${ctaInstruction}
 
-BRAND VOICE:
+BRAND VOICE (CRITICAL - FOLLOW EXACTLY):
 - Direct, no-BS, confident (Larry Winget inspired)
 - NEVER say "trucker" - use "driver" or "professional driver"
 - NEVER say "truckers" - use "drivers", "O/Os", "owner-operators", "The Tribe"
-- Phrases: "proper human diet", "owner-operator of your health", "diesel in your blood"
-- Challenge conventional medical establishment
+- Phrases to use: "proper human diet", "owner-operator of your health", "diesel in your blood"
+- Challenge conventional medical establishment and mainstream health narratives
 - No wishy-washy qualifiers ("maybe", "might", "could possibly")
+- Be authoritative and confident in statements
+- Use real science and data, not mainstream talking points
 
-CONTENT TYPES TO CHOOSE FROM:
+${quickIdeaType === 'news_article' ? `
+NEWS COMMENTARY STRUCTURE:
+1. Brief summary of what the article says (2-3 sentences)
+2. Kevin's take: What they got wrong OR what they're not telling you
+3. The real story: What this means for driver health
+4. Actionable insight: What drivers should actually do` : ''}
+
+CONTENT APPROACHES TO USE (pick different ones for variety):
 - stat: Lead with a shocking statistic
 - quote: A powerful, quotable statement
 - hook: Attention-grabbing opening that creates curiosity
 - tip: Actionable advice they can use immediately
-- testimonial: Results-focused transformation story
-- educational: Teaching a concept or explaining something
+- educational: Teaching a concept with depth
+- commentary: Analysis and perspective on a topic
 
 Generate ${count} DIFFERENT content variations. Each should:
-1. Be suitable for social media (flexible length, adapt to platform later)
-2. Match the brand voice exactly
-3. Include relevant hashtags
+1. Match the requested length (${lengthConfig.minWords}-${lengthConfig.maxWords} words)
+2. Match the brand voice EXACTLY
+3. Include relevant hashtags (fewer for articles, more for short posts)
 4. Have a clear emotional appeal
 5. ${actualUrl ? `END with a CTA that includes the URL: ${actualUrl}` : 'Be awareness/engagement focused'}
 
@@ -168,8 +228,8 @@ Respond in this exact JSON format:
   "options": [
     {
       "id": "1",
-      "text": "The full post text including URL if required",
-      "type": "stat",
+      "text": "The full content text including URL if required",
+      "type": "the approach used (stat/quote/hook/tip/educational/commentary)",
       "emotion": "The primary emotion this content evokes",
       "cta": "The call to action text",
       "hashtags": ["relevant", "hashtags", "without", "the", "hash"]
@@ -179,9 +239,12 @@ Respond in this exact JSON format:
 
 Respond ONLY with valid JSON.`;
 
+    // Increase max_tokens for longer content
+    const maxTokens = contentLength === 'article' ? 8192 : contentLength === 'long' ? 4096 : 2048;
+
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
+      max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     });
 

@@ -8,7 +8,9 @@ import { persist } from 'zustand/middleware';
 export type SourceType = 'quick_idea' | 'guide' | 'episode' | 'product' | 'success_story' | 'trucktales';
 export type WizardMode = 'quick_post' | 'campaign';
 export type Platform = 'instagram_feed' | 'instagram_story' | 'facebook' | 'linkedin' | 'twitter' | 'tiktok';
-export type ContentType = 'stat' | 'quote' | 'hook' | 'tip' | 'testimonial' | 'teaser' | 'educational';
+export type ContentType = 'stat' | 'quote' | 'hook' | 'tip' | 'testimonial' | 'teaser' | 'educational' | 'news_commentary' | 'article';
+export type ContentLength = 'short' | 'medium' | 'long' | 'article';
+export type QuickIdeaType = 'idea' | 'news_article' | 'stat' | 'quote' | 'tip';
 export type PublishOption = 'now' | 'schedule' | 'queue' | 'draft';
 
 // Backward compatibility aliases
@@ -196,6 +198,10 @@ export interface WizardState {
   sourceTitle: string;
   sourceData: Record<string, unknown> | null;
 
+  // Quick Idea Options
+  quickIdeaType: QuickIdeaType;
+  contentLength: ContentLength;
+
   // Campaign config (campaign mode)
   campaignConfig: CampaignConfig;
 
@@ -278,6 +284,8 @@ export interface WizardState {
 
   // Actions - Source
   setSource: (type: SourceType, content: string, title?: string, id?: string, data?: Record<string, unknown>) => void;
+  setQuickIdeaType: (type: QuickIdeaType) => void;
+  setContentLength: (length: ContentLength) => void;
 
   // Actions - Campaign Config
   updateCampaignConfig: (config: Partial<CampaignConfig>) => void;
@@ -351,6 +359,9 @@ const initialState = {
   sourceContent: '',
   sourceTitle: '',
   sourceData: null,
+
+  quickIdeaType: 'idea' as QuickIdeaType,
+  contentLength: 'short' as ContentLength,
 
   campaignConfig: { ...DEFAULT_CAMPAIGN_CONFIG },
 
@@ -495,6 +506,10 @@ export const useWizardStore = create<WizardState>()(
           },
         });
       },
+
+      // Quick Idea Options Actions
+      setQuickIdeaType: (type) => set({ quickIdeaType: type }),
+      setContentLength: (length) => set({ contentLength: length }),
 
       // Campaign Config Actions
       updateCampaignConfig: (config) => set((state) => ({

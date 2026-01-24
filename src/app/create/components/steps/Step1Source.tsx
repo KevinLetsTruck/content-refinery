@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useWizardStore, SourceType } from "../../store";
+import { useWizardStore, SourceType, QuickIdeaType, ContentLength } from "../../store";
 import {
   Lightbulb,
   BookOpen,
@@ -19,6 +19,11 @@ import {
   Clock,
   Check,
   AlertCircle,
+  Newspaper,
+  Quote,
+  FileText,
+  AlignLeft,
+  AlignJustify,
 } from "lucide-react";
 
 interface Episode {
@@ -97,9 +102,91 @@ const SOURCE_OPTIONS: {
   },
 ];
 
+const QUICK_IDEA_TYPES: {
+  type: QuickIdeaType;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}[] = [
+  {
+    type: "idea",
+    icon: <Lightbulb className="h-4 w-4" />,
+    title: "Quick Idea",
+    description: "A topic, tip, or thought to expand on",
+  },
+  {
+    type: "news_article",
+    icon: <Newspaper className="h-4 w-4" />,
+    title: "News Commentary",
+    description: "Summarize & comment on a news article",
+  },
+  {
+    type: "stat",
+    icon: <FileText className="h-4 w-4" />,
+    title: "Stat/Fact",
+    description: "Lead with a shocking statistic",
+  },
+  {
+    type: "quote",
+    icon: <Quote className="h-4 w-4" />,
+    title: "Quote",
+    description: "A quotable statement to share",
+  },
+  {
+    type: "tip",
+    icon: <Lightbulb className="h-4 w-4" />,
+    title: "Actionable Tip",
+    description: "Practical advice they can use now",
+  },
+];
+
+const CONTENT_LENGTH_OPTIONS: {
+  length: ContentLength;
+  title: string;
+  description: string;
+  wordRange: string;
+}[] = [
+  {
+    length: "short",
+    title: "Short Post",
+    description: "Social media post",
+    wordRange: "50-150 words",
+  },
+  {
+    length: "medium",
+    title: "Medium Post",
+    description: "Longer social or LinkedIn",
+    wordRange: "150-400 words",
+  },
+  {
+    length: "long",
+    title: "Long Post",
+    description: "Thread or detailed post",
+    wordRange: "400-700 words",
+  },
+  {
+    length: "article",
+    title: "Article",
+    description: "Blog post or newsletter",
+    wordRange: "700-1500+ words",
+  },
+];
+
 export function Step1Source() {
   const router = useRouter();
-  const { setSource, sourceType, sourceContent, nextStep, goToStep, currentStep, reset } = useWizardStore();
+  const {
+    setSource,
+    sourceType,
+    sourceContent,
+    nextStep,
+    goToStep,
+    currentStep,
+    reset,
+    quickIdeaType,
+    setQuickIdeaType,
+    contentLength,
+    setContentLength,
+  } = useWizardStore();
   const [selectedType, setSelectedType] = useState<SourceType | null>(sourceType);
   const [content, setContent] = useState(sourceContent);
 
@@ -417,25 +504,93 @@ export function Step1Source() {
       {/* Content Input for Selected Source */}
       {selectedType === "quick_idea" && (
         <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300">
-          <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6">
-            <label className="block text-sm font-medium mb-2 text-white">
-              What's your idea?
-            </label>
-            <textarea
-              value={content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              placeholder="Share a stat, quote, tip, or topic you want to turn into social content..."
-              rows={4}
-              className="w-full px-4 py-3 rounded border border-[#333333] bg-[#0D0D0D] text-white resize-none focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500]/20 placeholder-[#888888]"
-            />
-            <p className="text-xs text-[#888888] mt-2">
-              Be specific! The more detail you give, the better content I can
-              create.
-            </p>
+          <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] p-6 space-y-6">
+            {/* Content Type Selector */}
+            <div>
+              <label className="block text-sm font-medium mb-3 text-white">
+                What type of content?
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                {QUICK_IDEA_TYPES.map(({ type, icon, title, description }) => (
+                  <button
+                    key={type}
+                    onClick={() => setQuickIdeaType(type)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      quickIdeaType === type
+                        ? "border-[#FF4500] bg-[#FF4500]/10"
+                        : "border-[#333333] hover:border-[#444444]"
+                    }`}
+                  >
+                    <div className={`mb-1 ${quickIdeaType === type ? "text-[#FF4500]" : "text-[#888888]"}`}>
+                      {icon}
+                    </div>
+                    <p className="text-sm font-medium text-white">{title}</p>
+                    <p className="text-xs text-[#666666] mt-0.5 hidden sm:block">{description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Content Length Selector */}
+            <div>
+              <label className="block text-sm font-medium mb-3 text-white">
+                Content length
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {CONTENT_LENGTH_OPTIONS.map(({ length, title, description, wordRange }) => (
+                  <button
+                    key={length}
+                    onClick={() => setContentLength(length)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      contentLength === length
+                        ? "border-[#FF4500] bg-[#FF4500]/10"
+                        : "border-[#333333] hover:border-[#444444]"
+                    }`}
+                  >
+                    <p className="text-sm font-medium text-white">{title}</p>
+                    <p className="text-xs text-[#666666] mt-0.5">{wordRange}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Content Input */}
+            <div>
+              <label className="block text-sm font-medium mb-2 text-white">
+                {quickIdeaType === "news_article"
+                  ? "Paste the article or URL"
+                  : "Your content"}
+              </label>
+              <textarea
+                value={content}
+                onChange={(e) => handleContentChange(e.target.value)}
+                placeholder={
+                  quickIdeaType === "news_article"
+                    ? "Paste the full article text or URL here. I'll summarize it and add commentary in Kevin's voice..."
+                    : quickIdeaType === "stat"
+                    ? "e.g., 70% of professional drivers test positive for Candida overgrowth vs 13% of the general population..."
+                    : quickIdeaType === "quote"
+                    ? "e.g., Your body doesn't care what the FDA says. It cares what you feed it..."
+                    : quickIdeaType === "tip"
+                    ? "e.g., Replace your morning coffee with black tea for 2 weeks. The L-theanine will help with focus without the cortisol spike..."
+                    : "Share a stat, quote, tip, or topic you want to turn into social content..."
+                }
+                rows={quickIdeaType === "news_article" || contentLength === "article" ? 12 : 6}
+                className="w-full px-4 py-3 rounded border border-[#333333] bg-[#0D0D0D] text-white resize-none focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500]/20 placeholder-[#888888]"
+              />
+              <p className="text-xs text-[#888888] mt-2">
+                {quickIdeaType === "news_article"
+                  ? "Paste the full article for best results. I'll extract key points and add your perspective."
+                  : contentLength === "article"
+                  ? "For articles, include key points, data, and arguments you want covered."
+                  : "Be specific! The more detail you give, the better content I can create."}
+              </p>
+            </div>
+
             <button
               onClick={handleContinueToMode}
               disabled={!content.trim()}
-              className="mt-4 flex items-center gap-2 px-4 py-2 rounded bg-[#FF4500] hover:bg-[#CC3700] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded bg-[#FF4500] hover:bg-[#CC3700] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
             >
               Continue
               <ArrowRight className="h-4 w-4" />

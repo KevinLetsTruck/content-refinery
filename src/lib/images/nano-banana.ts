@@ -131,87 +131,155 @@ export async function generateAndStoreImage(
 /**
  * Create a social media image prompt optimized for Nano Banana
  * Gemini handles detailed, descriptive prompts very well
+ *
+ * This function analyzes the actual content to generate relevant imagery
  */
 export function createImagePrompt(
   contentText: string,
   contentType: string,
   platform: string
 ): string {
-  const keywords = extractKeywords(contentText);
-
-  // Brand style for Let's Truck
+  // Brand style for Let's Truck (always included)
   const brandStyle = `
 Style: Professional, cinematic photography with rich contrast.
 Color palette: Deep blacks (#0D0D0D), vibrant orange (#FF4500), warm earth tones.
 Mood: Powerful, authentic, no-nonsense, freedom.
-Theme: Professional truck drivers, health transformation, open road freedom.
-IMPORTANT: Do NOT include any text, words, or letters in the image.
+IMPORTANT: Do NOT include any text, words, or letters in the image. Pure visual imagery only.
   `.trim();
 
-  // Build scene based on content keywords
-  let scene: string;
-
-  if (
-    keywords.some((k) =>
-      ["truck", "driver", "road", "highway", "haul", "rig"].includes(k)
-    )
-  ) {
-    scene =
-      "A powerful Peterbilt or Kenworth semi-truck on an open American highway at golden hour, dramatic cloud formations, endless road stretching to the horizon, cinematic lighting";
-  } else if (
-    keywords.some((k) =>
-      ["gut", "candida", "microbiome", "digestive", "inflammation"].includes(k)
-    )
-  ) {
-    scene =
-      "Beautiful arrangement of whole foods - grass-fed ribeye steak, farm-fresh eggs, colorful vegetables, avocados - on a rustic wooden cutting board, warm natural window lighting, appetizing food photography";
-  } else if (
-    keywords.some((k) =>
-      ["sleep", "fatigue", "tired", "rest", "recovery"].includes(k)
-    )
-  ) {
-    scene =
-      "Breathtaking sunrise breaking over mountain range, a lone truck stop silhouetted in the distance, rays of golden light piercing through clouds, new day beginning";
-  } else if (
-    keywords.some((k) =>
-      ["energy", "performance", "strength", "power", "supplement"].includes(k)
-    )
-  ) {
-    scene =
-      "Close-up of gleaming chrome diesel engine details, powerful machinery, industrial strength, droplets of morning dew on polished metal";
-  } else if (
-    keywords.some((k) =>
-      ["diet", "nutrition", "protein", "meat", "food", "eat", "meal"].includes(k)
-    )
-  ) {
-    scene =
-      "Mouth-watering steak and eggs breakfast on a cast iron skillet, steam rising, rustic truck stop diner atmosphere, hearty and satisfying American breakfast";
-  } else if (
-    keywords.some((k) => ["detox", "toxic", "chemical", "clean"].includes(k))
-  ) {
-    scene =
-      "Crystal clear mountain stream flowing over smooth rocks, pristine wilderness, pure untouched nature, clean air and water, refreshing environment";
-  } else if (
-    keywords.some((k) =>
-      ["weight", "fat", "obesity", "lose", "transform"].includes(k)
-    )
-  ) {
-    scene =
-      "Dramatic sky split between dark stormy clouds and bright sunshine, representing transformation and change, journey from darkness to light";
-  } else if (
-    keywords.some((k) =>
-      ["heart", "cardio", "blood", "pressure", "cardiovascular"].includes(k)
-    )
-  ) {
-    scene =
-      "Powerful image of a healthy beating heart concept, red blood cells flowing, life force and vitality, medical-artistic rendering";
-  } else {
-    // Default: iconic trucking scene
-    scene =
-      "Majestic chrome semi-truck parked at a scenic overlook during sunset, American heartland vista, freedom and independence of the open road, driver's perspective";
-  }
+  // Analyze content to determine the best scene
+  const scene = analyzeContentForScene(contentText);
 
   return `${scene}\n\n${brandStyle}`;
+}
+
+/**
+ * Analyze content text and generate a relevant scene description
+ */
+function analyzeContentForScene(contentText: string): string {
+  const text = contentText.toLowerCase();
+  const keywords = extractKeywords(contentText);
+
+  // === TRUCKING & INDUSTRY TOPICS ===
+  if (containsAny(text, ["violation", "inspection", "dot", "csa", "fmcsa", "enforcement", "compliance", "out-of-service", "oos"])) {
+    return "A serious-looking DOT inspection scene at a weigh station, officers with clipboards examining a commercial truck, official atmosphere, tension in the air, realistic documentary-style photography";
+  }
+
+  if (containsAny(text, ["pre-trip", "maintenance", "brake", "tire", "repair", "mechanic", "shop"])) {
+    return "Professional driver performing thorough pre-trip inspection, checking tires and brakes on a well-maintained Peterbilt, morning light, meticulous attention to detail, pride in equipment";
+  }
+
+  if (containsAny(text, ["rate", "freight", "broker", "load", "shipper", "pay", "revenue", "market"])) {
+    return "Aerial view of a massive freight distribution hub, hundreds of trucks lined up, logistics in motion, the scale of American commerce, industrial photography";
+  }
+
+  if (containsAny(text, ["regulation", "eld", "hos", "hours of service", "logbook", "mandate"])) {
+    return "Close-up of a truck dashboard with ELD device, driver's hand on steering wheel, digital clock showing hours, the reality of modern trucking regulations";
+  }
+
+  if (containsAny(text, ["owner-operator", "o/o", "independent", "authority", "mc number", "business"])) {
+    return "Proud owner-operator standing confidently beside their pristine custom truck, American flag waving in background, small business owner success, entrepreneurial spirit";
+  }
+
+  if (containsAny(text, ["accident", "crash", "safety", "dangerous", "death", "kill"])) {
+    return "Dramatic rainstorm on a dark highway, tail lights blurred in rain, dangerous driving conditions, cautionary mood, moody cinematic photography";
+  }
+
+  // === POLITICS & POLICY ===
+  if (containsAny(text, ["congress", "senate", "bill", "legislation", "lawmaker", "politician", "vote", "policy"])) {
+    return "The United States Capitol building at dusk, American flag flying, seat of government, political power and decision-making, patriotic but serious mood";
+  }
+
+  if (containsAny(text, ["tax", "irs", "deduction", "write-off", "quarterly"])) {
+    return "Stack of financial documents and receipts on a desk, calculator, coffee cup, the business side of trucking, late night paperwork, small business finances";
+  }
+
+  // === FINANCE & MONEY ===
+  if (containsAny(text, ["retire", "401k", "invest", "save", "wealth", "financial freedom"])) {
+    return "Scenic view from the front porch of a beautiful country home, mountains in distance, rocking chairs, the reward of hard work and smart planning, peaceful retirement dream";
+  }
+
+  if (containsAny(text, ["diesel", "fuel", "price", "pump", "cost"])) {
+    return "Dramatic close-up of fuel pump nozzle filling a truck tank, digital price display showing high numbers, the cost of business, impactful documentary style";
+  }
+
+  // === HEALTH TOPICS ===
+  if (containsAny(text, ["gut", "candida", "microbiome", "digestive", "inflammation", "probiotics"])) {
+    return "Beautiful arrangement of fermented foods - kimchi, sauerkraut, bone broth - alongside fresh vegetables, gut-healing foods, warm kitchen lighting, health and vitality";
+  }
+
+  if (containsAny(text, ["sleep", "fatigue", "tired", "rest", "recovery", "insomnia"])) {
+    return "Peaceful scene of a cozy truck sleeper berth at night, soft ambient lighting, comfortable bedding, the importance of rest on the road";
+  }
+
+  if (containsAny(text, ["energy", "performance", "strength", "power", "supplement", "vitamin"])) {
+    return "Dynamic shot of supplement bottles arranged artistically with whole food ingredients, natural energy sources, health optimization, clean product photography";
+  }
+
+  if (containsAny(text, ["diet", "nutrition", "protein", "meat", "food", "eat", "meal", "keto", "carnivore", "paleo"])) {
+    return "Mouth-watering ribeye steak on a cast iron skillet, perfectly cooked, steam rising, accompanied by eggs and butter, real food for real results, appetizing food photography";
+  }
+
+  if (containsAny(text, ["weight", "fat", "obesity", "lose", "transform", "pound"])) {
+    return "Before and after transformation concept - split image of stormy clouds transitioning to bright sunshine over open road, journey of change, hope and determination";
+  }
+
+  if (containsAny(text, ["heart", "cardio", "blood", "pressure", "cardiovascular", "nitric oxide"])) {
+    return "Artistic representation of blood flow and circulation, red abstract patterns suggesting vitality, life force, cardiovascular health concept, medical-artistic style";
+  }
+
+  if (containsAny(text, ["detox", "toxic", "chemical", "clean", "liver"])) {
+    return "Crystal clear mountain spring water cascading over rocks, pristine wilderness, pure and clean environment, detoxification and renewal concept";
+  }
+
+  if (containsAny(text, ["stress", "cortisol", "anxiety", "mental", "depression"])) {
+    return "Serene landscape of open prairie at golden hour, sense of peace and calm, escape from chaos, mental clarity, therapeutic natural scenery";
+  }
+
+  // === LIFESTYLE & COMMUNITY ===
+  if (containsAny(text, ["family", "home", "wife", "kid", "son", "daughter", "love"])) {
+    return "Warm family reunion scene - truck driver arriving home, family running to greet them, suburban driveway, the sacrifice and reward of the profession, emotional moment";
+  }
+
+  if (containsAny(text, ["tribe", "community", "together", "support", "brotherhood"])) {
+    return "Group of professional drivers gathered at a truck stop, camaraderie and friendship, diverse faces united by profession, the trucking brotherhood, candid group portrait";
+  }
+
+  // === DEFAULT BASED ON GENERAL KEYWORDS ===
+  if (keywords.some(k => ["truck", "driver", "road", "highway", "haul", "rig", "mile", "route"].includes(k))) {
+    // Trucking-related but no specific match - use iconic trucking imagery
+    const truckingScenes = [
+      "Powerful Kenworth W900 climbing a mountain pass at sunrise, exhaust steam in cold air, chrome gleaming, conquering the terrain",
+      "Long line of trucks stretching to the horizon on Interstate 40, the backbone of America, commerce in motion",
+      "Driver's POV through windshield at night, dashboard glow, rain-slicked highway, lonely but focused, the night shift",
+      "Peterbilt 389 at a desert truck stop during blue hour, neon signs reflecting on chrome, iconic American scene",
+    ];
+    return truckingScenes[Math.floor(Math.random() * truckingScenes.length)];
+  }
+
+  // === ABSOLUTE DEFAULT - Analyze first 100 chars for context ===
+  const preview = contentText.substring(0, 200);
+
+  if (preview.includes("%") || preview.match(/\d+/)) {
+    // Contains statistics - use impactful data visualization style
+    return "Dramatic wide shot of a massive truck convoy stretching across American heartland, scale and impact, the numbers behind the industry, documentary photography";
+  }
+
+  // Generic but varied trucking scenes
+  const defaultScenes = [
+    "Breathtaking aerial view of an 18-wheeler navigating a winding mountain road, drone photography, epic scale of trucking",
+    "Close-up of weathered but strong hands gripping a steering wheel, wedding ring visible, the professional driver, character portrait",
+    "Sunset silhouette of truck and driver at scenic overlook, reflection and contemplation, end of day, cinematic mood",
+    "Early morning fog lifting at a rural truck stop, trucks lined up, coffee steam rising, the quiet before the road calls",
+  ];
+  return defaultScenes[Math.floor(Math.random() * defaultScenes.length)];
+}
+
+/**
+ * Helper to check if text contains any of the given terms
+ */
+function containsAny(text: string, terms: string[]): boolean {
+  return terms.some(term => text.includes(term));
 }
 
 /**

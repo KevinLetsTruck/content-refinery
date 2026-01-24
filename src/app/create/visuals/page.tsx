@@ -158,7 +158,8 @@ export default function VisualsPage() {
 
       <h1 className="text-3xl font-bold mb-2 text-white">Generate Visuals</h1>
       <p className="text-[#888888] mb-8">
-        Create on-brand visuals for each platform using Gamma AI.
+        Create on-brand visuals for each platform using Gamma AI. Once generated,
+        open in Gamma to customize and download your images.
       </p>
 
       {/* Generate All Button */}
@@ -265,27 +266,24 @@ export default function VisualsPage() {
                   </div>
                 )}
 
-                {visual?.status === "completed" && visual.imageUrl && (
-                  <img
-                    src={visual.imageUrl}
-                    alt={`${platform} visual`}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                )}
-
-                {visual?.status === "completed" && !visual.imageUrl && (
+                {visual?.status === "completed" && (
                   <div className="text-center p-6">
-                    <Check className="w-12 h-12 text-[#22C55E] mx-auto mb-3" />
-                    <p className="text-sm text-[#888888]">Visual generated</p>
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Check className="w-8 h-8 text-[#22C55E]" />
+                    </div>
+                    <p className="text-white font-medium mb-1">Visual Created!</p>
+                    <p className="text-sm text-[#888888] mb-4">
+                      Open in Gamma to view, edit, and download
+                    </p>
                     {visual.gammaUrl && (
                       <a
                         href={visual.gammaUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-[#333333] hover:bg-[#444444] rounded text-sm text-white transition-colors"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-sm font-medium text-white transition-all"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        View in Gamma
+                        Open in Gamma
                       </a>
                     )}
                   </div>
@@ -303,22 +301,13 @@ export default function VisualsPage() {
                       className="flex-1 flex items-center justify-center gap-2 py-2 bg-[#333333] hover:bg-[#444444] rounded text-sm text-white transition-colors"
                     >
                       <ExternalLink className="w-4 h-4" />
-                      Edit
-                    </a>
-                  )}
-                  {visual.exportUrl && (
-                    <a
-                      href={visual.exportUrl}
-                      download
-                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-[#333333] hover:bg-[#444444] rounded text-sm text-white transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download
+                      Edit in Gamma
                     </a>
                   )}
                   <button
                     onClick={() => generateVisual(platform)}
-                    className="flex items-center justify-center px-3 py-2 bg-[#333333] hover:bg-[#444444] rounded text-sm text-white transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-2 bg-[#333333] hover:bg-[#444444] rounded text-sm text-white transition-colors"
+                    title="Regenerate visual"
                   >
                     <RefreshCw className="w-4 h-4" />
                   </button>

@@ -138,7 +138,8 @@ Additional requirements:
         id: result.generationId,
         status: result.status,
         gammaUrl: result.gammaUrl,
-        imageUrl: result.gammaUrl, // Gamma URL can be used as preview
+        // Note: Gamma API doesn't support direct image export (PNG/JPG)
+        // imageUrl is not set - users must view/edit in Gamma and export manually
         exportUrl: result.pdfUrl || result.pptxUrl,
       });
     }

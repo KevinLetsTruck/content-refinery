@@ -24,14 +24,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Facebook OAuth scopes needed for page and Instagram publishing
+  // Facebook OAuth scopes needed for page publishing
+  // Note: Instagram scopes require App Review approval, so we only request Facebook for now
   const scopes = [
     "pages_show_list",           // List pages the user manages
     "pages_read_engagement",     // Read page engagement metrics
     "pages_manage_posts",        // Create and manage posts on Pages
-    "instagram_basic",           // Access Instagram profile info
-    "instagram_content_publish", // Publish content to Instagram
-    "business_management",       // Access Business accounts
   ].join(",");
 
   // Generate state for CSRF protection

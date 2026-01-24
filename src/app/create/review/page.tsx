@@ -45,6 +45,10 @@ export default function ReviewPage() {
     currentStep,
     goToStep,
     getSteps,
+    // For quick_post mode - the actual content to be published
+    selectedContentId,
+    contentOptions,
+    editedContent,
   } = useWizardStore();
 
   const [complianceChecks, setComplianceChecks] = useState<
@@ -78,8 +82,17 @@ export default function ReviewPage() {
 
     // Check for banned terms
     const bannedTerms = ["trucker", "truckers", "big rig", "18-wheeler"];
+
+    // For quick_post mode, check the actual content to be published (not source content)
+    // For campaign mode, check the strategy content
+    const selectedContent = contentOptions.find((o) => o.id === selectedContentId);
+    const finalPostContent = editedContent || selectedContent?.text || "";
+
     const contentToCheck = [
-      sourceContent,
+      // Only check source content for campaigns, not for quick posts
+      mode === "campaign" ? sourceContent : "",
+      // For quick posts, check the actual generated/edited content
+      mode === "quick_post" ? finalPostContent : "",
       contentStrategy?.keyMessages?.join(" ") || "",
       landingPageConfig?.headline || "",
       landingPageConfig?.subhead || "",

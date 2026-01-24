@@ -63,6 +63,7 @@ export default function InterviewPage() {
     prevStep,
     currentStep,
     goToStep,
+    contentCategory,
   } = useWizardStore();
 
   const [formData, setFormData] = useState<InterviewData>({
@@ -107,6 +108,7 @@ export default function InterviewPage() {
           sourceContent,
           sourceTitle,
           mode,
+          contentCategory,
         }),
       });
 
@@ -129,7 +131,7 @@ export default function InterviewPage() {
     } finally {
       setIsGenerating(false);
     }
-  }, [sourceType, sourceContent, sourceTitle, mode]);
+  }, [sourceType, sourceContent, sourceTitle, mode, contentCategory]);
 
   // Generate prefill on mount if fields are empty
   useEffect(() => {
@@ -150,6 +152,7 @@ export default function InterviewPage() {
           sourceContent,
           sourceTitle,
           currentValues: formData,
+          contentCategory,
         }),
       });
 

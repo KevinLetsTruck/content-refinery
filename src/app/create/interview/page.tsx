@@ -120,6 +120,8 @@ export default function InterviewPage() {
         supportingEvidence: data.supportingEvidence || "",
         callToAction: data.callToAction || "awareness",
         tone: data.tone || "direct",
+        guideTitle: data.guideTitle || "",
+        guideTopic: data.guideTopic || "",
       });
     } catch (err) {
       console.error("Prefill error:", err);

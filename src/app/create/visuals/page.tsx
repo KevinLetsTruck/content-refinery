@@ -84,16 +84,15 @@ export default function VisualsPage() {
     setVisual(platform, { status: "generating" });
 
     try {
-      const format = PLATFORM_FORMATS[platform];
-      const response = await fetch("/api/gamma/generate", {
+      // Use Nano Banana (Google Gemini) for direct image generation
+      const response = await fetch("/api/images/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: contentText,
           contentType: selectedContent?.type || "quote",
           platform,
-          dimensions: { width: format.width, height: format.height },
-          waitForResult: true,
+          model: "standard", // Use standard Gemini model for speed
         }),
       });
 
@@ -101,19 +100,18 @@ export default function VisualsPage() {
         const data = await response.json();
         setVisual(platform, {
           status: "completed",
-          generationId: data.id,
-          gammaUrl: data.gammaUrl,
-          imageUrl: data.imageUrl,
-          exportUrl: data.exportUrl,
+          generationId: `nb-${Date.now()}`,
+          imageUrl: data.imageUrl, // Direct image URL from R2
         });
       } else {
-        throw new Error("Generation failed");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Generation failed");
       }
     } catch (error) {
       console.error("Failed to generate visual:", error);
       setVisual(platform, {
         status: "failed",
-        error: "Generation failed. Please try again.",
+        error: error instanceof Error ? error.message : "Generation failed. Please try again.",
       });
     }
   };
@@ -158,8 +156,8 @@ export default function VisualsPage() {
 
       <h1 className="text-3xl font-bold mb-2 text-white">Generate Visuals</h1>
       <p className="text-[#888888] mb-8">
-        Create on-brand visuals for each platform using Gamma AI. Once generated,
-        open in Gamma to customize and download your images.
+        Create on-brand AI visuals for each platform. Images are generated with
+        Google Gemini and optimized for each platform&apos;s dimensions.
       </p>
 
       {/* Generate All Button */}
@@ -266,26 +264,23 @@ export default function VisualsPage() {
                   </div>
                 )}
 
-                {visual?.status === "completed" && (
+                {visual?.status === "completed" && visual.imageUrl && (
+                  <img
+                    src={visual.imageUrl}
+                    alt={`${platform.replace("_", " ")} visual`}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+
+                {visual?.status === "completed" && !visual.imageUrl && (
                   <div className="text-center p-6">
                     <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <Check className="w-8 h-8 text-[#22C55E]" />
                     </div>
                     <p className="text-white font-medium mb-1">Visual Created!</p>
-                    <p className="text-sm text-[#888888] mb-4">
-                      Open in Gamma to view, edit, and download
+                    <p className="text-sm text-[#888888]">
+                      Image will appear here once loaded
                     </p>
-                    {visual.gammaUrl && (
-                      <a
-                        href={visual.gammaUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg text-sm font-medium text-white transition-all"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Open in Gamma
-                      </a>
-                    )}
                   </div>
                 )}
               </div>
@@ -293,15 +288,27 @@ export default function VisualsPage() {
               {/* Actions */}
               {visual?.status === "completed" && (
                 <div className="flex gap-2 p-3 border-t border-[#333333]">
-                  {visual.gammaUrl && (
+                  {visual.imageUrl && (
                     <a
-                      href={visual.gammaUrl}
+                      href={visual.imageUrl}
+                      download={`${platform}-visual.png`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 flex items-center justify-center gap-2 py-2 bg-[#333333] hover:bg-[#444444] rounded text-sm text-white transition-colors"
                     >
+                      <Download className="w-4 h-4" />
+                      Download
+                    </a>
+                  )}
+                  {visual.imageUrl && (
+                    <a
+                      href={visual.imageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-[#333333] hover:bg-[#444444] rounded text-sm text-white transition-colors"
+                      title="Open in new tab"
+                    >
                       <ExternalLink className="w-4 h-4" />
-                      Edit in Gamma
                     </a>
                   )}
                   <button

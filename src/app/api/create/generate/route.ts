@@ -181,7 +181,9 @@ const CONTENT_CATEGORY_CONFIG: Record<string, {
 - Stand up for drivers against corporate trucking and overregulation
 - Focus on practical business and lifestyle tips for life on the road
 - Can be critical of FMCSA, brokers, and mega-carriers when warranted
-- DO NOT make this about health unless the topic specifically involves health`,
+- STRICTLY FORBIDDEN: Do NOT pivot to health, do NOT use health metaphors, do NOT compare trucks to bodies
+- This is PURELY about the trucking industry - equipment, regulations, business, lifestyle
+- If the article is about inspections, talk about inspections - don't compare to "operating your body"`,
     hashtagSuggestions: ["trucking", "owneroperator", "trucklife", "cdldriver", "truckingindustry"],
   },
   finance: {
@@ -330,6 +332,18 @@ BRAND VOICE (CRITICAL - FOLLOW EXACTLY):
 
 CATEGORY-SPECIFIC VOICE (${contentCategory.toUpperCase()}):
 ${categoryConfig.voiceNotes}
+
+${contentCategory !== 'health' ? `
+CRITICAL CATEGORY ENFORCEMENT:
+- The user selected "${contentCategory.toUpperCase()}" as the content category
+- You MUST keep 100% of the content focused on ${contentCategory} topics
+- ABSOLUTELY NO health metaphors, health pivots, or health tie-ins
+- ABSOLUTELY NO "operating your body" or similar comparisons
+- If the topic is trucking inspections, talk ONLY about truck inspections
+- If the topic is politics, talk ONLY about politics
+- If the topic is finance, talk ONLY about finance
+- Kevin has expertise in many areas - stay in the lane the user selected
+` : ''}
 
 ${contentCategory === 'health' ? `
 HEALTH-SPECIFIC PHRASES TO USE:

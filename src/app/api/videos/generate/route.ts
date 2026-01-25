@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateAndStoreVideo,
-  createVideoPrompt,
+  createVideoPromptWithAI,
   isVeoAvailable,
   getAspectRatioForPlatform,
   VEO_MODELS,
@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
       `[Videos] Generating Veo video for ${platform}, type: ${contentType}, duration: ${duration}s, model: ${model}`
     );
 
-    // Create or use custom prompt
-    const prompt = customPrompt || createVideoPrompt(text, contentType, platform);
+    // Create or use custom prompt (AI-powered for better sentiment awareness)
+    const prompt = customPrompt || await createVideoPromptWithAI(text, contentType, platform);
     console.log(`[Videos] Prompt: ${prompt.substring(0, 150)}...`);
 
     // Get aspect ratio for platform

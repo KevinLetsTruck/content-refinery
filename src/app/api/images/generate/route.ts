@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   generateAndStoreImage,
-  createImagePrompt,
+  createImagePromptWithAI,
   isNanoBananaAvailable,
   getAspectRatioForPlatform,
   NANO_BANANA_MODELS,
@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       `[Images] Generating Nano Banana image for ${platform}, type: ${contentType}, model: ${model}`
     );
 
-    // Create or use custom prompt
-    const prompt = customPrompt || createImagePrompt(text, contentType, platform);
+    // Create or use custom prompt (AI-powered for better sentiment awareness)
+    const prompt = customPrompt || await createImagePromptWithAI(text, contentType, platform);
     console.log(`[Images] Prompt: ${prompt.substring(0, 150)}...`);
 
     // Generate image and upload to R2

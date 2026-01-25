@@ -288,12 +288,86 @@ export function getAspectRatioForPlatform(platform: string): VeoAspectRatio {
 
 /**
  * Create an optimized video prompt for Let's Truck content
+ * Uses AI to analyze the full content and generate contextually-appropriate visuals
+ */
+export async function createVideoPromptWithAI(
+  contentText: string,
+  contentType: string,
+  platform: string
+): Promise<string> {
+  // Use Gemini to generate a contextually-appropriate video scene description
+  const analysisPrompt = `You are an expert video director for Let's Truck, a health coaching brand for professional truck drivers.
+
+Analyze this social media post and create a video scene description for an AI video generator.
+
+POST CONTENT:
+${contentText}
+
+POST TYPE: ${contentType}
+PLATFORM: ${platform}
+
+IMPORTANT CONTEXT:
+- Let's Truck serves professional truck drivers with health coaching
+- The brand is direct, no-BS, anti-establishment
+- Understand the SENTIMENT: Is this a warning? A celebration? Education? A wake-up call?
+- Match the visual MOOD to the message - don't show hopeful imagery for warnings about dangers
+
+VIDEO REQUIREMENTS:
+- Create a scene that visually represents the core message with MOTION
+- If the post is WARNING about something (like drug side effects, health dangers), use dark/serious/cautionary imagery with ominous movement
+- If the post is EDUCATIONAL, use clear, informative visuals with smooth camera movement
+- If the post is INSPIRING, use uplifting, powerful imagery with dynamic motion
+- Include specific visual elements, camera movements, lighting transitions, and mood
+- Reference trucking/driver lifestyle when relevant
+- NO TEXT overlays in the video
+- Think cinematically: What moves? What transitions? What tells the story visually?
+
+Respond with ONLY the video scene description (2-3 sentences), nothing else.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: analysisPrompt }] }],
+          generationConfig: { maxOutputTokens: 250 },
+        }),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const scene = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (scene) {
+        const brandStyle = `
+Cinematic quality, professional lighting, rich contrast.
+Color palette: Deep blacks, vibrant orange accents, warm earth tones.
+Mood: Match the content - ominous for warnings, powerful for inspiration.
+Style: Documentary-feel but polished.
+NO TEXT overlays in the video.`.trim();
+
+        return `${scene}\n\n${brandStyle}`;
+      }
+    }
+  } catch (error) {
+    console.error("[Veo] AI scene analysis failed, using fallback:", error);
+  }
+
+  // Fallback to keyword-based analysis
+  return createVideoPrompt(contentText, contentType, platform);
+}
+
+/**
+ * Create an optimized video prompt for Let's Truck content (sync fallback)
  */
 export function createVideoPrompt(
   contentText: string,
   contentType: string,
   platform: string
 ): string {
+  const text = contentText.toLowerCase();
   const keywords = extractKeywords(contentText);
 
   // Brand style for video
@@ -305,10 +379,34 @@ Style: Documentary-feel but polished.
 NO TEXT overlays in the video.
   `.trim();
 
-  // Build scene based on content keywords
+  // Detect sentiment/tone
+  const isWarning = containsAny(text, [
+    "wake up", "warning", "danger", "risk", "beware", "caution", "avoid",
+    "don't", "stop", "quit", "harmful", "toxic", "side effect", "kill",
+    "death", "worse", "fail", "scam", "lie", "truth about", "what they",
+    "won't tell", "hidden", "exposed", "reality"
+  ]);
+
+  const isNegativeHealth = containsAny(text, [
+    "ozempic", "wegovy", "semaglutide", "glp-1", "tirzepatide", "mounjaro",
+    "pharmaceutical", "big pharma", "drug", "medication", "prescription",
+    "muscle loss", "muscle mass", "depression", "suicidal", "side effect"
+  ]) && isWarning;
+
+  // Build scene based on content keywords and sentiment
   let scene: string;
 
-  if (
+  // === PHARMACEUTICAL/DRUG WARNINGS ===
+  if (isNegativeHealth) {
+    scene =
+      "Slow dolly shot through a dark room filled with prescription bottles casting long shadows, cold clinical blue lighting, pills scattered on surface, ominous atmosphere building dread, camera slowly pushing in";
+  }
+  // === GENERAL HEALTH WARNINGS ===
+  else if (isWarning && containsAny(text, ["health", "body", "weight", "fat", "muscle", "metabolism"])) {
+    scene =
+      "Dramatic time-lapse of storm clouds gathering over a highway, lightning flashes, windshield wipers struggling, sense of urgency and consequence, moody documentary feel";
+  }
+  else if (
     keywords.some((k) =>
       ["truck", "driver", "road", "highway", "haul", "rig"].includes(k)
     )
@@ -357,6 +455,13 @@ NO TEXT overlays in the video.
   }
 
   return `${scene}\n\n${brandStyle}`;
+}
+
+/**
+ * Helper to check if text contains any of the given terms
+ */
+function containsAny(text: string, terms: string[]): boolean {
+  return terms.some(term => text.includes(term));
 }
 
 /**

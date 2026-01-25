@@ -130,6 +130,77 @@ export async function generateAndStoreImage(
 
 /**
  * Create a social media image prompt optimized for Nano Banana
+ * Uses AI to analyze the full content and generate contextually-appropriate visuals
+ */
+export async function createImagePromptWithAI(
+  contentText: string,
+  contentType: string,
+  platform: string
+): Promise<string> {
+  // Use Gemini to generate a contextually-appropriate scene description
+  const analysisPrompt = `You are an expert visual director for Let's Truck, a health coaching brand for professional truck drivers.
+
+Analyze this social media post and create a scene description for an AI image generator.
+
+POST CONTENT:
+${contentText}
+
+POST TYPE: ${contentType}
+PLATFORM: ${platform}
+
+IMPORTANT CONTEXT:
+- Let's Truck serves professional truck drivers with health coaching
+- The brand is direct, no-BS, anti-establishment
+- Understand the SENTIMENT: Is this a warning? A celebration? Education? A wake-up call?
+- Match the visual MOOD to the message - don't show hopeful imagery for warnings about dangers
+
+VISUAL REQUIREMENTS:
+- Create a scene that visually represents the core message
+- If the post is WARNING about something (like drug side effects, health dangers), use dark/serious/cautionary imagery
+- If the post is EDUCATIONAL, use clear, informative visuals
+- If the post is INSPIRING, use uplifting, powerful imagery
+- Include specific visual elements, camera angles, lighting, and mood
+- Reference trucking/driver lifestyle when relevant
+- NO TEXT in the image
+
+Respond with ONLY the scene description (2-3 sentences), nothing else.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: analysisPrompt }] }],
+          generationConfig: { maxOutputTokens: 200 },
+        }),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const scene = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (scene) {
+        const brandStyle = `
+Style: Professional, cinematic photography with rich contrast.
+Color palette: Deep blacks (#0D0D0D), vibrant orange (#FF4500), warm earth tones.
+Mood: Match the content - serious for warnings, powerful for inspiration.
+IMPORTANT: Do NOT include any text, words, or letters in the image. Pure visual imagery only.`.trim();
+
+        return `${scene}\n\n${brandStyle}`;
+      }
+    }
+  } catch (error) {
+    console.error("[Nano Banana] AI scene analysis failed, using fallback:", error);
+  }
+
+  // Fallback to keyword-based analysis
+  return createImagePrompt(contentText, contentType, platform);
+}
+
+/**
+ * Create a social media image prompt optimized for Nano Banana (sync version)
  * Gemini handles detailed, descriptive prompts very well
  *
  * This function analyzes the actual content to generate relevant imagery
@@ -159,6 +230,30 @@ IMPORTANT: Do NOT include any text, words, or letters in the image. Pure visual 
 function analyzeContentForScene(contentText: string): string {
   const text = contentText.toLowerCase();
   const keywords = extractKeywords(contentText);
+
+  // Detect sentiment/tone
+  const isWarning = containsAny(text, [
+    "wake up", "warning", "danger", "risk", "beware", "caution", "avoid",
+    "don't", "stop", "quit", "harmful", "toxic", "side effect", "kill",
+    "death", "worse", "fail", "scam", "lie", "truth about", "what they",
+    "won't tell", "hidden", "exposed", "reality"
+  ]);
+
+  const isNegativeHealth = containsAny(text, [
+    "ozempic", "wegovy", "semaglutide", "glp-1", "tirzepatide", "mounjaro",
+    "pharmaceutical", "big pharma", "drug", "medication", "prescription",
+    "muscle loss", "muscle mass", "depression", "suicidal", "side effect"
+  ]) && isWarning;
+
+  // === PHARMACEUTICAL/DRUG WARNINGS ===
+  if (isNegativeHealth) {
+    return "Dramatic moody scene of prescription pill bottles casting long shadows, ominous lighting, cold clinical blue tones mixed with warning orange, sense of hidden danger, pharmaceutical dystopia aesthetic, no people visible";
+  }
+
+  // === GENERAL HEALTH WARNINGS ===
+  if (isWarning && containsAny(text, ["health", "body", "weight", "fat", "muscle", "metabolism"])) {
+    return "Dark dramatic scene of a crossroads at stormy dusk, one path leading to storm clouds and danger, the other to clear skies, choice and consequence, moody documentary photography";
+  }
 
   // === TRUCKING & INDUSTRY TOPICS ===
   if (containsAny(text, ["violation", "inspection", "dot", "csa", "fmcsa", "enforcement", "compliance", "out-of-service", "oos"])) {

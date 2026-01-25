@@ -35,12 +35,18 @@ export interface PlatformConfig {
   adaptedText?: string;
 }
 
+export type MediaType = 'image' | 'video';
+
 export interface GammaVisual {
   platform: Platform;
+  mediaType?: MediaType; // 'image' (default) or 'video'
   generationId?: string;
   status: 'pending' | 'generating' | 'completed' | 'failed';
   gammaUrl?: string;
   imageUrl?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
+  duration?: number; // Video duration in seconds
   exportUrl?: string;
   error?: string;
 }

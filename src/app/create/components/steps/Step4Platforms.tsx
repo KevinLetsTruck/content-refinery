@@ -1,16 +1,20 @@
 "use client";
 
 import { useWizardStore, Platform } from "../../store";
-import { 
-  Instagram, 
-  Facebook, 
-  Linkedin, 
+import {
+  Instagram,
+  Facebook,
+  Linkedin,
   Twitter,
   Music2,
   Check,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Video
 } from "lucide-react";
+
+// Platforms that support/recommend video content
+const VIDEO_PLATFORMS: Platform[] = ["tiktok", "instagram_story"];
 
 const PLATFORM_CONFIG: {
   platform: Platform;
@@ -40,7 +44,7 @@ const PLATFORM_CONFIG: {
     formats: [
       { value: "9:16", label: "Vertical (9:16)", recommended: true },
     ],
-    description: "24-hour visibility, great for urgency",
+    description: "24-hour visibility, video recommended",
   },
   {
     platform: "facebook",
@@ -83,7 +87,7 @@ const PLATFORM_CONFIG: {
     formats: [
       { value: "9:16", label: "Vertical (9:16)", recommended: true },
     ],
-    description: "Video-first, but images work too",
+    description: "Video-first platform, AI video enabled",
   },
 ];
 
@@ -144,6 +148,7 @@ export function Step4Platforms() {
           const config = platforms.find((p) => p.platform === platform);
           const isEnabled = config?.enabled || false;
           const recommendation = getRecommendation(platform);
+          const isVideoPlatform = VIDEO_PLATFORMS.includes(platform);
 
           return (
             <div
@@ -172,7 +177,15 @@ export function Step4Platforms() {
                     {icon}
                   </div>
                   <div>
-                    <h3 className="font-semibold">{name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{name}</h3>
+                      {isVideoPlatform && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 flex items-center gap-0.5">
+                          <Video className="h-3 w-3" />
+                          Video
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
                   </div>
                 </div>
@@ -229,15 +242,33 @@ export function Step4Platforms() {
           <div className="space-y-2">
             {enabledPlatforms.map((p) => {
               const config = PLATFORM_CONFIG.find((c) => c.platform === p.platform);
+              const isVideo = VIDEO_PLATFORMS.includes(p.platform);
               return (
                 <div key={p.platform} className="flex items-center justify-between text-sm">
-                  <span>{config?.name}</span>
+                  <span className="flex items-center gap-2">
+                    {config?.name}
+                    {isVideo && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                        8s video
+                      </span>
+                    )}
+                  </span>
                   <span className="text-muted-foreground">{p.format}</span>
                 </div>
               );
             })}
           </div>
-          
+
+          {/* Video generation note */}
+          {enabledPlatforms.some((p) => VIDEO_PLATFORMS.includes(p.platform)) && (
+            <div className="mt-3 pt-3 border-t flex items-start gap-2 text-purple-600 dark:text-purple-400">
+              <Video className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <p className="text-xs">
+                AI videos will be generated using Veo 3 (Google Gemini). Video generation takes 30-60 seconds.
+              </p>
+            </div>
+          )}
+
           {enabledPlatforms.length > 2 && (
             <div className="mt-3 pt-3 border-t flex items-start gap-2 text-amber-600 dark:text-amber-400">
               <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />

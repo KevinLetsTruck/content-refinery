@@ -4,6 +4,8 @@ import prisma from "@/lib/db/prisma";
 import { postTweet, uploadMedia as uploadTwitterMedia, isConfigured as isTwitterConfigured } from "@/lib/social/twitter";
 import { postToFacebook, postToInstagram, isConfigured as isMetaConfigured } from "@/lib/social/meta";
 import { uploadVideo as uploadYouTubeVideo, isConfigured as isYouTubeConfigured } from "@/lib/social/youtube";
+import { postToLinkedIn, postWithImage as postLinkedInWithImage, isConfigured as isLinkedInConfigured } from "@/lib/social/linkedin";
+import { uploadVideo as uploadTikTokVideo, isConfigured as isTikTokConfigured } from "@/lib/social/tiktok";
 import { trackPublish } from "@/lib/analytics/track-performance";
 import { parseAndValidate, notFound, badRequest, notImplemented } from "@/lib/utils/api";
 import { PLATFORM_CHAR_LIMITS } from "@/lib/constants";
@@ -139,10 +141,17 @@ export async function POST(request: NextRequest) {
         break;
 
       case "linkedin":
-        return notImplemented("LinkedIn publishing");
+        result = await publishToLinkedInPlatform(content);
+        break;
 
       case "tiktok":
-        return notImplemented("TikTok publishing");
+        result = await publishToTikTok({
+          text: content.text,
+          hashtags: content.hashtags,
+          title: content.title || undefined,
+          videoUrl: content.mediaUrl,
+        });
+        break;
 
       default:
         return badRequest(`Unknown platform: ${content.platform}`);
@@ -337,6 +346,88 @@ async function publishToYouTube(
 }
 
 /**
+ * Publish to LinkedIn
+ */
+async function publishToLinkedInPlatform(content: ContentInput): Promise<{ id: string; url: string }> {
+  if (!isLinkedInConfigured()) {
+    throw new Error(
+      "LinkedIn credentials not configured. Set LINKEDIN_ACCESS_TOKEN"
+    );
+  }
+
+  // Build post text with hashtags using shared utility (LinkedIn best practice: max 5 hashtags)
+  const postText = buildContentWithHashtags(
+    content.text,
+    content.hashtags,
+    PLATFORM_CHAR_LIMITS.linkedin,
+    5
+  );
+
+  // Use image upload if media is present
+  if (content.mediaUrl) {
+    const result = await postLinkedInWithImage({
+      text: postText,
+      imageUrl: content.mediaUrl,
+    });
+    return { id: result.id, url: result.url };
+  }
+
+  // Text-only post
+  const result = await postToLinkedIn({ text: postText });
+  return { id: result.id, url: result.url };
+}
+
+/**
+ * Publish to TikTok
+ */
+interface TikTokContentInput extends ContentInput {
+  title?: string;
+  videoUrl?: string | null;
+}
+
+async function publishToTikTok(
+  content: TikTokContentInput
+): Promise<{ id: string; url: string }> {
+  if (!isTikTokConfigured()) {
+    throw new Error(
+      "TikTok credentials not configured. Set TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, and TIKTOK_ACCESS_TOKEN"
+    );
+  }
+
+  // TikTok requires a video
+  if (!content.videoUrl) {
+    throw new Error("TikTok publishing requires a video URL");
+  }
+
+  // Download the video from the URL
+  const videoResponse = await fetch(content.videoUrl);
+  if (!videoResponse.ok) {
+    throw new Error(`Failed to download video from ${content.videoUrl}`);
+  }
+  const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+
+  // Build title (use content title or first 100 chars of text)
+  const title = content.title || content.text.substring(0, 100);
+
+  // Build caption with hashtags (TikTok: max 2200 chars, unlimited hashtags)
+  const caption = buildContentWithHashtags(
+    content.text,
+    content.hashtags,
+    PLATFORM_CHAR_LIMITS.tiktok
+  );
+
+  // Upload to TikTok
+  const result = await uploadTikTokVideo({
+    title,
+    caption,
+    videoBuffer,
+    privacyLevel: "PUBLIC_TO_EVERYONE",
+  });
+
+  return { id: result.id, url: result.url };
+}
+
+/**
  * GET /api/publish/status
  *
  * Check publishing capabilities
@@ -370,12 +461,14 @@ export async function GET() {
       maxDuration: 60,
     },
     linkedin: {
-      configured: false,
+      configured: isLinkedInConfigured(),
       name: "LinkedIn",
     },
     tiktok: {
-      configured: false,
+      configured: isTikTokConfigured(),
       name: "TikTok",
+      requiresVideo: true,
+      maxDuration: 180, // 3 minutes for regular, 60 for stories
     },
   };
 

@@ -29,6 +29,17 @@ interface FacebookPostOptions {
   message: string;
   link?: string;
   imageUrl?: string;
+  /**
+   * Schedule for future publishing using Facebook's native scheduler.
+   * Posts scheduled this way appear as native posts without "Published by [App]" attribution.
+   * Must be between 10 minutes and 6 months in the future.
+   */
+  scheduledTime?: Date;
+}
+
+interface ScheduledPostResult extends PostResult {
+  scheduledTime?: Date;
+  isScheduled: boolean;
 }
 
 interface InstagramPostOptions {
@@ -54,18 +65,67 @@ function getConfig(): MetaConfig {
 }
 
 /**
- * Post to Facebook Page
+ * Calculate minimum scheduled time (10 minutes from now)
+ * Facebook requires scheduled posts to be at least 10 minutes in the future
  */
-export async function postToFacebook(options: FacebookPostOptions): Promise<PostResult> {
+function getMinimumScheduledTime(): Date {
+  return new Date(Date.now() + 11 * 60 * 1000); // 11 minutes to be safe
+}
+
+/**
+ * Post to Facebook Page
+ *
+ * By default, uses native scheduling (10 min delay) to avoid "Published by [App]" attribution.
+ * This makes posts appear as native Facebook posts with full algorithmic reach.
+ *
+ * Set scheduledTime to a specific future time, or pass null to post immediately
+ * (immediate posts will show "Published by Content Refinery" and may get reduced reach).
+ */
+export async function postToFacebook(options: FacebookPostOptions & {
+  useNativeScheduling?: boolean
+}): Promise<ScheduledPostResult> {
   const config = getConfig();
-  
+
   if (!config.facebookPageId) {
     throw new Error("FACEBOOK_PAGE_ID environment variable is not set");
   }
 
+  // Default to native scheduling to avoid third-party attribution penalty
+  const useNativeScheduling = options.useNativeScheduling !== false;
+
+  // Calculate scheduled time
+  let scheduledTime: Date | undefined;
+  if (options.scheduledTime) {
+    scheduledTime = options.scheduledTime;
+  } else if (useNativeScheduling) {
+    // Default to 10 minutes from now (minimum allowed by Facebook)
+    scheduledTime = getMinimumScheduledTime();
+  }
+
+  // Validate scheduled time is within Facebook's allowed range (10 min to 6 months)
+  if (scheduledTime) {
+    const minTime = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const maxTime = Date.now() + 180 * 24 * 60 * 60 * 1000; // ~6 months
+
+    if (scheduledTime.getTime() < minTime) {
+      scheduledTime = getMinimumScheduledTime();
+    } else if (scheduledTime.getTime() > maxTime) {
+      throw new Error("Scheduled time must be within 6 months");
+    }
+  }
+
+  // If image URL provided, post as photo instead
+  if (options.imageUrl) {
+    return postFacebookPhoto({
+      caption: options.message,
+      imageUrl: options.imageUrl,
+      scheduledTime,
+    });
+  }
+
   const url = `${GRAPH_API_BASE}/${config.facebookPageId}/feed`;
-  
-  const body: Record<string, string> = {
+
+  const body: Record<string, string | boolean | number> = {
     message: options.message,
     access_token: config.accessToken,
   };
@@ -74,12 +134,10 @@ export async function postToFacebook(options: FacebookPostOptions): Promise<Post
     body.link = options.link;
   }
 
-  // If image URL provided, post as photo instead
-  if (options.imageUrl) {
-    return postFacebookPhoto({
-      caption: options.message,
-      imageUrl: options.imageUrl,
-    });
+  // Use native scheduling to avoid "Published by [App]" attribution
+  if (scheduledTime) {
+    body.published = false;
+    body.scheduled_publish_time = Math.floor(scheduledTime.getTime() / 1000);
   }
 
   const response = await fetch(url, {
@@ -97,34 +155,45 @@ export async function postToFacebook(options: FacebookPostOptions): Promise<Post
   }
 
   const data = await response.json();
-  
+
   return {
     id: data.id,
     url: `https://facebook.com/${data.id}`,
     platform: "facebook",
+    scheduledTime,
+    isScheduled: !!scheduledTime,
   };
 }
 
 /**
  * Post photo to Facebook Page
+ *
+ * Uses native scheduling by default to avoid third-party attribution.
  */
 async function postFacebookPhoto(options: {
   caption: string;
   imageUrl: string;
-}): Promise<PostResult> {
+  scheduledTime?: Date;
+}): Promise<ScheduledPostResult> {
   const config = getConfig();
-  
+
   if (!config.facebookPageId) {
     throw new Error("FACEBOOK_PAGE_ID environment variable is not set");
   }
 
   const url = `${GRAPH_API_BASE}/${config.facebookPageId}/photos`;
-  
-  const body = {
+
+  const body: Record<string, string | boolean | number> = {
     caption: options.caption,
     url: options.imageUrl,
     access_token: config.accessToken,
   };
+
+  // Use native scheduling to avoid "Published by [App]" attribution
+  if (options.scheduledTime) {
+    body.published = false;
+    body.scheduled_publish_time = Math.floor(options.scheduledTime.getTime() / 1000);
+  }
 
   const response = await fetch(url, {
     method: "POST",
@@ -141,11 +210,13 @@ async function postFacebookPhoto(options: {
   }
 
   const data = await response.json();
-  
+
   return {
     id: data.id,
     url: `https://facebook.com/${config.facebookPageId}/photos/${data.id}`,
     platform: "facebook",
+    scheduledTime: options.scheduledTime,
+    isScheduled: !!options.scheduledTime,
   };
 }
 

@@ -141,6 +141,9 @@ async function publishToTwitterWithFallback(
 
 /**
  * Facebook publish with image fallback
+ *
+ * Uses native scheduling by default to avoid "Published by [App]" attribution,
+ * which Facebook's algorithm penalizes with reduced reach.
  */
 async function publishToFacebookWithFallback(
   content: string,
@@ -155,8 +158,14 @@ async function publishToFacebookWithFallback(
     const result = await postToFacebook({
       message: fullContent,
       imageUrl: imageUrl || undefined,
+      // Use native scheduling to avoid third-party attribution penalty
+      useNativeScheduling: true,
     });
-    
+
+    if (result.isScheduled) {
+      console.log(`[Publish] Facebook post scheduled for ${result.scheduledTime?.toISOString()} (avoids "Published by" attribution)`);
+    }
+
     return {
       success: true,
       postId: result.id,
@@ -168,6 +177,7 @@ async function publishToFacebookWithFallback(
       try {
         const result = await postToFacebook({
           message: fullContent,
+          useNativeScheduling: true,
         });
         return {
           success: true,

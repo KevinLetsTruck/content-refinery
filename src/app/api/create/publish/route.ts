@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
               }
             }
           } else if (platform === 'facebook') {
-            // Publish to Facebook
+            // Publish to Facebook using native scheduling to avoid "Published by" attribution
             const metaConfig = isMetaConfigured();
             if (!metaConfig.facebook) {
               publishError = 'Facebook not configured';
@@ -161,14 +161,23 @@ export async function POST(request: NextRequest) {
                 const imageUrl = visual?.imageUrl || visual?.gammaUrl;
                 const validImageUrl = imageUrl && !imageUrl.includes('gamma.app') ? imageUrl : undefined;
 
-                console.log('[Publish] Posting to Facebook, text length:', fullText.length);
+                console.log('[Publish] Posting to Facebook with native scheduling, text length:', fullText.length);
                 const result = await postToFacebook({
                   message: fullText,
                   imageUrl: validImageUrl,
+                  // Use native scheduling to avoid "Published by Content Refinery" attribution
+                  // This gives the post better algorithmic reach
+                  useNativeScheduling: true,
                 });
+
                 publishedUrl = result.url;
                 publishSuccess = true;
-                console.log('[Publish] Facebook post published:', result.url);
+
+                if (result.isScheduled) {
+                  console.log(`[Publish] Facebook post scheduled for ${result.scheduledTime?.toISOString()} (avoids third-party attribution)`);
+                } else {
+                  console.log('[Publish] Facebook post published:', result.url);
+                }
               } catch (facebookError) {
                 console.error('[Publish] Facebook error:', facebookError);
                 publishError = facebookError instanceof Error ? facebookError.message : 'Facebook publishing failed';

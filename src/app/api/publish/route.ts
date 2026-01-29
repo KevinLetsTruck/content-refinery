@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Route to appropriate platform
-    let result: { id: string; url: string };
+    let result: { id: string; url: string; scheduledTime?: Date; isScheduled?: boolean };
 
     switch (content.platform) {
       case "twitter":
@@ -148,13 +148,16 @@ export async function POST(request: NextRequest) {
         return badRequest(`Unknown platform: ${content.platform}`);
     }
 
+    // For Facebook with native scheduling, the post goes live after scheduledTime
+    const publishedAt = result.isScheduled ? result.scheduledTime! : new Date();
+
     // Update content with publish info
-    const publishedAt = new Date();
     await prisma.generatedContent.update({
       where: { id: contentId },
       data: {
-        status: "published",
-        publishedAt,
+        status: result.isScheduled ? "scheduled" : "published",
+        publishedAt: result.isScheduled ? null : publishedAt,
+        scheduledFor: result.isScheduled ? result.scheduledTime : null,
         platformPostId: result.id,
         platformPostUrl: result.url,
       }
@@ -192,7 +195,14 @@ export async function POST(request: NextRequest) {
       platform: content.platform,
       postId: result.id,
       postUrl: result.url,
-      publishedAt: new Date().toISOString(),
+      // For Facebook, posts are natively scheduled to avoid "Published by" attribution
+      isScheduled: result.isScheduled || false,
+      scheduledFor: result.isScheduled ? result.scheduledTime?.toISOString() : undefined,
+      publishedAt: result.isScheduled ? undefined : new Date().toISOString(),
+      // Inform the user about native scheduling
+      message: result.isScheduled
+        ? `Post scheduled via Facebook's native scheduler (goes live at ${result.scheduledTime?.toLocaleTimeString()}). This avoids the "Published by" attribution penalty.`
+        : undefined,
     });
 
   } catch (error) {
@@ -264,8 +274,16 @@ async function publishToInstagram(content: ContentInput): Promise<{ id: string; 
 
 /**
  * Publish to Facebook Page
+ *
+ * By default, uses native scheduling (10 min delay) to avoid "Published by [App]" attribution.
+ * This makes posts appear as native Facebook posts with better algorithmic reach.
  */
-async function publishToFacebookPage(content: ContentInput): Promise<{ id: string; url: string }> {
+async function publishToFacebookPage(content: ContentInput): Promise<{
+  id: string;
+  url: string;
+  scheduledTime?: Date;
+  isScheduled?: boolean;
+}> {
   const metaConfig = isMetaConfigured();
 
   if (!metaConfig.facebook) {
@@ -280,8 +298,20 @@ async function publishToFacebookPage(content: ContentInput): Promise<{ id: strin
     5
   );
 
-  const result = await postToFacebook({ message, imageUrl: content.mediaUrl || undefined });
-  return { id: result.id, url: result.url };
+  // Use native scheduling by default to avoid third-party attribution penalty
+  // Posts will go live ~10 minutes after this call
+  const result = await postToFacebook({
+    message,
+    imageUrl: content.mediaUrl || undefined,
+    useNativeScheduling: true, // This avoids "Published by Content Refinery"
+  });
+
+  return {
+    id: result.id,
+    url: result.url,
+    scheduledTime: result.scheduledTime,
+    isScheduled: result.isScheduled,
+  };
 }
 
 /**

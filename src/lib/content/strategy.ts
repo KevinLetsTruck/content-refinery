@@ -56,48 +56,162 @@ export const OBJECTIVE_CTAS: Record<BusinessObjective, string[]> = {
 // CONTENT PILLARS
 // ============================================
 
-export type ContentPillar = 
-  | "proper_human_diet"  // 30% - Primary anchor
-  | "gut_health"         // 25%
-  | "sleep_recovery"     // 20%
-  | "detox_environment"  // 15%
-  | "mental_performance"; // 10%
+// Content category determines the overall theme
+export type ContentCategory =
+  | "health"           // Health coaching content
+  | "business"         // Trucking business & owner-operator advice
+  | "industry"         // Industry news, regulations, trends
+  | "lifestyle"        // Life on the road, driver lifestyle
+  | "fiction";         // TruckTales and storytelling
+
+export type ContentPillar =
+  // Health pillars
+  | "proper_human_diet"
+  | "gut_health"
+  | "sleep_recovery"
+  | "detox_environment"
+  | "mental_performance"
+  // Business pillars
+  | "fuel_efficiency"
+  | "business_operations"
+  | "owner_operator"
+  | "rates_revenue"
+  | "equipment_maintenance"
+  // Industry pillars
+  | "regulations_compliance"
+  | "industry_news"
+  | "market_trends"
+  // Lifestyle pillars
+  | "life_on_road"
+  | "driver_community"
+  // Fiction pillars
+  | "trucktales_fiction";
+
+export const PILLAR_CATEGORY: Record<ContentPillar, ContentCategory> = {
+  proper_human_diet: "health",
+  gut_health: "health",
+  sleep_recovery: "health",
+  detox_environment: "health",
+  mental_performance: "health",
+  fuel_efficiency: "business",
+  business_operations: "business",
+  owner_operator: "business",
+  rates_revenue: "business",
+  equipment_maintenance: "business",
+  regulations_compliance: "industry",
+  industry_news: "industry",
+  market_trends: "industry",
+  life_on_road: "lifestyle",
+  driver_community: "lifestyle",
+  trucktales_fiction: "fiction",
+};
 
 export const PILLAR_CONFIG: Record<ContentPillar, {
   name: string;
-  percentage: number;
+  category: ContentCategory;
   keyMessage: string;
   hashtags: string[];
 }> = {
+  // HEALTH PILLARS
   proper_human_diet: {
     name: "Proper Human Diet",
-    percentage: 30,
+    category: "health",
     keyMessage: "Eat like your ancestors, not like a corporation wants you to",
     hashtags: ["ProperHumanDiet", "RealFood", "AncestralHealth"],
   },
   gut_health: {
-    name: "Gut Health & Candida", 
-    percentage: 25,
+    name: "Gut Health & Candida",
+    category: "health",
     keyMessage: "70% of drivers have Candida. Fix the gut, fix everything.",
     hashtags: ["GutHealth", "Candida", "Microbiome"],
   },
   sleep_recovery: {
     name: "Sleep & Recovery",
-    percentage: 20,
+    category: "health",
     keyMessage: "4.78 hours isn't a badge of honor. It's a death sentence.",
     hashtags: ["DriverSleep", "Recovery", "RestDay"],
   },
   detox_environment: {
     name: "Detox & Environment",
-    percentage: 15,
+    category: "health",
     keyMessage: "Diesel exhaust is in your blood. Here's how to get it out.",
     hashtags: ["Detox", "CleanLiving", "ToxinFree"],
   },
   mental_performance: {
     name: "Mental Performance",
-    percentage: 10,
+    category: "health",
     keyMessage: "Your brain runs on fuel, not willpower.",
     hashtags: ["MentalClarity", "BrainHealth", "Focus"],
+  },
+  // BUSINESS PILLARS
+  fuel_efficiency: {
+    name: "Fuel Efficiency & Mileage",
+    category: "business",
+    keyMessage: "Every MPG matters. Small changes, big savings.",
+    hashtags: ["FuelEfficiency", "MPG", "TruckingBusiness"],
+  },
+  business_operations: {
+    name: "Business Operations",
+    category: "business",
+    keyMessage: "Run your trucking business like a business, not a hobby.",
+    hashtags: ["TruckingBusiness", "SmallBusiness", "Operations"],
+  },
+  owner_operator: {
+    name: "Owner-Operator Success",
+    category: "business",
+    keyMessage: "Be the owner-operator of your business, not just your truck.",
+    hashtags: ["OwnerOperator", "OO", "IndependentDriver"],
+  },
+  rates_revenue: {
+    name: "Rates & Revenue",
+    category: "business",
+    keyMessage: "Know your numbers. Every load, every mile, every expense.",
+    hashtags: ["FreightRates", "TruckingRevenue", "LoadBoard"],
+  },
+  equipment_maintenance: {
+    name: "Equipment & Maintenance",
+    category: "business",
+    keyMessage: "Preventive maintenance is cheaper than roadside breakdowns.",
+    hashtags: ["TruckMaintenance", "PreventiveMaintenance", "Equipment"],
+  },
+  // INDUSTRY PILLARS
+  regulations_compliance: {
+    name: "Regulations & Compliance",
+    category: "industry",
+    keyMessage: "Know the rules before the rules know you.",
+    hashtags: ["FMCSA", "Compliance", "Regulations"],
+  },
+  industry_news: {
+    name: "Industry News",
+    category: "industry",
+    keyMessage: "Stay informed. The industry is always changing.",
+    hashtags: ["TruckingNews", "FreightIndustry", "Transportation"],
+  },
+  market_trends: {
+    name: "Market Trends",
+    category: "industry",
+    keyMessage: "Understanding the market is understanding your future.",
+    hashtags: ["FreightMarket", "TruckingTrends", "MarketAnalysis"],
+  },
+  // LIFESTYLE PILLARS
+  life_on_road: {
+    name: "Life on the Road",
+    category: "lifestyle",
+    keyMessage: "This life isn't for everyone. But for us, there's nothing else.",
+    hashtags: ["TruckLife", "LifeOnTheRoad", "OTR"],
+  },
+  driver_community: {
+    name: "Driver Community",
+    category: "lifestyle",
+    keyMessage: "We're a tribe. We look out for each other.",
+    hashtags: ["TheTribe", "DriverCommunity", "LetsTruck"],
+  },
+  // FICTION PILLARS
+  trucktales_fiction: {
+    name: "TruckTales Fiction",
+    category: "fiction",
+    keyMessage: "Stories from the road that could only happen to us.",
+    hashtags: ["TruckTales", "TruckingFiction", "RoadStories"],
   },
 };
 
@@ -227,65 +341,97 @@ export const HOOK_TEMPLATES: Record<HookType, {
   shocking_stat: {
     formula: "[Number] + [Unexpected context]",
     examples: [
+      // Health
       "70% of drivers are growing fungus in their gut right now",
       "4.78 hours. That's how much sleep the average driver gets.",
-      "Your doctor spent 20 minutes on nutrition in med school. Total.",
+      // Business
+      "The average O/O loses $0.12 per mile and doesn't even know it.",
+      "1 MPG improvement = $10,000/year in your pocket.",
+      "83% of trucking companies fail within the first year.",
     ],
   },
   contrarian: {
     formula: "[Opposite of common belief]",
     examples: [
+      // Health
       "Eating healthy is making you sick",
-      "Exercise won't save you",
       "Your doctor is wrong about cholesterol",
+      // Business
+      "Low rates aren't killing your business. Bad math is.",
+      "That 'good deal' on fuel is costing you money.",
+      "Mega carriers want you to think you can't compete. You can.",
     ],
   },
   challenge: {
     formula: "[Direct accusation/question]",
     examples: [
-      "You're slowly killing yourself and calling it 'just tired'",
+      // Health
       "When's the last time you actually felt good?",
       "Be honest: how many energy drinks today?",
+      // Business
+      "Do you actually know your cost per mile? Real number.",
+      "When's the last time you calculated your true profit?",
+      "How many miles did you run for free last month?",
     ],
   },
   curiosity_gap: {
     formula: "[Incomplete revelation]",
     examples: [
+      // Health
       "The one thing I tell every driver on day one...",
       "What I wish I knew before I started...",
-      "The test your doctor will never order...",
+      // Business
+      "The fuel hack that's saving me $400/month...",
+      "What top O/Os know about rates that you don't...",
+      "The one number that predicts trucking business failure...",
     ],
   },
   story_tease: {
     formula: "[Dramatic moment]",
     examples: [
+      // Health
       "He called me from the hospital. 'You were right.'",
       "She almost lost her CDL over this...",
-      "I made this mistake with a client. Almost killed him.",
+      // Business
+      "He turned down a $3.50/mile load. Here's why he was right.",
+      "Lost $20,000 in one quarter. Here's what I learned.",
+      "The broker lied. I had proof. Here's what happened next.",
     ],
   },
   direct_command: {
     formula: "[Urgent imperative]",
     examples: [
+      // Health
       "Stop eating breakfast. Here's why.",
-      "Put down the energy drink and listen.",
       "Read this before your next DOT physical.",
+      // Business
+      "Stop chasing cheap fuel. Start here instead.",
+      "Calculate your CPM right now. I'll wait.",
+      "Check your tire pressure before your next load. Trust me.",
     ],
   },
   us_vs_them: {
     formula: "[Tribal identification]",
     examples: [
+      // Health
       "Doctors don't understand our life. Let me explain...",
-      "The diet industry wasn't built for drivers.",
       "What works in an office won't work in a cab.",
+      // Business
+      "Brokers don't want you to know this...",
+      "Mega carriers are scared of informed O/Os.",
+      "The freight system is rigged. Here's how to win anyway.",
     ],
   },
   bold_promise: {
     formula: "[Specific outcome]",
     examples: [
+      // Health
       "Do this for 7 days and you'll never go back to energy drinks",
-      "One change. More energy by Friday.",
       "30 days to fix your gut. Here's the protocol.",
+      // Business
+      "Add 0.5 MPG in one week with these 3 changes.",
+      "Double your profit margin in 90 days. Here's the math.",
+      "Never run a load under cost again. Here's how.",
     ],
   },
 };
@@ -485,7 +631,13 @@ export function getRandomCta(objective: BusinessObjective, keyword?: string): st
 }
 
 export function getPillarHashtags(pillar: ContentPillar): string[] {
-  return [...PILLAR_CONFIG[pillar].hashtags, "LetsTruck", "DriverHealth"];
+  const config = PILLAR_CONFIG[pillar];
+  const baseHashtags = [...config.hashtags, "LetsTruck"];
+  // Only add DriverHealth for health-related pillars
+  if (config.category === "health") {
+    baseHashtags.push("DriverHealth");
+  }
+  return baseHashtags;
 }
 
 export function suggestFormula(contentType: string): ContentFormula {

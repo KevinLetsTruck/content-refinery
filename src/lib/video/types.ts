@@ -75,12 +75,16 @@ export interface Scene {
   cameraMovement?: "static" | "slow_pan" | "zoom_in" | "zoom_out" | "tracking";
 }
 
+// Content category for video scripts
+export type ContentCategory = "health" | "business" | "industry" | "lifestyle" | "fiction" | "general";
+
 export interface VideoGenerationRequest {
   topic: string;
   type: VideoType;
   tone?: "educational" | "promotional" | "entertaining" | "inspirational";
   targetDuration?: number;
   sourceContent?: string;
+  contentCategory?: ContentCategory; // Determines voice and visual focus
   style?: {
     visualStyle?: "cinematic" | "documentary" | "energetic" | "calm";
     includeTextOverlays?: boolean;

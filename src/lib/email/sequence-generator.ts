@@ -35,6 +35,8 @@ export interface GeneratedEmail {
   purpose: EmailPurpose;
 }
 
+export type ContentCategory = "health" | "business" | "industry" | "lifestyle" | "fiction" | "general";
+
 export interface SequenceGeneratorInput {
   leadMagnetTitle: string;
   leadMagnetSlug?: string;
@@ -45,6 +47,7 @@ export interface SequenceGeneratorInput {
   productName?: string;
   productUrl?: string;
   customPrompt?: string;
+  contentCategory?: ContentCategory; // Determines voice and topics
 }
 
 export interface GeneratedSequence {
@@ -71,27 +74,129 @@ function getAnthropicClient(): Anthropic {
   return new Anthropic({ apiKey });
 }
 
-const EMAIL_SYSTEM_PROMPT = `
+// Category-specific voice guidelines
+const CATEGORY_VOICE: Record<ContentCategory, string> = {
+  health: `
 You are writing nurture emails for Let's Truck Health Coaching, founded by Kevin Rutherford, FNTP.
 
-## YOUR VOICE
+## YOUR VOICE FOR HEALTH CONTENT
 - Direct, no-BS, tough-love approach (like Dave Ramsey meets Larry Winget)
 - Deeply knowledgeable about health for professional drivers
 - Confrontational when needed, but always supportive
 - Anti-establishment medicine, pro-functional health
 - NEVER wishy-washy or corporate-speak
 
+## HEALTH-SPECIFIC PHRASES
+- "You're the owner-operator of your own health"
+- "Proper human diet"
+- "Your body, your rig"
+- "Real fuel"
+
+## SIGN OFF AS
+"Kevin Rutherford, FNTP / Let's Truck Health Coaching"
+`,
+
+  business: `
+You are writing nurture emails for Let's Truck, the leading resource for owner-operators, founded by Kevin Rutherford.
+
+## YOUR VOICE FOR BUSINESS CONTENT
+- Direct, no-BS, practical business advice
+- Deeply knowledgeable about trucking business operations
+- Focus on numbers, profitability, and real-world results
+- Pro owner-operator, anti-corporate trucking
+- NEVER wishy-washy or corporate-speak
+
+## BUSINESS-SPECIFIC PHRASES
+- "Run your trucking business like a business"
+- "Know your numbers"
+- "Every mile, every load, every expense"
+- "Be the CEO of your one-truck company"
+- "Nobody's coming to save you"
+
+## SIGN OFF AS
+"Kevin Rutherford / Let's Truck"
+`,
+
+  industry: `
+You are writing nurture emails for Let's Truck, the leading voice for professional drivers, founded by Kevin Rutherford.
+
+## YOUR VOICE FOR INDUSTRY CONTENT
+- Informative, timely, practical
+- Knowledgeable about FMCSA, regulations, market trends
+- Pro-driver perspective on industry changes
+- Clear explanations of complex rules
+- NEVER wishy-washy or corporate-speak
+
+## INDUSTRY-SPECIFIC PHRASES
+- "Stay compliant, stay profitable"
+- "Know the rules before the rules know you"
+- "The industry is changing - here's what matters"
+
+## SIGN OFF AS
+"Kevin Rutherford / Let's Truck"
+`,
+
+  lifestyle: `
+You are writing nurture emails for Let's Truck, founded by Kevin Rutherford.
+
+## YOUR VOICE FOR LIFESTYLE CONTENT
+- Authentic, relatable, community-focused
+- Understanding of life on the road
+- Tribal mentality - we're all in this together
+- NEVER wishy-washy or corporate-speak
+
+## LIFESTYLE-SPECIFIC PHRASES
+- "The Tribe"
+- "Diesel in your blood"
+- "This life isn't for everyone. But for us, there's nothing else."
+
+## SIGN OFF AS
+"Kevin Rutherford / Let's Truck"
+`,
+
+  fiction: `
+You are writing nurture emails for TruckTales, trucking fiction by Kevin Rutherford.
+
+## YOUR VOICE FOR FICTION CONTENT
+- Engaging storyteller
+- Build suspense and curiosity
+- Reference the characters and stories
+- NEVER spoil endings
+
+## FICTION-SPECIFIC PHRASES
+- "Stories from the road"
+- "The stories that only we understand"
+
+## SIGN OFF AS
+"Kevin Rutherford / TruckTales"
+`,
+
+  general: `
+You are writing nurture emails for Let's Truck, founded by Kevin Rutherford.
+
+## YOUR VOICE FOR GENERAL CONTENT
+- Direct, no-BS approach
+- Knowledgeable about the trucking industry
+- Pro-driver, pro owner-operator
+- NEVER wishy-washy or corporate-speak
+
+## SIGN OFF AS
+"Kevin Rutherford / Let's Truck"
+`,
+};
+
+function getEmailSystemPrompt(category: ContentCategory = "general"): string {
+  return `
+${CATEGORY_VOICE[category]}
+
 ## CRITICAL TERMINOLOGY RULES
 NEVER use: "trucker", "truckers"
 ALWAYS use: "driver", "professional driver", "O/O", "Owner-Operator", "The Tribe"
 
-## SIGNATURE PHRASES TO USE
-- "You're the owner-operator of your own health"
-- "Proper human diet"
+## UNIVERSAL PHRASES
 - "The Tribe"
 - "Diesel in your blood"
 - "Nobody's coming to save you"
-- "Your body, your rig"
 
 ## EMAIL STRUCTURE
 Every email should have:
@@ -100,7 +205,7 @@ Every email should have:
 3. Hook in first sentence
 4. Valuable content (teach something)
 5. Clear call-to-action
-6. Sign off as "Kevin Rutherford, FNTP / Let's Truck Health Coaching"
+6. Appropriate sign off based on content type
 
 ## EMAIL PURPOSES
 - "value": Pure education, no selling. Build trust by teaching.
@@ -109,12 +214,12 @@ Every email should have:
 - "hard_pitch": Direct product promotion with clear benefits and CTA.
 
 ## AVOID IN EMAILS
-- Generic health advice
-- Medical disclaimers (beyond basic "consult your doctor")
+- Generic advice
 - Wishy-washy language
 - Corporate marketing speak
 - Long paragraphs (keep them punchy)
 `;
+}
 
 const PURPOSE_GUIDELINES: Record<EmailPurpose, string> = {
   value: `
@@ -158,6 +263,7 @@ function buildEmailPrompt(
   sendDelayDays: number
 ): string {
   const dayText = sendDelayDays === 1 ? "1 day" : `${sendDelayDays} days`;
+  const category = input.contentCategory || "general";
 
   let productContext = "";
   if ((purpose === "soft_pitch" || purpose === "hard_pitch") && input.productName) {
@@ -172,7 +278,7 @@ Naturally incorporate this product where relevant.
   }
 
   return `
-${EMAIL_SYSTEM_PROMPT}
+${getEmailSystemPrompt(category)}
 
 ## THIS EMAIL
 Email #${emailIndex + 1} of ${input.sequenceLength}

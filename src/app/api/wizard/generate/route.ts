@@ -32,7 +32,47 @@ async function generatePostContent(params: {
 }) {
   const { platform, phase, day, sourceType, sourceData, contentStrategy, interviewAnswers } = params;
 
-  const prompt = `Generate a single social media post for Let's Truck Health Coaching.
+  // Detect content category from source data and themes
+  const categoryKeywords = {
+    health: ['health', 'nutrition', 'diet', 'gut', 'sleep', 'weight', 'energy', 'supplement'],
+    business: ['fuel', 'mpg', 'mileage', 'profit', 'cost', 'rate', 'revenue', 'business', 'expense'],
+    industry: ['regulation', 'fmcsa', 'dot', 'eld', 'compliance', 'law', 'rule'],
+    lifestyle: ['life', 'road', 'family', 'community', 'tribe'],
+  };
+
+  const allText = `${phase.themes.join(' ')} ${contentStrategy.keyMessages.join(' ')} ${JSON.stringify(sourceData)}`.toLowerCase();
+  let contentCategory = 'general';
+  for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(k => allText.includes(k))) {
+      contentCategory = category;
+      break;
+    }
+  }
+
+  // Category-specific brand voice guidance
+  const categoryVoice: Record<string, string> = {
+    health: `
+- Focus on health, nutrition, and wellness topics
+- Phrases: "proper human diet", "owner-operator of your health", "your body, your rig"
+- Challenge conventional medical establishment`,
+    business: `
+- Focus on business operations, profitability, fuel efficiency
+- Phrases: "know your numbers", "run it like a business", "every mile counts"
+- Pro owner-operator, practical business advice`,
+    industry: `
+- Focus on regulations, compliance, market trends
+- Phrases: "know the rules", "stay compliant, stay profitable"
+- Pro-driver perspective on industry changes`,
+    lifestyle: `
+- Focus on life on the road, driver community
+- Phrases: "The Tribe", "diesel in your blood"
+- Authentic community voice`,
+    general: `
+- Adapt to the specific topic
+- Direct, practical advice`,
+  };
+
+  const prompt = `Generate a single social media post for Let's Truck.
 
 PLATFORM: ${platform}
 PLATFORM GUIDELINES: ${PLATFORM_GUIDELINES[platform] || PLATFORM_GUIDELINES.twitter}
@@ -49,13 +89,14 @@ KEY MESSAGES: ${contentStrategy.keyMessages.join(', ')}
 
 INTERVIEW CONTEXT: ${JSON.stringify(interviewAnswers, null, 2)}
 
+CONTENT CATEGORY: ${contentCategory.toUpperCase()}
+
 BRAND VOICE:
 - Direct, no-BS, confident (Larry Winget inspired)
 - NEVER say "trucker" - use "driver" or "professional driver"
 - NEVER say "truckers" - use "drivers", "O/Os", "owner-operators", "The Tribe"
-- Phrases: "proper human diet", "owner-operator of your health", "diesel in your blood"
-- Challenge conventional medical establishment
 - No wishy-washy qualifiers ("maybe", "might", "could possibly")
+${categoryVoice[contentCategory] || categoryVoice.general}
 
 Generate a post that fits the phase purpose and builds toward the campaign goal.
 
@@ -116,7 +157,7 @@ async function generateEmailContent(params: {
     hard_pitch: 'Direct promotion with strong CTA. Create urgency. Clear benefits and link.',
   };
 
-  const prompt = `Generate an email for Let's Truck Health Coaching nurture sequence.
+  const prompt = `Generate an email for Let's Truck nurture sequence.
 
 EMAIL PURPOSE: ${emailConfig.purpose}
 PURPOSE GUIDELINES: ${purposeGuidelines[emailConfig.purpose] || purposeGuidelines.value}

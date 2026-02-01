@@ -9,6 +9,8 @@ import { FunnelPost } from "./types";
 
 const anthropic = new Anthropic();
 
+export type ContentCategory = "health" | "business" | "industry" | "lifestyle" | "fiction" | "general";
+
 interface GenerateSocialPostsParams {
   funnelName: string;
   topic: string;
@@ -18,22 +20,81 @@ interface GenerateSocialPostsParams {
   durationDays: number;
   keyMessages?: string[];
   leadMagnetTitle?: string;
+  contentCategory?: ContentCategory;
 }
 
-const BRAND_VOICE_PROMPT = `
-BRAND VOICE (Let's Truck / Kevin Rutherford):
-- Authentic, experienced trucker perspective
+// Category-specific brand voice prompts for social content
+const CATEGORY_VOICE_PROMPTS: Record<ContentCategory, string> = {
+  health: `
+BRAND VOICE FOR HEALTH CONTENT (Let's Truck Health Coaching / Kevin Rutherford):
+- Authentic, experienced perspective on driver health
 - Educational but conversational
 - Direct and practical - drivers are busy
 - Use "driver" or "owner-operator" NOT "trucker" (CRITICAL)
-- No CB radio handles or truck nicknames
-- Reference NDK (Nutrient Dense Keto) protocol
-- Focus on actionable advice
-- Challenge mainstream nutrition advice
-- Emphasize: animal-based, 70-80% fats, low carb
-- Anti-establishment, questioning conventional medical wisdom
+- Reference functional nutrition, proper human diet
+- Focus on actionable health advice
+- Challenge mainstream nutrition/medical advice
 - Confident, no-BS tone
-`;
+`,
+
+  business: `
+BRAND VOICE FOR BUSINESS CONTENT (Let's Truck / Kevin Rutherford):
+- Authentic, experienced owner-operator perspective
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker" (CRITICAL)
+- Focus on numbers, profitability, cost per mile
+- Talk about fuel efficiency, rates, business operations
+- Pro independent driver, anti-corporate trucking
+- Confident, no-BS tone
+`,
+
+  industry: `
+BRAND VOICE FOR INDUSTRY CONTENT (Let's Truck / Kevin Rutherford):
+- Informative, timely, practical
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker" (CRITICAL)
+- Focus on regulations, compliance, market trends
+- Pro-driver perspective on industry changes
+- Confident, no-BS tone
+`,
+
+  lifestyle: `
+BRAND VOICE FOR LIFESTYLE CONTENT (Let's Truck / Kevin Rutherford):
+- Authentic, relatable, community-focused
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker" (CRITICAL)
+- Focus on life on the road, driver community
+- Tribal mentality - "The Tribe"
+- Confident, no-BS tone
+`,
+
+  fiction: `
+BRAND VOICE FOR FICTION CONTENT (TruckTales / Kevin Rutherford):
+- Engaging storyteller
+- Build suspense and curiosity
+- Use "driver" or "owner-operator" NOT "trucker" (CRITICAL)
+- Reference characters and stories
+- Create hooks that make people want to read more
+- Don't spoil endings
+`,
+
+  general: `
+BRAND VOICE (Let's Truck / Kevin Rutherford):
+- Authentic, experienced perspective
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker" (CRITICAL)
+- Focus on actionable advice
+- Confident, no-BS tone
+`,
+};
+
+function getBrandVoicePrompt(category: ContentCategory = "general"): string {
+  return CATEGORY_VOICE_PROMPTS[category];
+}
 
 const PLATFORM_GUIDELINES: Record<string, string> = {
   twitter: `Twitter/X:
@@ -104,6 +165,7 @@ export async function generateSocialPosts(
       durationDays,
       keyMessages,
       leadMagnetTitle,
+      contentCategory: params.contentCategory,
     });
     allPosts.push(...posts);
   }
@@ -120,6 +182,7 @@ interface GeneratePlatformPostsParams {
   durationDays: number;
   keyMessages?: string[];
   leadMagnetTitle?: string;
+  contentCategory?: ContentCategory;
 }
 
 async function generatePlatformPosts(
@@ -137,10 +200,11 @@ async function generatePlatformPosts(
   } = params;
 
   const platformGuide = PLATFORM_GUIDELINES[platform] || PLATFORM_GUIDELINES.facebook;
+  const brandVoice = getBrandVoicePrompt(params.contentCategory || "general");
 
   const prompt = `You are writing social media posts for "${funnelName}" - a lead magnet funnel promoting content about ${topic}.
 
-${BRAND_VOICE_PROMPT}
+${brandVoice}
 
 PLATFORM: ${platform.toUpperCase()}
 ${platformGuide}

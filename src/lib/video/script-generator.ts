@@ -11,19 +11,62 @@ import {
   VideoGenerationRequest,
   ScriptGenerationResult,
   VIDEO_TYPE_CONFIG,
+  ContentCategory,
 } from "./types";
 
 const anthropic = new Anthropic();
 
-const SCRIPT_SYSTEM_PROMPT = `You are a professional video scriptwriter specializing in trucking and health content for owner-operators and small fleet owners. You write scripts for Kevin Rutherford's "Let's Truck" brand.
+const CATEGORY_SPECIFIC_GUIDANCE: Record<ContentCategory, string> = {
+  health: `
+CONTENT FOCUS: HEALTH
+- Focus on driver health, nutrition, and wellness
+- Reference functional health approaches
+- Challenge mainstream medical advice where appropriate
+- Signature phrases: "proper human diet", "your body, your rig"
+`,
+  business: `
+CONTENT FOCUS: BUSINESS
+- Focus on trucking business operations, profitability, fuel efficiency
+- Reference specific numbers and metrics (CPM, MPG, rates)
+- Practical business advice for owner-operators
+- Signature phrases: "know your numbers", "run it like a business"
+`,
+  industry: `
+CONTENT FOCUS: INDUSTRY
+- Focus on regulations, compliance, market trends
+- Reference FMCSA, DOT, ELD rules where relevant
+- Pro-driver perspective on industry changes
+`,
+  lifestyle: `
+CONTENT FOCUS: LIFESTYLE
+- Focus on life on the road, driver community
+- Authentic stories and experiences
+- The Tribe mentality
+`,
+  fiction: `
+CONTENT FOCUS: FICTION (TRUCKTALES)
+- Engaging storytelling
+- Build suspense and curiosity
+- Character-driven narratives
+`,
+  general: `
+CONTENT FOCUS: GENERAL
+- Adapt to the specific topic provided
+`,
+};
+
+function getScriptSystemPrompt(category: ContentCategory = "general"): string {
+  return `You are a professional video scriptwriter for Kevin Rutherford's "Let's Truck" brand. Let's Truck covers health coaching, trucking business advice, industry news, and driver lifestyle content.
 
 BRAND VOICE:
-- Authentic, experienced trucker perspective
+- Authentic, experienced perspective
 - Educational but conversational
 - Direct and practical - drivers are busy
 - Use "driver" or "owner-operator" not "trucker"
 - No CB radio handles or truck nicknames
 - Focus on actionable advice
+
+${CATEGORY_SPECIFIC_GUIDANCE[category]}
 
 SCRIPT STRUCTURE:
 1. HOOK (first 3 seconds) - Grab attention immediately with a bold statement or question
@@ -32,8 +75,10 @@ SCRIPT STRUCTURE:
 
 VISUAL STYLE GUIDELINES:
 - Cinematic truck footage (highways, sunsets, truck stops)
-- Close-ups of healthy food, dashboards, hands on wheel
-- Avoid showing specific people's faces (use silhouettes, hands, over-shoulder)
+- Close-ups of dashboards, hands on wheel
+- For health content: healthy food, meal prep
+- For business content: receipts, fuel pumps, load boards
+- Avoid showing specific people's faces (use silhouettes, hands, or over-shoulder)
 - Modern trucks, clean cabs
 - Dramatic lighting (golden hour, night driving, rain)
 
@@ -53,19 +98,24 @@ Return a JSON object with this exact structure:
   ],
   "callToAction": "Final CTA text"
 }`;
+}
 
 export async function generateVideoScript(
   request: VideoGenerationRequest
 ): Promise<ScriptGenerationResult> {
   const config = VIDEO_TYPE_CONFIG[request.type];
   const targetDuration = request.targetDuration || config.defaultDuration;
-  
+
+  // Use content category to customize the system prompt
+  const contentCategory = request.contentCategory || "general";
+  const systemPrompt = getScriptSystemPrompt(contentCategory);
+
   const prompt = buildScriptPrompt(request, config, targetDuration);
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 4096,
-    system: SCRIPT_SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: [{ role: "user", content: prompt }],
   });
 

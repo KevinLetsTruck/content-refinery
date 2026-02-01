@@ -9,6 +9,8 @@ import { FunnelType, FunnelEmail } from "./types";
 
 const anthropic = new Anthropic();
 
+export type ContentCategory = "health" | "business" | "industry" | "lifestyle" | "fiction" | "general";
+
 interface GenerateEmailSequenceParams {
   funnelName: string;
   funnelType: FunnelType;
@@ -17,22 +19,88 @@ interface GenerateEmailSequenceParams {
   landingPageUrl: string;
   emailCount: number;
   keyMessages?: string[];
+  contentCategory?: ContentCategory;
 }
 
-const BRAND_VOICE_PROMPT = `
-BRAND VOICE (Let's Truck / Kevin Rutherford):
-- Authentic, experienced trucker perspective
+// Category-specific brand voice prompts
+const CATEGORY_VOICE_PROMPTS: Record<ContentCategory, string> = {
+  health: `
+BRAND VOICE FOR HEALTH CONTENT (Let's Truck Health Coaching / Kevin Rutherford, FNTP):
+- Authentic, experienced perspective on driver health
 - Educational but conversational
 - Direct and practical - drivers are busy
 - Use "driver" or "owner-operator" NOT "trucker"
-- No CB radio handles or truck nicknames
-- Reference NDK (Nutrient Dense Keto) protocol
-- Focus on actionable advice
-- Challenge mainstream nutrition advice
-- Emphasize: animal-based, 70-80% fats, low carb
+- Reference functional nutrition and proper human diet
+- Focus on actionable health advice
+- Challenge mainstream nutrition/medical advice
 - Anti-establishment, questioning conventional medical wisdom
 - Confident, no-BS tone like Larry Winget
-`;
+- Signature: "Kevin Rutherford, FNTP"
+`,
+
+  business: `
+BRAND VOICE FOR BUSINESS CONTENT (Let's Truck / Kevin Rutherford):
+- Authentic, experienced owner-operator perspective
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker"
+- Focus on numbers, profitability, cost per mile
+- Business fundamentals: revenue, expenses, profit margins
+- Anti-corporate trucking, pro independent driver
+- Confident, no-BS tone like Larry Winget
+- Signature: "Kevin Rutherford"
+`,
+
+  industry: `
+BRAND VOICE FOR INDUSTRY CONTENT (Let's Truck / Kevin Rutherford):
+- Informative, timely, practical
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker"
+- Focus on regulations, compliance, market trends
+- Pro-driver perspective on industry changes
+- Clear explanations of complex rules
+- Confident, no-BS tone
+- Signature: "Kevin Rutherford"
+`,
+
+  lifestyle: `
+BRAND VOICE FOR LIFESTYLE CONTENT (Let's Truck / Kevin Rutherford):
+- Authentic, relatable, community-focused
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker"
+- Focus on life on the road, driver community
+- Tribal mentality - we're all in this together
+- Confident, no-BS tone
+- Signature: "Kevin Rutherford"
+`,
+
+  fiction: `
+BRAND VOICE FOR FICTION CONTENT (TruckTales / Kevin Rutherford):
+- Engaging storyteller
+- Build suspense and curiosity
+- Use "driver" or "owner-operator" NOT "trucker"
+- Reference characters and stories
+- Don't spoil endings
+- Signature: "Kevin Rutherford"
+`,
+
+  general: `
+BRAND VOICE (Let's Truck / Kevin Rutherford):
+- Authentic, experienced perspective
+- Educational but conversational
+- Direct and practical - drivers are busy
+- Use "driver" or "owner-operator" NOT "trucker"
+- Focus on actionable advice
+- Confident, no-BS tone like Larry Winget
+- Signature: "Kevin Rutherford"
+`,
+};
+
+function getBrandVoicePrompt(category: ContentCategory = "general"): string {
+  return CATEGORY_VOICE_PROMPTS[category];
+}
 
 const EMAIL_SEQUENCE_STRUCTURES: Record<FunnelType, string[]> = {
   lead_magnet: [
@@ -80,9 +148,11 @@ export async function generateEmailSequence(
   // Send delays in hours: 0, 24, 48, 72, 96...
   const sendDelays = emailPurposes.map((_, i) => i * 24);
 
+  const brandVoice = getBrandVoicePrompt(params.contentCategory || "general");
+
   const prompt = `You are writing an email nurture sequence for "${funnelName}" - a ${funnelType.replace("_", " ")} funnel.
 
-${BRAND_VOICE_PROMPT}
+${brandVoice}
 
 CONTEXT:
 - Topic: ${topic}

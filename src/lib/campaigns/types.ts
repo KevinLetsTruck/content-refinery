@@ -3,6 +3,9 @@ export type CampaignType = "product_launch" | "educational_series" | "custom";
 
 export type CampaignGoal = "email_signups" | "sales" | "awareness" | "engagement";
 
+// Content categories - determines voice and content pillars
+export type ContentCategory = "health" | "business" | "industry" | "lifestyle" | "fiction" | "general";
+
 export type CampaignStatus = 
   | "draft" 
   | "generating" 
@@ -48,6 +51,8 @@ export interface CreateCampaignInput {
   leadMagnetId?: string; // Link to lead magnet
   // Landing page URL - REQUIRED for posts to include actual links
   landingPageUrl?: string; // Full URL like https://content-refinery.onrender.com/lp/shut-up-digest
+  // Content category - determines voice and content pillars used
+  contentCategory?: ContentCategory; // Defaults to "general" which auto-detects from topic
 }
 
 // AI-generated strategy

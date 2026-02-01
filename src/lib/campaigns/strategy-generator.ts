@@ -3,26 +3,108 @@ import {
   CreateCampaignInput,
   CampaignStrategy,
   CAMPAIGN_TEMPLATES,
+  ContentCategory,
 } from "./types";
 
 const anthropic = new Anthropic();
 
-const STRATEGY_PROMPT = `You are a campaign strategist for Let's Truck, a health coaching brand for professional truck drivers.
-
-BRAND VOICE:
-- Direct, tough-love style like Dave Ramsey
-- No-BS approach like Larry Winget  
-- Clinical credibility (Kevin is an FNTP - Functional Nutritional Therapy Practitioner)
-- Terms: "driver", "professional driver", "O/O", "owner-operator", "The Tribe"
-- NEVER use: "trucker", "truckers"
-- Signature phrases: "You're the owner-operator of your own health", "Proper human diet"
-
-CONTENT PILLARS (use these themes):
+// Category-specific content guidance
+const CATEGORY_CONTENT: Record<ContentCategory, string> = {
+  health: `
+CONTENT FOCUS: HEALTH
+This campaign is about HEALTH topics. Use health-related content pillars:
 - Proper Human Diet (Paleo-based nutrition)
 - Gut Health (70% of drivers have Candida overgrowth)
 - Sleep Optimization (drivers average 4.78 hours/night)
 - Detoxification (diesel exhaust, environmental toxins)
 - Mental Performance (focus, decision-making)
+
+Signature phrases for health content:
+- "You're the owner-operator of your own health"
+- "Proper human diet"
+- "Your body, your rig"
+`,
+
+  business: `
+CONTENT FOCUS: BUSINESS
+This campaign is about TRUCKING BUSINESS topics. Use business-related content pillars:
+- Fuel Efficiency & MPG Optimization
+- Cost Per Mile & Profitability
+- Owner-Operator Business Operations
+- Rates & Revenue Management
+- Equipment & Maintenance
+
+Signature phrases for business content:
+- "Run your trucking business like a business"
+- "Know your numbers"
+- "Every mile, every load, every expense"
+- "Be the CEO of your one-truck company"
+
+HOOK TYPES for business:
+- Shocking stat: "The average O/O loses $0.12 per mile without knowing it"
+- Direct challenge: "Do you actually know your cost per mile?"
+- Question: "How many miles did you run for free last month?"
+- Contrarian: "Low rates aren't killing your business. Bad math is."
+`,
+
+  industry: `
+CONTENT FOCUS: INDUSTRY
+This campaign is about INDUSTRY NEWS/REGULATIONS. Use industry-related content pillars:
+- FMCSA Regulations & Compliance
+- Industry News & Trends
+- Market Analysis & Freight Trends
+- ELD, HOS, and Compliance Updates
+
+Signature phrases for industry content:
+- "Know the rules before the rules know you"
+- "Stay compliant, stay profitable"
+- "The industry is changing - here's what matters"
+`,
+
+  lifestyle: `
+CONTENT FOCUS: LIFESTYLE
+This campaign is about DRIVER LIFESTYLE. Use lifestyle-related content pillars:
+- Life on the Road
+- Driver Community & Support
+- Work-Life Balance
+- The Tribe Mentality
+
+Signature phrases for lifestyle content:
+- "The Tribe"
+- "Diesel in your blood"
+- "This life isn't for everyone. But for us, there's nothing else."
+`,
+
+  fiction: `
+CONTENT FOCUS: FICTION (TRUCKTALES)
+This campaign is about TRUCKTALES FICTION. Use storytelling approaches:
+- Character introductions
+- Story teasers and cliffhangers
+- Behind-the-scenes of story creation
+- Reader engagement and anticipation building
+
+Signature phrases for fiction content:
+- "Stories from the road"
+- "The stories that only we understand"
+`,
+
+  general: `
+CONTENT FOCUS: GENERAL
+Adapt content to the specific topic provided. Use appropriate hooks and CTAs based on the subject matter.
+`,
+};
+
+function buildStrategyPrompt(category: ContentCategory = "general"): string {
+  return `You are a campaign strategist for Let's Truck, founded by Kevin Rutherford.
+
+BRAND VOICE:
+- Direct, tough-love style like Dave Ramsey
+- No-BS approach like Larry Winget
+- Terms: "driver", "professional driver", "O/O", "owner-operator", "The Tribe"
+- NEVER use: "trucker", "truckers"
+- Confident, authoritative tone
+
+${CATEGORY_CONTENT[category]}
 
 PROVEN CONTENT FORMULAS (vary these throughout campaign):
 - Data Bomb: Lead with shocking statistic
@@ -32,14 +114,6 @@ PROVEN CONTENT FORMULAS (vary these throughout campaign):
 - Protocol: Step-by-step actionable guide
 - Myth Buster: Debunk common misconceptions
 - Insider Secret: "What the industry won't tell you"
-
-HOOK TYPES (vary these):
-- Shocking stat: "70% of drivers test positive for..."
-- Direct challenge: "Stop lying to yourself about..."
-- Question: "Why do drivers age faster than..."
-- Contrarian: "Everything you know about X is wrong"
-- Story: "I had a driver tell me..."
-- Authority: "After working with 500+ drivers..."
 
 PLATFORM GUIDELINES:
 - Twitter: Under 280 characters, punchy, use 2-3 relevant hashtags
@@ -54,6 +128,75 @@ CTA TYPES (match to campaign goal):
 - Engagement: "Drop a 🔥 if you agree", "Tell me in the comments"
 
 OUTPUT: Return ONLY valid JSON, no markdown, no explanation.`;
+}
+
+/**
+ * Auto-detect content category from topic/product name
+ */
+function detectContentCategory(topicOrProduct: string): ContentCategory {
+  const text = topicOrProduct.toLowerCase();
+
+  // Health keywords
+  const healthKeywords = [
+    "health", "nutrition", "diet", "gut", "candida", "sleep", "weight",
+    "blood sugar", "insulin", "hormone", "detox", "supplement", "vitamin",
+    "energy", "fatigue", "cardio", "heart", "cholesterol", "a1c", "diabetes",
+    "keto", "paleo", "fasting", "meal", "food", "eat", "probiotic"
+  ];
+
+  // Business keywords
+  const businessKeywords = [
+    "fuel", "mpg", "mileage", "cost per mile", "cpm", "profit", "revenue",
+    "rates", "freight", "load", "broker", "dispatch", "business", "money",
+    "expense", "tax", "accounting", "maintenance", "equipment", "truck",
+    "trailer", "tire", "owner operator", "o/o", "leasing", "authority"
+  ];
+
+  // Industry keywords
+  const industryKeywords = [
+    "fmcsa", "regulation", "compliance", "eld", "hos", "hours of service",
+    "dot", "inspection", "csa", "safety", "law", "rule", "mandate",
+    "industry", "market", "trend", "news", "update", "change"
+  ];
+
+  // Fiction keywords
+  const fictionKeywords = [
+    "story", "trucktales", "fiction", "character", "chapter", "novel",
+    "tale", "narrative", "adventure"
+  ];
+
+  // Lifestyle keywords
+  const lifestyleKeywords = [
+    "life on the road", "home time", "family", "relationship", "loneliness",
+    "community", "tribe", "lifestyle", "living"
+  ];
+
+  // Count matches
+  const counts: Record<ContentCategory, number> = {
+    health: healthKeywords.filter(k => text.includes(k)).length,
+    business: businessKeywords.filter(k => text.includes(k)).length,
+    industry: industryKeywords.filter(k => text.includes(k)).length,
+    fiction: fictionKeywords.filter(k => text.includes(k)).length,
+    lifestyle: lifestyleKeywords.filter(k => text.includes(k)).length,
+    general: 0,
+  };
+
+  // Find category with most matches
+  let maxCategory: ContentCategory = "general";
+  let maxCount = 0;
+
+  for (const [category, count] of Object.entries(counts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      maxCategory = category as ContentCategory;
+    }
+  }
+
+  // Log detection result
+  console.log(`[Campaign] Detected content category: ${maxCategory} (from: "${topicOrProduct.substring(0, 50)}...")`);
+
+  return maxCategory;
+}
 
 export async function generateCampaignStrategy(
   input: CreateCampaignInput
@@ -163,10 +306,14 @@ Return this exact JSON structure:
   ]
 }`;
 
+  // Determine content category from input or detect from topic
+  const contentCategory: ContentCategory = input.contentCategory || detectContentCategory(input.topic || input.productName || "");
+  const strategyPrompt = buildStrategyPrompt(contentCategory);
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 16000,
-    system: STRATEGY_PROMPT,
+    system: strategyPrompt,
     messages: [
       {
         role: "user",
@@ -256,6 +403,7 @@ export async function regeneratePost(
     goal: string;
     productName?: string;
     topic?: string;
+    contentCategory?: ContentCategory;
   },
   post: {
     platform: string;
@@ -268,10 +416,14 @@ export async function regeneratePost(
   hashtags: string[];
   visualPrompt: string;
 }> {
+  // Detect or use provided content category
+  const category = campaignContext.contentCategory || detectContentCategory(campaignContext.topic || campaignContext.productName || "");
+  const strategyPrompt = buildStrategyPrompt(category);
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1000,
-    system: STRATEGY_PROMPT,
+    system: strategyPrompt,
     messages: [
       {
         role: "user",

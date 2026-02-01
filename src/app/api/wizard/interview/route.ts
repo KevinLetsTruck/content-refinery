@@ -7,9 +7,10 @@ const INTERVIEW_FOCUS: Record<string, string> = {
   guide: `
     Focus on:
     - What's the main pain point this guide addresses?
-    - Who is the ideal reader? (new driver, veteran, specific health issue)
+    - Who is the ideal reader? (new driver, veteran, specific issue)
     - What's the one thing you want them to do after downloading?
     - Any specific stat or hook from the guide to lead with?
+    - What category is this guide? (health, business, industry, lifestyle)
   `,
   product: `
     Focus on:
@@ -18,9 +19,11 @@ const INTERVIEW_FOCUS: Record<string, string> = {
     - Any recent success stories with this product?
     - Is there urgency? (limited stock, seasonal, new launch)
     - What makes this different from alternatives?
+    - Is this a health product, business tool, or equipment?
   `,
   episode: `
     Focus on:
+    - What's the main topic of this episode? (health, business, industry news, lifestyle)
     - What's the most controversial or surprising thing from this episode?
     - Was there a memorable caller segment worth highlighting?
     - What action should listeners take after hearing this?
@@ -28,6 +31,7 @@ const INTERVIEW_FOCUS: Record<string, string> = {
   `,
   quick_idea: `
     Focus on:
+    - What's the main category of this content? (health, business/trucking operations, industry news, lifestyle, fiction)
     - What prompted this idea? (recent conversation, news, client question)
     - Who most needs to hear this message?
     - What's the one action you want them to take?
@@ -35,10 +39,20 @@ const INTERVIEW_FOCUS: Record<string, string> = {
   `,
   success_story: `
     Focus on:
+    - What type of success story is this? (health transformation, business success, both)
+
+    For HEALTH success stories:
     - What were the before metrics? (weight, A1C, sleep hours, energy level)
-    - What was the turning point - what made them finally change?
-    - What specifically did they do? (protocol, supplements, lifestyle changes)
+    - What protocol/supplements/lifestyle changes did they follow?
     - What are the after metrics?
+
+    For BUSINESS success stories:
+    - What were the before numbers? (CPM, revenue, profit margin, MPG)
+    - What changes did they make? (operations, rates, fuel strategy)
+    - What are the after numbers?
+
+    For all stories:
+    - What was the turning point - what made them finally change?
     - What does this person do? (O/O, company driver, team driver)
     - Can we use their first name or need an alias?
   `,
@@ -50,6 +64,22 @@ const INTERVIEW_FOCUS: Record<string, string> = {
     - Who's the target reader? (fiction fans, trucking community, or both)
     - What emotion should readers feel?
   `,
+  business: `
+    Focus on:
+    - What specific business topic is this about? (fuel efficiency, rates, operations, equipment)
+    - What problem or opportunity are you addressing?
+    - Do you have specific numbers or results to share?
+    - Who needs this information most? (new O/Os, veterans, company drivers considering O/O)
+    - What action should they take after reading this?
+  `,
+  industry: `
+    Focus on:
+    - What regulation, news, or trend are you covering?
+    - How does this specifically affect drivers? (compliance, costs, operations)
+    - What action should drivers take?
+    - What's your perspective on this change?
+    - Any deadlines or timelines drivers need to know?
+  `,
 };
 
 export async function POST(request: NextRequest) {
@@ -59,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     const focus = INTERVIEW_FOCUS[sourceType] || INTERVIEW_FOCUS.quick_idea;
 
-    const prompt = `You are an AI interviewer helping refine content for Let's Truck Health Coaching.
+    const prompt = `You are an AI interviewer helping refine content for Let's Truck (trucking content spanning health, business, industry news, and lifestyle).
 
 MODE: ${mode} (${mode === 'campaign' ? 'multi-day coordinated campaign' : 'single post or set of platform variations'})
 SOURCE TYPE: ${sourceType}

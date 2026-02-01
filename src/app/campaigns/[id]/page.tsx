@@ -87,6 +87,8 @@ export default function CampaignDetailPage() {
     summary?: { created: number; updated: number; skipped: number; failed: number };
     error?: string;
   } | null>(null);
+  const [landingPageLoading, setLandingPageLoading] = useState(false);
+  const [landingPageError, setLandingPageError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCampaign();
@@ -121,6 +123,30 @@ export default function CampaignDetailPage() {
       console.error(`Failed to ${action}:`, error);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const generateLandingPage = async () => {
+    setLandingPageLoading(true);
+    setLandingPageError(null);
+
+    try {
+      const res = await fetch(`/api/campaigns/${params.id}/regenerate-landing-page`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        await fetchCampaign();
+      } else {
+        setLandingPageError(data.error || "Failed to generate landing page");
+      }
+    } catch (error) {
+      console.error("Failed to generate landing page:", error);
+      setLandingPageError("Network error - please try again");
+    } finally {
+      setLandingPageLoading(false);
     }
   };
 
@@ -361,30 +387,75 @@ export default function CampaignDetailPage() {
         </div>
 
         {/* Landing Page */}
-        {campaign.productUrl && (
-          <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-6 mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold mb-1">Landing Page</h2>
-                <p className="text-sm text-gray-400">
-                  {campaign.productName || "Lead Magnet Landing Page"}
-                </p>
+        <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-6 mb-8">
+          {campaign.productUrl ? (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">Landing Page</h2>
+                  <p className="text-sm text-gray-400">
+                    {campaign.productName || "Lead Magnet Landing Page"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={generateLandingPage}
+                    disabled={landingPageLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#2A2A2A] hover:bg-[#3A3A3A] rounded-lg transition disabled:opacity-50"
+                    title="Regenerate landing page"
+                  >
+                    {landingPageLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Regenerate
+                  </button>
+                  <a
+                    href={campaign.productUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg transition"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View Landing Page
+                  </a>
+                </div>
               </div>
-              <a
-                href={campaign.productUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg transition"
-              >
-                <ExternalLink className="w-4 h-4" />
-                View Landing Page
-              </a>
-            </div>
-            <div className="mt-3 p-3 bg-[#0D0D0D] rounded-lg">
-              <code className="text-sm text-gray-400 break-all">{campaign.productUrl}</code>
-            </div>
-          </div>
-        )}
+              <div className="mt-3 p-3 bg-[#0D0D0D] rounded-lg">
+                <code className="text-sm text-gray-400 break-all">{campaign.productUrl}</code>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">Landing Page</h2>
+                  <p className="text-sm text-gray-400">
+                    No landing page generated yet for this campaign
+                  </p>
+                </div>
+                <button
+                  onClick={generateLandingPage}
+                  disabled={landingPageLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#FF4500] hover:bg-[#FF5722] rounded-lg transition disabled:opacity-50"
+                >
+                  {landingPageLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ExternalLink className="w-4 h-4" />
+                  )}
+                  {landingPageLoading ? "Generating..." : "Generate Landing Page"}
+                </button>
+              </div>
+              {landingPageError && (
+                <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+                  {landingPageError}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {/* Phases */}
         <div className="bg-[#1A1A1A] rounded-lg border border-[#2A2A2A] p-6 mb-8">

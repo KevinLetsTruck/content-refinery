@@ -350,6 +350,42 @@ IMPORTANT: The campaign name, key messages, phases, themes, and hooks MUST ALL r
 Do NOT create generic health content. Create content SPECIFICALLY about the topic the user provided.
 Do NOT create generic health content unless the user specifically asked for health content.
 
+AVAILABLE RESOURCES FOR CTAs (DO NOT MAKE UP RESOURCES THAT DON'T EXIST):
+
+APPS & TOOLS:
+- Let's Truck App (letstruck.com/app) - Has "Fuel Gauges" feature for tracking fuel efficiency and MPG
+- The app is FREE to download
+
+HEALTH SUPPLEMENTS (store.letstruck.com):
+- Cardio Miracle - Nitric oxide support ($109.97)
+- Lyte Balance - Electrolytes ($27)
+- Mind Fuel - C8 MCT Oil ($25)
+- Bio-DK Mulsion - Vitamin D+K ($30.50)
+- Bee-Ome Gold - Functional honey with probiotics ($49.95)
+- Terraflora Deep Zen - Psychobiotic ($59.95)
+
+LEAD MAGNETS/GUIDES (free email signup):
+- "Shut Up and Digest" - Gut health guide
+- "Sleep When You're Dead" - Sleep optimization
+- "Blood Sugar Chaos" - Blood sugar management
+- "The Owner-Operator's Heart" - Cardiovascular health
+- "Gut Check" - Digestive health
+
+PROGRAMS:
+- Health Coaching Program - Personal coaching with Kevin
+- Group Coaching Calls - Weekly calls
+
+PODCASTS:
+- Trucking Business & Beyond (TBB)
+- Destination Health
+- Power Hour
+
+For BUSINESS/FUEL topics, the CTA should be:
+- Download the Let's Truck App (FREE) - mention "Fuel Gauges" feature
+- Or sign up for email list for business tips
+
+DO NOT invent tools like "MPG calculators" or "profit calculators" - use the ACTUAL resources listed above.
+
 Generate a campaign strategy in this exact JSON format:
 {
   "campaignName": "string - compelling campaign name",

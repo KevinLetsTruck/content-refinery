@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/queue - Get content items by status
 export async function GET(request: NextRequest) {
   try {

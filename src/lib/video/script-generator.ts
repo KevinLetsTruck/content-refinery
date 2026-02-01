@@ -13,9 +13,7 @@ import {
   VIDEO_TYPE_CONFIG,
 } from "./types";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const anthropic = new Anthropic();
 
 const SCRIPT_SYSTEM_PROMPT = `You are a professional video scriptwriter specializing in trucking and health content for owner-operators and small fleet owners. You write scripts for Kevin Rutherford's "Let's Truck" brand.
 

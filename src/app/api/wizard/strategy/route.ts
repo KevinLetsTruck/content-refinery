@@ -302,14 +302,19 @@ export async function POST(request: NextRequest) {
     );
 
     // Prefer explicit category from the UI, but fall back to detected
-    const contentCategory = explicitCategory && explicitCategory !== 'general'
+    // Type-safe category selection
+    const validCategories: ContentCategory[] = ["health", "business", "industry", "lifestyle", "fiction", "general"];
+    const isValidCategory = (cat: unknown): cat is ContentCategory =>
+      typeof cat === "string" && validCategories.includes(cat as ContentCategory);
+
+    const contentCategory: ContentCategory = isValidCategory(explicitCategory) && explicitCategory !== 'general'
       ? explicitCategory
       : detectedCategory;
 
     console.log(`[WizardStrategy] Using category: ${contentCategory} (explicit: ${explicitCategory}, detected: ${detectedCategory})`);
     console.log(`[WizardStrategy] sourceContent: "${(sourceContent || '').substring(0, 100)}..."`);
 
-    const categoryVoice = CATEGORY_VOICE[contentCategory] || CATEGORY_VOICE.general;
+    const categoryVoice = CATEGORY_VOICE[contentCategory];
 
     const prompt = `You are Content Refinery's campaign strategist for Let's Truck.
 

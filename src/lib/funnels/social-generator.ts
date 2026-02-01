@@ -180,6 +180,7 @@ Return as JSON array:
 MANDATORY: Every post content field MUST contain the exact URL: ${landingPageUrl}
 Example: "Your genes are 99.9% identical to ancestors from 40,000 years ago. Your body doesn't know what a Dorito is. Get the free guide: ${landingPageUrl}"`;
 
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 4000,

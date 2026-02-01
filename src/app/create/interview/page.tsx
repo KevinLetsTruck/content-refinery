@@ -352,73 +352,75 @@ export default function InterviewPage() {
           <p className="text-xs text-[#666666] mt-2">Stats, stories, or facts that make it credible</p>
         </div>
 
-        {/* Call to Action */}
-        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-sm font-medium text-white">Call to Action</label>
-            <button
-              onClick={() => regenerateField("callToAction")}
-              disabled={regeneratingField === "callToAction"}
-              className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3 h-3 ${regeneratingField === "callToAction" ? "animate-spin" : ""}`} />
-              Regenerate
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {CTA_OPTIONS.map((option) => (
+        {/* Call to Action - Only show for quick_post mode since campaign mode sets CTA in configure step */}
+        {mode === "quick_post" && (
+          <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium text-white">Call to Action</label>
               <button
-                key={option.value}
-                onClick={() => handleFieldChange("callToAction", option.value)}
-                className={`p-3 rounded-lg border text-left transition-colors ${
-                  formData.callToAction === option.value
-                    ? "border-[#FF4500] bg-[#FF4500]/10"
-                    : "border-[#333333] hover:border-[#444444]"
-                }`}
+                onClick={() => regenerateField("callToAction")}
+                disabled={regeneratingField === "callToAction"}
+                className="flex items-center gap-1 text-sm text-[#FF4500] hover:text-[#FF6633] disabled:opacity-50"
               >
-                <p className="text-sm font-medium text-white">{option.label}</p>
-                <p className="text-xs text-[#888888]">{option.description}</p>
+                <RefreshCw className={`w-3 h-3 ${regeneratingField === "callToAction" ? "animate-spin" : ""}`} />
+                Regenerate
               </button>
-            ))}
-          </div>
-
-          {/* Guide Details - shown when download_guide is selected */}
-          {formData.callToAction === "download_guide" && (
-            <div className="mt-4 p-4 bg-[#0D0D0D] rounded-lg border border-[#FF4500]/30 space-y-4">
-              <div className="flex items-center gap-2 text-[#FF4500]">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <span className="text-sm font-medium">Guide Details</span>
-              </div>
-              <p className="text-xs text-[#888888]">
-                We&apos;ll create a landing page for this guide. Fill in the details below.
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-[#888888] mb-1">Guide Title</label>
-                  <input
-                    type="text"
-                    value={formData.guideTitle}
-                    onChange={(e) => handleFieldChange("guideTitle", e.target.value)}
-                    placeholder="e.g., The Driver's Guide to Gut Health"
-                    className="w-full bg-[#1A1A1A] border border-[#333333] rounded-lg px-3 py-2 text-white text-sm placeholder-[#666666] focus:border-[#FF4500] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-[#888888] mb-1">Guide Topic</label>
-                  <input
-                    type="text"
-                    value={formData.guideTopic}
-                    onChange={(e) => handleFieldChange("guideTopic", e.target.value)}
-                    placeholder="e.g., fixing gut health while living on the road"
-                    className="w-full bg-[#1A1A1A] border border-[#333333] rounded-lg px-3 py-2 text-white text-sm placeholder-[#666666] focus:border-[#FF4500] focus:outline-none"
-                  />
-                </div>
-              </div>
             </div>
-          )}
-        </div>
+            <div className="grid grid-cols-2 gap-2">
+              {CTA_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleFieldChange("callToAction", option.value)}
+                  className={`p-3 rounded-lg border text-left transition-colors ${
+                    formData.callToAction === option.value
+                      ? "border-[#FF4500] bg-[#FF4500]/10"
+                      : "border-[#333333] hover:border-[#444444]"
+                  }`}
+                >
+                  <p className="text-sm font-medium text-white">{option.label}</p>
+                  <p className="text-xs text-[#888888]">{option.description}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Guide Details - shown when download_guide is selected */}
+            {formData.callToAction === "download_guide" && (
+              <div className="mt-4 p-4 bg-[#0D0D0D] rounded-lg border border-[#FF4500]/30 space-y-4">
+                <div className="flex items-center gap-2 text-[#FF4500]">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  <span className="text-sm font-medium">Guide Details</span>
+                </div>
+                <p className="text-xs text-[#888888]">
+                  We&apos;ll create a landing page for this guide. Fill in the details below.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-[#888888] mb-1">Guide Title</label>
+                    <input
+                      type="text"
+                      value={formData.guideTitle}
+                      onChange={(e) => handleFieldChange("guideTitle", e.target.value)}
+                      placeholder="e.g., The Driver's Guide to Gut Health"
+                      className="w-full bg-[#1A1A1A] border border-[#333333] rounded-lg px-3 py-2 text-white text-sm placeholder-[#666666] focus:border-[#FF4500] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-[#888888] mb-1">Guide Topic</label>
+                    <input
+                      type="text"
+                      value={formData.guideTopic}
+                      onChange={(e) => handleFieldChange("guideTopic", e.target.value)}
+                      placeholder="e.g., fixing gut health while living on the road"
+                      className="w-full bg-[#1A1A1A] border border-[#333333] rounded-lg px-3 py-2 text-white text-sm placeholder-[#666666] focus:border-[#FF4500] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tone */}
         <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-5">

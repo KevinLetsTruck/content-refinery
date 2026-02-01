@@ -718,7 +718,7 @@ ${article.fullContent}
                   setContent(e.target.value);
                   setSelectedType("quick_idea");
                 }}
-                placeholder="e.g., 70% of drivers have Candida overgrowth"
+                placeholder="e.g., Tips for better fuel mileage, or a stat about driver health"
                 className="flex-1 min-w-0 px-4 py-2 rounded border border-[#333333] bg-[#0D0D0D] text-white text-sm focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500]/20 placeholder-[#888888]"
               />
               <button

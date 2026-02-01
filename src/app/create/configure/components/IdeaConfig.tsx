@@ -117,6 +117,9 @@ export default function IdeaConfig({
           <option value="sleep-protocol">Sleep Protocol</option>
           <option value="blood-sugar-guide">Blood Sugar Guide</option>
           <option value="cardio-protocol">Cardio Protocol</option>
+          <option value="fuel-efficiency-guide">Fuel Efficiency Guide</option>
+          <option value="cost-per-mile-calculator">Cost Per Mile Calculator</option>
+          <option value="owner-operator-checklist">Owner-Operator Business Checklist</option>
         </select>
         <p className="text-sm text-[#666666] mt-1">
           If your idea relates to an existing guide, AI can build the campaign

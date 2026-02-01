@@ -377,7 +377,7 @@ const initialState = {
 
   quickIdeaType: 'idea' as QuickIdeaType,
   contentLength: 'short' as ContentLength,
-  contentCategory: 'health' as ContentCategory,
+  contentCategory: 'general' as ContentCategory,
 
   campaignConfig: { ...DEFAULT_CAMPAIGN_CONFIG },
 

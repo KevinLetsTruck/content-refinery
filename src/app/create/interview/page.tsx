@@ -18,10 +18,10 @@ interface InterviewData {
 }
 
 const AUDIENCE_OPTIONS = [
-  { value: "new_drivers", label: "New Drivers", description: "Drivers new to health optimization" },
-  { value: "experienced_oo", label: "Experienced O/Os", description: "Veterans who've tried things before" },
-  { value: "health_curious", label: "Health-Curious", description: "Starting to think about their health" },
-  { value: "skeptics", label: "Skeptics", description: "Don't believe health changes work for them" },
+  { value: "new_drivers", label: "New Drivers", description: "Newer to the industry, still learning" },
+  { value: "experienced_oo", label: "Experienced O/Os", description: "Veterans with years on the road" },
+  { value: "company_drivers", label: "Company Drivers", description: "Driving for a carrier, not O/O" },
+  { value: "aspiring_oo", label: "Aspiring O/Os", description: "Want to become owner-operators" },
   { value: "all", label: "All Drivers", description: "Broadly applicable to everyone" },
 ];
 

@@ -9,9 +9,17 @@ type ContentCategory = "health" | "business" | "industry" | "lifestyle" | "ficti
 /**
  * Auto-detect content category from topic/product name and interview answers
  */
-function detectContentCategory(sourceData: Record<string, unknown>, interviewAnswers: Record<string, unknown>): ContentCategory {
-  // Combine all text fields for analysis
+function detectContentCategory(
+  sourceData: Record<string, unknown>,
+  interviewAnswers: Record<string, unknown>,
+  sourceContent?: string,
+  sourceTitle?: string
+): ContentCategory {
+  // Combine all text fields for analysis - PRIORITY: sourceContent (what the user actually typed)
   const allText = [
+    sourceContent, // THIS IS THE KEY - the actual text the user entered!
+    sourceTitle,
+    sourceData?.content,
     sourceData?.title,
     sourceData?.topic,
     sourceData?.description,
@@ -21,6 +29,7 @@ function detectContentCategory(sourceData: Record<string, unknown>, interviewAns
     interviewAnswers?.description,
     interviewAnswers?.keyMessage,
     interviewAnswers?.goal,
+    interviewAnswers?.primaryMessage,
   ].filter(Boolean).join(' ').toLowerCase();
 
   // Health keywords
@@ -275,15 +284,32 @@ export async function POST(request: NextRequest) {
     const {
       sourceType,
       sourceData,
+      sourceContent,
+      sourceTitle,
+      contentCategory: explicitCategory,
       campaignConfig,
       interviewAnswers,
     } = body;
 
     const guidelines = SOURCE_TYPE_GUIDELINES[sourceType] || SOURCE_TYPE_GUIDELINES.quick_idea;
 
-    // Detect content category from source data and interview answers
-    const contentCategory = detectContentCategory(sourceData || {}, interviewAnswers || {});
-    const categoryVoice = CATEGORY_VOICE[contentCategory];
+    // Use explicit category if provided (user selected it), otherwise detect from content
+    const detectedCategory = detectContentCategory(
+      sourceData || {},
+      interviewAnswers || {},
+      sourceContent,
+      sourceTitle
+    );
+
+    // Prefer explicit category from the UI, but fall back to detected
+    const contentCategory = explicitCategory && explicitCategory !== 'general'
+      ? explicitCategory
+      : detectedCategory;
+
+    console.log(`[WizardStrategy] Using category: ${contentCategory} (explicit: ${explicitCategory}, detected: ${detectedCategory})`);
+    console.log(`[WizardStrategy] sourceContent: "${(sourceContent || '').substring(0, 100)}..."`);
+
+    const categoryVoice = CATEGORY_VOICE[contentCategory] || CATEGORY_VOICE.general;
 
     const prompt = `You are Content Refinery's campaign strategist for Let's Truck.
 
@@ -291,10 +317,13 @@ CRITICAL: Generate a campaign about the SPECIFIC TOPIC provided below. Do NOT de
 
 Generate a multi-day social media campaign strategy.
 
+USER'S TOPIC/IDEA (THIS IS WHAT THE CAMPAIGN SHOULD BE ABOUT):
+"${sourceContent || sourceTitle || sourceData?.content || sourceData?.title || 'Not specified'}"
+
 SOURCE TYPE: ${sourceType}
 SOURCE DATA: ${JSON.stringify(sourceData, null, 2)}
 
-DETECTED CONTENT CATEGORY: ${contentCategory.toUpperCase()}
+CONTENT CATEGORY: ${contentCategory.toUpperCase()}
 ${categoryVoice}
 
 CAMPAIGN CONFIGURATION:
@@ -312,7 +341,8 @@ ${JSON.stringify(interviewAnswers, null, 2)}
 SOURCE-SPECIFIC GUIDELINES:
 ${guidelines}
 
-IMPORTANT: The campaign name, key messages, phases, themes, and hooks MUST ALL relate to the topic "${sourceData?.topic || sourceData?.idea || sourceData?.title || 'provided'}".
+IMPORTANT: The campaign name, key messages, phases, themes, and hooks MUST ALL relate to the user's topic: "${sourceContent || sourceTitle || sourceData?.content || sourceData?.title || 'provided'}".
+Do NOT create generic health content. Create content SPECIFICALLY about the topic the user provided.
 Do NOT create generic health content unless the user specifically asked for health content.
 
 Generate a campaign strategy in this exact JSON format:

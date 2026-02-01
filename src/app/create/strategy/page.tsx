@@ -10,6 +10,9 @@ export default function StrategyPage() {
   const {
     sourceType,
     sourceData,
+    sourceContent,
+    sourceTitle,
+    contentCategory,
     campaignConfig,
     interviewAnswers,
     contentStrategy,
@@ -34,7 +37,15 @@ export default function StrategyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceType,
-          sourceData,
+          sourceData: {
+            ...sourceData,
+            // Include the actual content the user typed (this is the key field!)
+            content: sourceContent,
+            title: sourceTitle,
+          },
+          sourceContent,
+          sourceTitle,
+          contentCategory,
           campaignConfig,
           interviewAnswers,
         }),
@@ -49,7 +60,7 @@ export default function StrategyPage() {
     } finally {
       setLoading(false);
     }
-  }, [sourceType, sourceData, campaignConfig, interviewAnswers, setContentStrategy]);
+  }, [sourceType, sourceData, sourceContent, sourceTitle, contentCategory, campaignConfig, interviewAnswers, setContentStrategy]);
 
   useEffect(() => {
     if (mode !== "campaign") {

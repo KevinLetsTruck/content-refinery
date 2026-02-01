@@ -3,6 +3,192 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
 
+// Content category type
+type ContentCategory = "health" | "business" | "industry" | "lifestyle" | "fiction" | "general";
+
+/**
+ * Auto-detect content category from topic/product name and interview answers
+ */
+function detectContentCategory(sourceData: Record<string, unknown>, interviewAnswers: Record<string, unknown>): ContentCategory {
+  // Combine all text fields for analysis
+  const allText = [
+    sourceData?.title,
+    sourceData?.topic,
+    sourceData?.description,
+    sourceData?.idea,
+    sourceData?.productName,
+    interviewAnswers?.topic,
+    interviewAnswers?.description,
+    interviewAnswers?.keyMessage,
+    interviewAnswers?.goal,
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  // Health keywords
+  const healthKeywords = [
+    "health", "nutrition", "diet", "gut", "candida", "sleep", "weight",
+    "blood sugar", "insulin", "hormone", "detox", "supplement", "vitamin",
+    "energy", "fatigue", "cardio", "heart", "cholesterol", "a1c", "diabetes",
+    "keto", "paleo", "fasting", "meal", "food", "eat", "probiotic", "wellness"
+  ];
+
+  // Business keywords
+  const businessKeywords = [
+    "fuel", "mpg", "mileage", "cost per mile", "cpm", "profit", "revenue",
+    "rates", "freight", "load", "broker", "dispatch", "business", "money",
+    "expense", "tax", "accounting", "maintenance", "equipment", "truck",
+    "trailer", "tire", "owner operator", "o/o", "leasing", "authority",
+    "operating cost", "deadhead", "lumper", "detention", "invoice", "cash flow"
+  ];
+
+  // Industry keywords
+  const industryKeywords = [
+    "fmcsa", "regulation", "compliance", "eld", "hos", "hours of service",
+    "dot", "inspection", "csa", "safety", "law", "rule", "mandate",
+    "industry", "market", "trend", "news", "update", "change", "policy"
+  ];
+
+  // Fiction keywords (TruckTales)
+  const fictionKeywords = [
+    "story", "trucktales", "fiction", "character", "chapter", "novel",
+    "tale", "narrative", "adventure"
+  ];
+
+  // Lifestyle keywords
+  const lifestyleKeywords = [
+    "life on the road", "home time", "family", "relationship", "loneliness",
+    "community", "tribe", "lifestyle", "living", "road life", "driver life"
+  ];
+
+  // Count matches
+  const counts: Record<ContentCategory, number> = {
+    health: healthKeywords.filter(k => allText.includes(k)).length,
+    business: businessKeywords.filter(k => allText.includes(k)).length,
+    industry: industryKeywords.filter(k => allText.includes(k)).length,
+    fiction: fictionKeywords.filter(k => allText.includes(k)).length,
+    lifestyle: lifestyleKeywords.filter(k => allText.includes(k)).length,
+    general: 0,
+  };
+
+  // Find category with most matches
+  let maxCategory: ContentCategory = "general";
+  let maxCount = 0;
+
+  for (const [category, count] of Object.entries(counts)) {
+    if (count > maxCount) {
+      maxCount = count;
+      maxCategory = category as ContentCategory;
+    }
+  }
+
+  console.log(`[WizardStrategy] Detected category: ${maxCategory} (matches: ${maxCount}) from text: "${allText.substring(0, 100)}..."`);
+
+  return maxCategory;
+}
+
+// Category-specific brand voice and content focus
+const CATEGORY_VOICE: Record<ContentCategory, string> = {
+  health: `
+CONTENT FOCUS: HEALTH & WELLNESS
+This campaign is about HEALTH topics for professional drivers.
+
+BRAND VOICE REQUIREMENTS:
+- Direct, no-BS, confident tone (Larry Winget inspired)
+- NEVER say "trucker" - use "driver" or "professional driver"
+- NEVER say "truckers" - use "drivers", "O/Os", "owner-operators", or "The Tribe"
+- Use phrases like "proper human diet", "owner-operator of your health", "diesel in your blood"
+- Challenge conventional medical establishment
+- No wishy-washy qualifiers
+
+KEY TOPICS:
+- Gut health (70% of drivers have Candida overgrowth)
+- Sleep optimization (drivers average 4.78 hours/night)
+- Proper human diet (Paleo-based nutrition)
+- Detoxification (diesel exhaust exposure)
+- Mental performance and focus
+`,
+
+  business: `
+CONTENT FOCUS: TRUCKING BUSINESS & OPERATIONS
+This campaign is about BUSINESS topics for owner-operators.
+
+BRAND VOICE REQUIREMENTS:
+- Direct, numbers-focused, no-BS business advice
+- NEVER say "trucker" - use "driver", "O/O", or "owner-operator"
+- Use phrases like "know your numbers", "run your trucking business like a business"
+- Focus on profitability, efficiency, and smart business decisions
+- Challenge industry norms that hurt owner-operators
+
+KEY TOPICS:
+- Fuel efficiency and MPG optimization
+- Cost per mile calculations
+- Rate negotiation and revenue management
+- Equipment maintenance and lifecycle costs
+- Business operations and cash flow
+- Tax strategy for owner-operators
+`,
+
+  industry: `
+CONTENT FOCUS: INDUSTRY NEWS & REGULATIONS
+This campaign is about INDUSTRY topics.
+
+BRAND VOICE REQUIREMENTS:
+- Informed, authoritative, driver-advocate perspective
+- NEVER say "trucker" - use "driver" or "professional driver"
+- Challenge regulations that hurt independent drivers
+- Provide actionable compliance information
+
+KEY TOPICS:
+- FMCSA regulations and compliance
+- ELD, HOS, and DOT requirements
+- Market trends and freight outlook
+- Industry changes affecting owner-operators
+`,
+
+  lifestyle: `
+CONTENT FOCUS: DRIVER LIFESTYLE & COMMUNITY
+This campaign is about LIFESTYLE topics.
+
+BRAND VOICE REQUIREMENTS:
+- Relatable, community-focused, supportive
+- NEVER say "trucker" - use "driver" or "professional driver"
+- Use phrases like "The Tribe", "diesel in your blood"
+- Celebrate the driver lifestyle while acknowledging challenges
+
+KEY TOPICS:
+- Life on the road
+- Work-life balance and home time
+- Driver community and support
+- The unique driver lifestyle
+`,
+
+  fiction: `
+CONTENT FOCUS: TRUCKTALES FICTION
+This campaign is about TRUCKTALES stories.
+
+BRAND VOICE REQUIREMENTS:
+- Storyteller voice - engaging, suspenseful, narrative-driven
+- Build anticipation and curiosity
+- NO health or business content in TruckTales campaigns
+- Focus on characters, plot, and emotional hooks
+
+KEY TOPICS:
+- Story teasers and cliffhangers
+- Character introductions
+- Behind-the-scenes of story creation
+- Reader engagement
+`,
+
+  general: `
+CONTENT FOCUS: GENERAL (adapt to topic)
+Adapt voice and content to the specific topic provided.
+
+BRAND VOICE REQUIREMENTS:
+- Direct, confident, authentic
+- NEVER say "trucker" - use "driver" or "professional driver"
+- Match the tone to the subject matter
+`,
+};
+
 const SOURCE_TYPE_GUIDELINES: Record<string, string> = {
   guide: `
     GUIDE CAMPAIGN STRUCTURE (14 days recommended):
@@ -95,12 +281,21 @@ export async function POST(request: NextRequest) {
 
     const guidelines = SOURCE_TYPE_GUIDELINES[sourceType] || SOURCE_TYPE_GUIDELINES.quick_idea;
 
-    const prompt = `You are Content Refinery's campaign strategist for Let's Truck Health Coaching.
+    // Detect content category from source data and interview answers
+    const contentCategory = detectContentCategory(sourceData || {}, interviewAnswers || {});
+    const categoryVoice = CATEGORY_VOICE[contentCategory];
+
+    const prompt = `You are Content Refinery's campaign strategist for Let's Truck.
+
+CRITICAL: Generate a campaign about the SPECIFIC TOPIC provided below. Do NOT default to health content unless the topic is explicitly about health.
 
 Generate a multi-day social media campaign strategy.
 
 SOURCE TYPE: ${sourceType}
 SOURCE DATA: ${JSON.stringify(sourceData, null, 2)}
+
+DETECTED CONTENT CATEGORY: ${contentCategory.toUpperCase()}
+${categoryVoice}
 
 CAMPAIGN CONFIGURATION:
 - Duration: ${campaignConfig.duration} days
@@ -117,13 +312,8 @@ ${JSON.stringify(interviewAnswers, null, 2)}
 SOURCE-SPECIFIC GUIDELINES:
 ${guidelines}
 
-BRAND VOICE REQUIREMENTS:
-- Direct, no-BS, confident tone (Larry Winget inspired)
-- NEVER say "trucker" - use "driver" or "professional driver"
-- NEVER say "truckers" - use "drivers", "O/Os", "owner-operators", or "The Tribe"
-- Use phrases like "proper human diet", "owner-operator of your health", "diesel in your blood"
-- Challenge conventional medical establishment when relevant
-- No wishy-washy qualifiers
+IMPORTANT: The campaign name, key messages, phases, themes, and hooks MUST ALL relate to the topic "${sourceData?.topic || sourceData?.idea || sourceData?.title || 'provided'}".
+Do NOT create generic health content unless the user specifically asked for health content.
 
 Generate a campaign strategy in this exact JSON format:
 {

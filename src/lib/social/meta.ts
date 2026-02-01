@@ -168,7 +168,11 @@ export async function postToFacebook(options: FacebookPostOptions & {
 /**
  * Post photo to Facebook Page
  *
- * Uses native scheduling by default to avoid third-party attribution.
+ * Uses a two-step process for native scheduling to properly avoid "Published by [App]" attribution:
+ * 1. Upload photo as temporary/unpublished
+ * 2. Create scheduled post on /feed with attached_media
+ *
+ * This approach ensures the post appears as a native Facebook post when published.
  */
 async function postFacebookPhoto(options: {
   caption: string;
@@ -181,6 +185,70 @@ async function postFacebookPhoto(options: {
     throw new Error("FACEBOOK_PAGE_ID environment variable is not set");
   }
 
+  // If scheduling, use two-step process to avoid "Published by" attribution
+  if (options.scheduledTime) {
+    // Step 1: Upload photo as temporary (unpublished)
+    const photoUrl = `${GRAPH_API_BASE}/${config.facebookPageId}/photos`;
+    const photoBody = {
+      url: options.imageUrl,
+      published: false,
+      temporary: true,
+      access_token: config.accessToken,
+    };
+
+    const photoResponse = await fetch(photoUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(photoBody),
+    });
+
+    if (!photoResponse.ok) {
+      const error = await photoResponse.json();
+      console.error("[Meta] Facebook photo upload error:", error);
+      throw new Error(`Facebook photo upload error: ${error.error?.message || JSON.stringify(error)}`);
+    }
+
+    const photoData = await photoResponse.json();
+    const photoId = photoData.id;
+
+    console.log(`[Meta] Uploaded temporary photo: ${photoId}`);
+
+    // Step 2: Create scheduled post with attached photo
+    const feedUrl = `${GRAPH_API_BASE}/${config.facebookPageId}/feed`;
+    const feedBody = {
+      message: options.caption,
+      attached_media: JSON.stringify([{ media_fbid: photoId }]),
+      published: false,
+      scheduled_publish_time: Math.floor(options.scheduledTime.getTime() / 1000),
+      access_token: config.accessToken,
+    };
+
+    const feedResponse = await fetch(feedUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(feedBody),
+    });
+
+    if (!feedResponse.ok) {
+      const error = await feedResponse.json();
+      console.error("[Meta] Facebook scheduled post error:", error);
+      throw new Error(`Facebook scheduled post error: ${error.error?.message || JSON.stringify(error)}`);
+    }
+
+    const feedData = await feedResponse.json();
+
+    console.log(`[Meta] Created scheduled post ${feedData.id} for ${options.scheduledTime.toISOString()}`);
+
+    return {
+      id: feedData.id,
+      url: `https://facebook.com/${feedData.id}`,
+      platform: "facebook",
+      scheduledTime: options.scheduledTime,
+      isScheduled: true,
+    };
+  }
+
+  // Immediate posting (will show "Published by" attribution)
   const url = `${GRAPH_API_BASE}/${config.facebookPageId}/photos`;
 
   const body: Record<string, string | boolean | number> = {
@@ -188,12 +256,6 @@ async function postFacebookPhoto(options: {
     url: options.imageUrl,
     access_token: config.accessToken,
   };
-
-  // Use native scheduling to avoid "Published by [App]" attribution
-  if (options.scheduledTime) {
-    body.published = false;
-    body.scheduled_publish_time = Math.floor(options.scheduledTime.getTime() / 1000);
-  }
 
   const response = await fetch(url, {
     method: "POST",
@@ -215,8 +277,8 @@ async function postFacebookPhoto(options: {
     id: data.id,
     url: `https://facebook.com/${config.facebookPageId}/photos/${data.id}`,
     platform: "facebook",
-    scheduledTime: options.scheduledTime,
-    isScheduled: !!options.scheduledTime,
+    scheduledTime: undefined,
+    isScheduled: false,
   };
 }
 

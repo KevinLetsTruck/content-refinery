@@ -89,6 +89,12 @@ export default function CampaignDetailPage() {
   } | null>(null);
   const [landingPageLoading, setLandingPageLoading] = useState(false);
   const [landingPageError, setLandingPageError] = useState<string | null>(null);
+  const [ctaUrlLoading, setCtaUrlLoading] = useState(false);
+  const [ctaUrlResult, setCtaUrlResult] = useState<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchCampaign();
@@ -147,6 +153,44 @@ export default function CampaignDetailPage() {
       setLandingPageError("Network error - please try again");
     } finally {
       setLandingPageLoading(false);
+    }
+  };
+
+  const addCtaUrlToPosts = async () => {
+    if (!campaign?.productUrl) return;
+
+    setCtaUrlLoading(true);
+    setCtaUrlResult(null);
+
+    try {
+      const res = await fetch(`/api/campaigns/${params.id}/add-cta-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ctaUrl: campaign.productUrl }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setCtaUrlResult({
+          success: true,
+          message: data.message,
+        });
+        await fetchCampaign();
+      } else {
+        setCtaUrlResult({
+          success: false,
+          error: data.error || "Failed to add URL to posts",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to add CTA URL:", error);
+      setCtaUrlResult({
+        success: false,
+        error: "Network error - please try again",
+      });
+    } finally {
+      setCtaUrlLoading(false);
     }
   };
 
@@ -422,9 +466,33 @@ export default function CampaignDetailPage() {
                   </a>
                 </div>
               </div>
-              <div className="mt-3 p-3 bg-[#0D0D0D] rounded-lg">
+              <div className="mt-3 p-3 bg-[#0D0D0D] rounded-lg flex items-center justify-between">
                 <code className="text-sm text-gray-400 break-all">{campaign.productUrl}</code>
+                <button
+                  onClick={addCtaUrlToPosts}
+                  disabled={ctaUrlLoading}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded-lg text-sm transition disabled:opacity-50 ml-4 whitespace-nowrap"
+                  title="Add this URL to all posts that have CTA language"
+                >
+                  {ctaUrlLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Edit className="w-4 h-4" />
+                  )}
+                  Add URL to Posts
+                </button>
               </div>
+              {ctaUrlResult && (
+                <div
+                  className={`mt-3 p-3 rounded-lg text-sm ${
+                    ctaUrlResult.success
+                      ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                      : "bg-red-500/10 border border-red-500/30 text-red-400"
+                  }`}
+                >
+                  {ctaUrlResult.success ? ctaUrlResult.message : ctaUrlResult.error}
+                </div>
+              )}
             </>
           ) : (
             <>

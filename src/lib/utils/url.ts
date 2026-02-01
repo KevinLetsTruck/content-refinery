@@ -62,6 +62,36 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
+/**
+ * Check if a URL is a video URL
+ * Used for platforms like TikTok and YouTube that require video content
+ */
+export function isVideoUrl(url: string): boolean {
+  if (!url) return false;
+
+  // Check for common video extensions
+  const videoExtensions = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"];
+  const lowercaseUrl = url.toLowerCase();
+
+  if (videoExtensions.some((ext) => lowercaseUrl.includes(ext))) {
+    return true;
+  }
+
+  // Check for R2/S3 URLs that might serve videos
+  if (url.includes(".r2.cloudflarestorage.com") || url.includes("pub-")) {
+    // Could be video, check extension more carefully
+    const hasVideoExt = videoExtensions.some((ext) => lowercaseUrl.endsWith(ext));
+    if (hasVideoExt) return true;
+  }
+
+  // Known video CDN patterns
+  if (url.includes("cloudflare-stream") || url.includes("stream.mux.com")) {
+    return true;
+  }
+
+  return false;
+}
+
 
 
 

@@ -1,8 +1,10 @@
 import prisma from "@/lib/db/prisma";
 import { postTweet, uploadMedia } from "@/lib/social/twitter";
 import { postToFacebook, postToInstagram } from "@/lib/social/meta";
+import { postToLinkedIn, postWithImage as postLinkedInWithImage } from "@/lib/social/linkedin";
+import { uploadVideo as uploadTikTokVideo } from "@/lib/social/tiktok";
 import { formatForTwitter } from "@/lib/utils/text";
-import { isDirectImageUrl } from "@/lib/utils/url";
+import { isDirectImageUrl, isVideoUrl } from "@/lib/utils/url";
 
 interface PublishResult {
   success: boolean;
@@ -40,6 +42,14 @@ export async function publishCampaignPost(
 
       case "instagram":
         result = await publishToInstagramWithFallback(post.content, post.hashtags, post.visualUrl);
+        break;
+
+      case "linkedin":
+        result = await publishToLinkedInWithFallback(post.content, post.hashtags, post.visualUrl);
+        break;
+
+      case "tiktok":
+        result = await publishToTikTokWithFallback(post.content, post.hashtags, post.visualUrl);
         break;
 
       default:
@@ -233,6 +243,102 @@ async function publishToInstagramWithFallback(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Instagram publish failed",
+    };
+  }
+}
+
+/**
+ * LinkedIn publish with image fallback
+ */
+async function publishToLinkedInWithFallback(
+  content: string,
+  hashtags: string[],
+  imageUrl?: string | null
+): Promise<PublishResult> {
+  // Build content with hashtags (LinkedIn best practice: max 5 hashtags)
+  const hashtagStr = hashtags.slice(0, 5).map((tag) => `#${tag}`).join(" ");
+  const fullContent = hashtags.length > 0 ? `${content}\n\n${hashtagStr}` : content;
+
+  try {
+    // Try with image if it's a direct image URL
+    if (imageUrl && isDirectImageUrl(imageUrl)) {
+      try {
+        const result = await postLinkedInWithImage({
+          text: fullContent,
+          imageUrl,
+        });
+        return {
+          success: true,
+          postId: result.id,
+          url: result.url,
+        };
+      } catch (imageError) {
+        console.warn("[Publish] LinkedIn image upload failed, trying text-only:", imageError);
+      }
+    }
+
+    // Text-only post
+    const result = await postToLinkedIn({ text: fullContent });
+    return {
+      success: true,
+      postId: result.id,
+      url: result.url,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "LinkedIn publish failed",
+    };
+  }
+}
+
+/**
+ * TikTok publish (requires video)
+ */
+async function publishToTikTokWithFallback(
+  content: string,
+  hashtags: string[],
+  videoUrl?: string | null
+): Promise<PublishResult> {
+  // TikTok requires a video
+  if (!videoUrl || !isVideoUrl(videoUrl)) {
+    return {
+      success: false,
+      error: "TikTok requires a video - no video URL provided or invalid format",
+    };
+  }
+
+  // Build caption with hashtags (TikTok loves hashtags)
+  const hashtagStr = hashtags.map((tag) => `#${tag}`).join(" ");
+  const caption = hashtags.length > 0 ? `${content}\n\n${hashtagStr}` : content;
+
+  try {
+    // Download the video first
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+      return {
+        success: false,
+        error: `Failed to download video from URL: ${videoResponse.statusText}`,
+      };
+    }
+    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+
+    const result = await uploadTikTokVideo({
+      title: content.substring(0, 100),
+      caption,
+      videoBuffer,
+      privacyLevel: "PUBLIC_TO_EVERYONE",
+    });
+
+    return {
+      success: true,
+      postId: result.id,
+      url: result.url,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "TikTok publish failed",
     };
   }
 }

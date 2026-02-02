@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Loader2,
   Copy,
+  Facebook,
 } from "lucide-react";
 
 interface CalendarDay {
@@ -204,12 +205,20 @@ export default function CampaignCalendarPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Generate Facebook share URL with pre-filled content
+  const getFacebookShareUrl = (content: string) => {
+    const encodedContent = encodeURIComponent(content);
+    return `https://www.facebook.com/sharer/sharer.php?quote=${encodedContent}`;
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "published":
         return <Check className="w-3 h-3 text-green-500" />;
       case "scheduled":
         return <Clock className="w-3 h-3 text-blue-500" />;
+      case "ready_for_manual":
+        return <Facebook className="w-3 h-3 text-blue-600" />;
       case "failed":
         return <AlertCircle className="w-3 h-3 text-red-500" />;
       default:
@@ -457,6 +466,10 @@ export default function CampaignCalendarPage() {
             Scheduled
           </div>
           <div className="flex items-center gap-2">
+            <Facebook className="w-4 h-4 text-blue-600" />
+            Manual Post
+          </div>
+          <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-red-500" />
             Failed
           </div>
@@ -543,6 +556,24 @@ export default function CampaignCalendarPage() {
                   )}
                   Regenerate
                 </button>
+
+                {/* Facebook Post Button - opens FB with pre-filled content */}
+                {selectedPost.platform === "facebook" && selectedPost.status !== "published" && (
+                  <a
+                    href={getFacebookShareUrl(editedContent)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition ${
+                      selectedPost.status === "ready_for_manual"
+                        ? "bg-blue-600 hover:bg-blue-700 ring-2 ring-blue-400 ring-offset-2 ring-offset-[#1A1A1A]"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                    title="Opens Facebook with content pre-filled for native posting"
+                  >
+                    <Facebook className="w-4 h-4" />
+                    Post to Facebook
+                  </a>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button

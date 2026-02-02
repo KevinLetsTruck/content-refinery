@@ -18,6 +18,8 @@ import {
   Mail,
   Upload,
   ExternalLink,
+  Copy,
+  Facebook,
 } from "lucide-react";
 
 interface EmailDetail {
@@ -95,6 +97,25 @@ export default function CampaignDetailPage() {
     message?: string;
     error?: string;
   } | null>(null);
+  const [copiedPostId, setCopiedPostId] = useState<string | null>(null);
+
+  // Generate Facebook share URL with pre-filled content
+  const getFacebookShareUrl = (content: string) => {
+    // Use Facebook's share dialog with quote parameter
+    const encodedContent = encodeURIComponent(content);
+    return `https://www.facebook.com/sharer/sharer.php?quote=${encodedContent}`;
+  };
+
+  // Copy post content to clipboard
+  const copyToClipboard = async (postId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedPostId(postId);
+      setTimeout(() => setCopiedPostId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   useEffect(() => {
     fetchCampaign();
@@ -691,9 +712,39 @@ export default function CampaignDetailPage() {
                     Day {post.dayNumber} • {new Date(post.scheduledFor).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  {/* Copy button */}
+                  <button
+                    onClick={() => copyToClipboard(post.id, post.content)}
+                    className="p-1.5 hover:bg-[#2A2A2A] rounded transition"
+                    title="Copy content"
+                  >
+                    {copiedPostId === post.id ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-gray-500 hover:text-white" />
+                    )}
+                  </button>
+
+                  {/* Facebook post button - opens FB with pre-filled content */}
+                  {post.platform === "facebook" && post.status !== "published" && (
+                    <a
+                      href={getFacebookShareUrl(post.content)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs transition"
+                      title="Post to Facebook (opens Facebook with content pre-filled)"
+                    >
+                      <Facebook className="w-3 h-3" />
+                      Post
+                    </a>
+                  )}
+
+                  {/* Status indicator */}
                   {post.status === "published" ? (
                     <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : post.status === "ready_for_manual" ? (
+                    <Facebook className="w-4 h-4 text-blue-600" title="Ready for manual posting" />
                   ) : post.status === "failed" ? (
                     <AlertCircle className="w-4 h-4 text-red-500" />
                   ) : (

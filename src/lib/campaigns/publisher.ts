@@ -37,8 +37,21 @@ export async function publishCampaignPost(
         break;
 
       case "facebook":
-        result = await publishToFacebookWithFallback(post.content, post.hashtags, post.visualUrl);
-        break;
+        // Skip API publishing for Facebook - posts via API show "Published by [App]"
+        // which gets ZERO reach. User should post manually via the "Post to Facebook" button.
+        await prisma.campaignPost.update({
+          where: { id: postId },
+          data: {
+            status: "ready_for_manual",
+            error: null,
+          },
+        });
+        console.log(`[Publish] Facebook post ${postId} marked for manual posting (API posts get zero reach)`);
+        return {
+          success: true,
+          postId: postId,
+          url: undefined,
+        };
 
       case "instagram":
         result = await publishToInstagramWithFallback(post.content, post.hashtags, post.visualUrl);

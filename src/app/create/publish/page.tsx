@@ -237,7 +237,7 @@ export default function PublishPage() {
                               // Copy content to clipboard
                               navigator.clipboard.writeText(contentText || "");
                               // Open Facebook page composer
-                              window.open("https://www.facebook.com/LetsTruckHealthCoach", "_blank");
+                              window.open("https://www.facebook.com/LetsTruck/", "_blank");
                             }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
                             title="Copies content & opens Let's Truck FB page"

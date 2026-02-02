@@ -182,8 +182,17 @@ export default function PublishPage() {
         <p className="text-[#888888] mb-8">
           {publishOption === "now" && (
             <>
-              Successfully posted to {successCount} of{" "}
-              {enabledPlatforms.length} platforms.
+              {publishResults.some(r => r.platform === "facebook" && r.success && !r.url) ? (
+                <>
+                  Content ready! Click &quot;Post Now&quot; for Facebook to post natively (better reach).
+                  {successCount > 1 && ` ${successCount - 1} other platform(s) published automatically.`}
+                </>
+              ) : (
+                <>
+                  Successfully posted to {successCount} of{" "}
+                  {enabledPlatforms.length} platforms.
+                </>
+              )}
             </>
           )}
           {publishOption === "schedule" && (
@@ -221,16 +230,31 @@ export default function PublishPage() {
                   <div className="flex items-center gap-2">
                     {result.success ? (
                       <>
-                        <Check className="w-4 h-4 text-[#22C55E]" />
-                        {result.url && (
+                        {result.platform === "facebook" && !result.url ? (
+                          // Facebook ready for manual posting
                           <a
-                            href={result.url}
+                            href={`https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(contentText || "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[#FF4500] hover:underline"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            <Facebook className="w-4 h-4" />
+                            Post Now
                           </a>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 text-[#22C55E]" />
+                            {result.url && (
+                              <a
+                                href={result.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#FF4500] hover:underline"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
+                          </>
                         )}
                       </>
                     ) : (

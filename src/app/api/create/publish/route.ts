@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { postTweet, postThread, uploadMedia, isConfigured as isTwitterConfigured } from '@/lib/social/twitter';
-import { postToFacebook, isConfigured as isMetaConfigured } from '@/lib/social/meta';
+// Facebook API publishing disabled - posts via API get zero reach due to "Published by" attribution
+// import { postToFacebook, isConfigured as isMetaConfigured } from '@/lib/social/meta';
 import { findProductInText } from '@/lib/products/catalog';
 
 interface PublishResult {
@@ -144,45 +145,38 @@ export async function POST(request: NextRequest) {
               }
             }
           } else if (platform === 'facebook') {
-            // Publish to Facebook using native scheduling to avoid "Published by" attribution
-            const metaConfig = isMetaConfigured();
-            if (!metaConfig.facebook) {
-              publishError = 'Facebook not configured';
-            } else {
-              try {
-                // Build the full post text with product link and hashtags
-                const textWithProductLink = addProductLink(text);
-                const hashtagString = hashtags.length > 0
-                  ? '\n\n' + hashtags.map((tag: string) => `#${tag}`).join(' ')
-                  : '';
-                const fullText = textWithProductLink + hashtagString;
+            // SKIP Facebook API publishing entirely - posts via API (even with native scheduling)
+            // show "Published by Content Refinery" or "Scheduled by Content Refinery" attribution
+            // which results in ZERO algorithmic reach.
+            // Instead, mark for manual posting - user will use "Post to Facebook" button
+            // which opens Facebook with pre-filled content for native posting.
 
-                // Get image URL if available
-                const imageUrl = visual?.imageUrl || visual?.gammaUrl;
-                const validImageUrl = imageUrl && !imageUrl.includes('gamma.app') ? imageUrl : undefined;
+            // Build the full post text for manual posting
+            const textWithProductLink = addProductLink(text);
+            const hashtagString = hashtags.length > 0
+              ? '\n\n' + hashtags.map((tag: string) => `#${tag}`).join(' ')
+              : '';
+            const fullText = textWithProductLink + hashtagString;
 
-                console.log('[Publish] Posting to Facebook with native scheduling, text length:', fullText.length);
-                const result = await postToFacebook({
-                  message: fullText,
-                  imageUrl: validImageUrl,
-                  // Use native scheduling to avoid "Published by Content Refinery" attribution
-                  // This gives the post better algorithmic reach
-                  useNativeScheduling: true,
-                });
+            console.log('[Publish] Facebook post saved for manual posting (API posts get zero reach)');
 
-                publishedUrl = result.url;
-                publishSuccess = true;
+            // Update status to ready_for_manual instead of publishing
+            await prisma.generatedContent.update({
+              where: { id: generatedContent.id },
+              data: {
+                status: 'ready_for_manual',
+                text: fullText, // Save the full text with hashtags for easy copy
+              },
+            });
 
-                if (result.isScheduled) {
-                  console.log(`[Publish] Facebook post scheduled for ${result.scheduledTime?.toISOString()} (avoids third-party attribution)`);
-                } else {
-                  console.log('[Publish] Facebook post published:', result.url);
-                }
-              } catch (facebookError) {
-                console.error('[Publish] Facebook error:', facebookError);
-                publishError = facebookError instanceof Error ? facebookError.message : 'Facebook publishing failed';
-              }
-            }
+            results.push({
+              platform,
+              success: true,
+              contentId: generatedContent.id,
+            });
+
+            // Skip the rest of the publish logic for Facebook
+            continue;
           } else {
             // Other platforms not yet implemented
             publishError = `Publishing to ${platform} not yet implemented`;

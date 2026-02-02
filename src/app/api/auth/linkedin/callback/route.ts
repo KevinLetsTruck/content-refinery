@@ -1,94 +1,71 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBaseUrl } from "@/lib/config";
 
 /**
- * GET /api/auth/linkedin/callback
- * Handles OAuth callback from LinkedIn, exchanges code for access token
+ * LinkedIn OAuth Callback
+ *
+ * Exchanges authorization code for access token
+ * After authorizing, displays the token for manual copy to env vars
  */
+
+const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || "77i43rvbnibn78";
+const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+const REDIRECT_URI = process.env.LINKEDIN_REDIRECT_URI ||
+  "https://content-refinery-07dc.onrender.com/api/auth/linkedin/callback";
+
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
+  // Handle errors from LinkedIn
   if (error) {
     return new NextResponse(
-      `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>LinkedIn Auth Error</title>
-          <style>
-            body { font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px; background: #0D0D0D; color: white; }
-            .error { background: #FF4500; padding: 20px; border-radius: 8px; }
-            h1 { color: #FF4500; }
-          </style>
-        </head>
-        <body>
-          <h1>LinkedIn Authorization Failed</h1>
-          <div class="error">
-            <strong>Error:</strong> ${error}<br>
-            <strong>Description:</strong> ${errorDescription || "No description provided"}
-          </div>
-          <p>Please try again or check your LinkedIn app settings.</p>
+      `<html>
+        <head><title>LinkedIn Auth Error</title></head>
+        <body style="font-family: system-ui; padding: 40px; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #dc2626;">LinkedIn Authorization Failed</h1>
+          <p><strong>Error:</strong> ${error}</p>
+          <p><strong>Description:</strong> ${errorDescription || "Unknown error"}</p>
+          <p><a href="/api/auth/linkedin">Try again</a></p>
         </body>
-      </html>
-      `,
+      </html>`,
       { headers: { "Content-Type": "text/html" } }
     );
   }
 
+  // No code means direct access - show info
   if (!code) {
     return new NextResponse(
-      `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>LinkedIn Auth Error</title>
-          <style>
-            body { font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px; background: #0D0D0D; color: white; }
-            .error { background: #FF4500; padding: 20px; border-radius: 8px; }
-          </style>
-        </head>
-        <body>
-          <h1>Missing Authorization Code</h1>
-          <div class="error">No authorization code received from LinkedIn.</div>
+      `<html>
+        <head><title>LinkedIn OAuth Setup</title></head>
+        <body style="font-family: system-ui; padding: 40px; max-width: 600px; margin: 0 auto;">
+          <h1>LinkedIn OAuth Callback</h1>
+          <p>This endpoint receives the OAuth callback from LinkedIn.</p>
+          <p><a href="/api/auth/linkedin">Start LinkedIn Authorization</a></p>
         </body>
-      </html>
-      `,
+      </html>`,
       { headers: { "Content-Type": "text/html" } }
     );
   }
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
-  const baseUrl = getBaseUrl();
-  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || `${baseUrl}/api/auth/linkedin/callback`;
-
-  if (!clientId || !clientSecret) {
+  // Check for client secret
+  if (!LINKEDIN_CLIENT_SECRET) {
     return new NextResponse(
-      `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Configuration Error</title>
-          <style>
-            body { font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px; background: #0D0D0D; color: white; }
-            .error { background: #FF4500; padding: 20px; border-radius: 8px; }
-          </style>
-        </head>
-        <body>
-          <h1>Configuration Error</h1>
-          <div class="error">LINKEDIN_CLIENT_ID or LINKEDIN_CLIENT_SECRET not configured in environment.</div>
+      `<html>
+        <head><title>Configuration Error</title></head>
+        <body style="font-family: system-ui; padding: 40px; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #dc2626;">Configuration Error</h1>
+          <p>LINKEDIN_CLIENT_SECRET environment variable is not set.</p>
+          <p>Add it to your Render environment variables and redeploy.</p>
         </body>
-      </html>
-      `,
+      </html>`,
       { headers: { "Content-Type": "text/html" } }
     );
   }
 
-  // Exchange code for access token
   try {
+    // Exchange code for access token
     const tokenResponse = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
       method: "POST",
       headers: {
@@ -97,130 +74,103 @@ export async function GET(request: NextRequest) {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: redirectUri,
+        redirect_uri: REDIRECT_URI,
+        client_id: LINKEDIN_CLIENT_ID,
+        client_secret: LINKEDIN_CLIENT_SECRET,
       }),
     });
 
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenResponse.ok || tokenData.error) {
-      return new NextResponse(
-        `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Token Exchange Failed</title>
-            <style>
-              body { font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px; background: #0D0D0D; color: white; }
-              .error { background: #FF4500; padding: 20px; border-radius: 8px; }
-              pre { background: #1A1A1A; padding: 15px; border-radius: 4px; overflow-x: auto; }
-            </style>
-          </head>
-          <body>
-            <h1>Token Exchange Failed</h1>
-            <div class="error">
-              <pre>${JSON.stringify(tokenData, null, 2)}</pre>
-            </div>
-          </body>
-        </html>
-        `,
-        { headers: { "Content-Type": "text/html" } }
-      );
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json();
+      throw new Error(JSON.stringify(errorData));
     }
 
+    const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
-    const expiresIn = tokenData.expires_in; // seconds
+    const expiresIn = tokenData.expires_in; // Usually 60 days
 
-    // Get user profile to find their URN (needed for posting)
-    const profileResponse = await fetch("https://api.linkedin.com/v2/me", {
+    // Calculate expiry date
+    const expiryDate = new Date(Date.now() + expiresIn * 1000);
+
+    // Get user info to confirm it worked
+    const userResponse = await fetch("https://api.linkedin.com/v2/me", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
+        "X-Restli-Protocol-Version": "2.0.0",
       },
     });
 
-    const profileData = await profileResponse.json();
-    const userUrn = profileData.id; // This is the person ID
-    const userName = profileData.localizedFirstName ? `${profileData.localizedFirstName} ${profileData.localizedLastName || ''}`.trim() : null;
+    let userName = "Unknown";
+    let userId = "";
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
+      userName = `${userData.localizedFirstName} ${userData.localizedLastName}`;
+      userId = userData.id;
+    }
 
-    // Calculate expiration date
-    const expirationDate = new Date(Date.now() + expiresIn * 1000);
-
+    // Display success page with token
     return new NextResponse(
-      `
-      <!DOCTYPE html>
-      <html>
+      `<html>
         <head>
           <title>LinkedIn Connected!</title>
           <style>
-            body { font-family: system-ui; max-width: 700px; margin: 50px auto; padding: 20px; background: #0D0D0D; color: white; }
-            .success { background: #10B981; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-            .token-box { background: #1A1A1A; padding: 20px; border-radius: 8px; margin: 15px 0; border: 1px solid #2A2A2A; }
-            .token { font-family: monospace; word-break: break-all; background: #0D0D0D; padding: 15px; border-radius: 4px; font-size: 12px; }
-            .copy-btn { background: #FF4500; border: none; color: white; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
-            .copy-btn:hover { background: #FF5722; }
-            h2 { color: #F4A300; margin-top: 30px; }
-            .warning { color: #F4A300; font-size: 14px; }
-            .env-example { background: #1A1A1A; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap; }
+            body { font-family: system-ui; padding: 40px; max-width: 700px; margin: 0 auto; background: #0d0d0d; color: #fff; }
+            h1 { color: #22c55e; }
+            .token-box { background: #1a1a1a; border: 1px solid #333; padding: 20px; border-radius: 8px; margin: 20px 0; word-break: break-all; }
+            .token { font-family: monospace; font-size: 12px; color: #ff4500; }
+            .info { color: #888; margin: 10px 0; }
+            .warning { background: #422006; border: 1px solid #854d0e; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            code { background: #333; padding: 2px 6px; border-radius: 4px; }
+            button { background: #ff4500; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+            button:hover { background: #cc3700; }
           </style>
         </head>
         <body>
-          <div class="success">
-            <h1 style="margin: 0;">✅ LinkedIn Connected!</h1>
-          </div>
-          
-          <p>Successfully authorized <strong>${userName || 'your account'}</strong>.</p>
-          
-          <h2>Your Access Token</h2>
+          <h1>✅ LinkedIn Connected!</h1>
+          <p>Successfully authorized as <strong>${userName}</strong></p>
+
           <div class="token-box">
-            <div class="token" id="token">${accessToken}</div>
-            <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('token').textContent); this.textContent='Copied!';">
+            <p style="margin: 0 0 10px 0; color: #888;">Access Token:</p>
+            <p class="token" id="token">${accessToken}</p>
+            <button onclick="navigator.clipboard.writeText('${accessToken}'); this.textContent='Copied!';">
               Copy Token
             </button>
           </div>
-          <p class="warning">⚠️ Token expires: ${expirationDate.toLocaleDateString()} (${Math.round(expiresIn / 86400)} days)</p>
-          
-          <h2>Your LinkedIn User ID</h2>
-          <div class="token-box">
-            <div class="token" id="urn">${userUrn}</div>
-            <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('urn').textContent); this.textContent='Copied!';">
-              Copy ID
-            </button>
+
+          <div class="info">
+            <p><strong>User ID:</strong> ${userId}</p>
+            <p><strong>Expires:</strong> ${expiryDate.toLocaleDateString()} (${Math.floor(expiresIn / 86400)} days)</p>
           </div>
-          
-          <h2>Add to Environment Variables</h2>
-          <p>Add these to your <code>.env.local</code> file (and Render dashboard for production):</p>
-          <div class="env-example">
-LINKEDIN_ACCESS_TOKEN=${accessToken}
-LINKEDIN_USER_ID=${userUrn}
+
+          <div class="warning">
+            <p><strong>⚠️ Next Step:</strong></p>
+            <p>Add this token to your Render environment variables:</p>
+            <p><code>LINKEDIN_ACCESS_TOKEN</code> = (the token above)</p>
+            <p><code>LINKEDIN_USER_ID</code> = ${userId}</p>
           </div>
-          
-          <p style="margin-top: 30px; color: #888;">You can close this window now.</p>
+
+          <p style="margin-top: 30px;">
+            <a href="https://dashboard.render.com/web/srv-d5cl2uili9vc73co4f5g/env"
+               style="color: #ff4500;" target="_blank">
+              → Open Render Environment Variables
+            </a>
+          </p>
         </body>
-      </html>
-      `,
+      </html>`,
       { headers: { "Content-Type": "text/html" } }
     );
-  } catch (err) {
-    console.error("LinkedIn OAuth error:", err);
+  } catch (error) {
+    console.error("[LinkedIn] OAuth error:", error);
     return new NextResponse(
-      `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Error</title>
-          <style>
-            body { font-family: system-ui; max-width: 600px; margin: 50px auto; padding: 20px; background: #0D0D0D; color: white; }
-            .error { background: #FF4500; padding: 20px; border-radius: 8px; }
-          </style>
-        </head>
-        <body>
-          <h1>Error</h1>
-          <div class="error">${err instanceof Error ? err.message : "Unknown error occurred"}</div>
+      `<html>
+        <head><title>OAuth Error</title></head>
+        <body style="font-family: system-ui; padding: 40px; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #dc2626;">OAuth Error</h1>
+          <p>Failed to exchange code for access token.</p>
+          <pre style="background: #f5f5f5; padding: 15px; overflow: auto;">${error instanceof Error ? error.message : String(error)}</pre>
+          <p><a href="/api/auth/linkedin">Try again</a></p>
         </body>
-      </html>
-      `,
+      </html>`,
       { headers: { "Content-Type": "text/html" } }
     );
   }

@@ -184,7 +184,7 @@ export default function PublishPage() {
             <>
               {publishResults.some(r => r.platform === "facebook" && r.success && !r.url) ? (
                 <>
-                  Content ready! Click &quot;Post Now&quot; for Facebook to post natively (better reach).
+                  Click &quot;Copy &amp; Open FB&quot; to post to Facebook (content copied to clipboard, just paste).
                   {successCount > 1 && ` ${successCount - 1} other platform(s) published automatically.`}
                 </>
               ) : (
@@ -231,16 +231,20 @@ export default function PublishPage() {
                     {result.success ? (
                       <>
                         {result.platform === "facebook" && !result.url ? (
-                          // Facebook ready for manual posting
-                          <a
-                            href={`https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(contentText || "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          // Facebook ready for manual posting - open composer
+                          <button
+                            onClick={() => {
+                              // Copy content to clipboard
+                              navigator.clipboard.writeText(contentText || "");
+                              // Open Facebook page composer
+                              window.open("https://www.facebook.com/LetsTruckHealthCoach", "_blank");
+                            }}
                             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                            title="Copies content & opens Let's Truck FB page"
                           >
                             <Facebook className="w-4 h-4" />
-                            Post Now
-                          </a>
+                            Copy & Open FB
+                          </button>
                         ) : (
                           <>
                             <Check className="w-4 h-4 text-[#22C55E]" />

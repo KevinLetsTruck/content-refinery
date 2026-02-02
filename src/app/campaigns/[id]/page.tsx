@@ -744,7 +744,9 @@ export default function CampaignDetailPage() {
                   {post.status === "published" ? (
                     <CheckCircle className="w-4 h-4 text-green-500" />
                   ) : post.status === "ready_for_manual" ? (
-                    <Facebook className="w-4 h-4 text-blue-600" title="Ready for manual posting" />
+                    <span title="Ready for manual posting">
+                      <Facebook className="w-4 h-4 text-blue-600" />
+                    </span>
                   ) : post.status === "failed" ? (
                     <AlertCircle className="w-4 h-4 text-red-500" />
                   ) : (

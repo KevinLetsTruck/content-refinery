@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { postTweet, postThread, uploadMedia, isConfigured as isTwitterConfigured } from '@/lib/social/twitter';
+import { postToLinkedIn, postWithImage as postLinkedInWithImage, isConfigured as isLinkedInConfigured } from '@/lib/social/linkedin';
 // Facebook API publishing disabled - posts via API get zero reach due to "Published by" attribution
 // import { postToFacebook, isConfigured as isMetaConfigured } from '@/lib/social/meta';
 import { findProductInText } from '@/lib/products/catalog';
@@ -177,6 +178,42 @@ export async function POST(request: NextRequest) {
 
             // Skip the rest of the publish logic for Facebook
             continue;
+          } else if (platform === 'linkedin') {
+            // Publish to LinkedIn
+            if (!isLinkedInConfigured()) {
+              publishError = 'LinkedIn not configured';
+            } else {
+              try {
+                // Build the full post text with product link and hashtags
+                const textWithProductLink = addProductLink(text);
+                const hashtagString = hashtags.length > 0
+                  ? '\n\n' + hashtags.map((tag: string) => `#${tag}`).join(' ')
+                  : '';
+                const fullText = textWithProductLink + hashtagString;
+
+                // Check if we have an image
+                const imageUrl = visual?.imageUrl || visual?.gammaUrl;
+
+                let result;
+                if (imageUrl && !imageUrl.includes('gamma.app')) {
+                  console.log('[Publish] Posting to LinkedIn with image:', imageUrl);
+                  result = await postLinkedInWithImage({
+                    text: fullText,
+                    imageUrl,
+                  });
+                } else {
+                  console.log('[Publish] Posting to LinkedIn, length:', fullText.length);
+                  result = await postToLinkedIn({ text: fullText });
+                }
+
+                publishedUrl = result.url;
+                publishSuccess = true;
+                console.log('[Publish] LinkedIn posted:', result.url);
+              } catch (linkedinError) {
+                console.error('[Publish] LinkedIn error:', linkedinError);
+                publishError = linkedinError instanceof Error ? linkedinError.message : 'LinkedIn publishing failed';
+              }
+            }
           } else {
             // Other platforms not yet implemented
             publishError = `Publishing to ${platform} not yet implemented`;

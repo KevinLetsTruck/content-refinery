@@ -229,6 +229,14 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 1. Create the campaign record
+    // Start date should be TOMORROW to avoid scheduling posts in the past
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1);
+    startDate.setHours(0, 0, 0, 0); // Start of tomorrow
+
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + campaignConfig.duration);
+
     const campaign = await prisma.campaign.create({
       data: {
         name: contentStrategy.campaignName,
@@ -241,8 +249,8 @@ export async function POST(request: NextRequest) {
         campaignStyle: campaignConfig.style,
         ctaType: campaignConfig.ctaType,
         ctaUrl: campaignConfig.ctaUrl,
-        startDate: new Date(),
-        endDate: new Date(Date.now() + campaignConfig.duration * 24 * 60 * 60 * 1000),
+        startDate: startDate,
+        endDate: endDate,
         durationDays: campaignConfig.duration,
         platforms: campaignConfig.platforms,
         postsPerDayTwitter: campaignConfig.frequency.twitter || 1,
@@ -303,9 +311,10 @@ export async function POST(request: NextRequest) {
               interviewAnswers: interviewAnswers || {},
             });
 
-            const scheduledFor = new Date();
-            scheduledFor.setDate(scheduledFor.getDate() + day - 1);
-            scheduledFor.setHours(9 + (postNum * 4)); // Space posts throughout day
+            // Schedule from the campaign start date (tomorrow), not from now
+            const scheduledFor = new Date(startDate);
+            scheduledFor.setDate(scheduledFor.getDate() + day - 1); // Day 1 = startDate, Day 2 = startDate + 1, etc.
+            scheduledFor.setHours(5 + (postNum * 4), 0, 0, 0); // 5am, 9am, 1pm, 5pm (UTC) - adjust for posting times
 
             await prisma.campaignPost.create({
               data: {

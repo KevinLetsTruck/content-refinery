@@ -93,19 +93,34 @@ export async function GET(request: NextRequest) {
     const expiryDate = new Date(Date.now() + expiresIn * 1000);
 
     // Get user info to confirm it worked
-    const userResponse = await fetch("https://api.linkedin.com/v2/me", {
+    // Try /userinfo first (works with openid scope)
+    let userName = "Unknown";
+    let userId = "";
+
+    const userinfoResponse = await fetch("https://api.linkedin.com/v2/userinfo", {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "X-Restli-Protocol-Version": "2.0.0",
       },
     });
 
-    let userName = "Unknown";
-    let userId = "";
-    if (userResponse.ok) {
-      const userData = await userResponse.json();
-      userName = `${userData.localizedFirstName} ${userData.localizedLastName}`;
-      userId = userData.id;
+    if (userinfoResponse.ok) {
+      const userinfoData = await userinfoResponse.json();
+      userName = userinfoData.name || `${userinfoData.given_name} ${userinfoData.family_name}`;
+      userId = userinfoData.sub; // This is the LinkedIn member ID
+    } else {
+      // Fallback to /me endpoint (works with r_liteprofile scope)
+      const userResponse = await fetch("https://api.linkedin.com/v2/me", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        userName = `${userData.localizedFirstName} ${userData.localizedLastName}`;
+        userId = userData.id;
+      }
     }
 
     // Display success page with token

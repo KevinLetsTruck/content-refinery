@@ -19,6 +19,25 @@
 
 const GRAPH_API_VERSION = "v18.0";
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
+// Instagram API with Instagram Login uses a different base URL (no version in path)
+const INSTAGRAM_GRAPH_API_BASE = `https://graph.instagram.com`;
+
+/**
+ * Determine if we're using Instagram Login tokens (vs Facebook Login tokens)
+ * Instagram Login tokens require the Instagram Graph API endpoint
+ */
+function isUsingInstagramLoginToken(): boolean {
+  return !!process.env.INSTAGRAM_ACCESS_TOKEN;
+}
+
+/**
+ * Get the appropriate API base for Instagram operations
+ * Uses graph.instagram.com for Instagram Login tokens
+ * Uses graph.facebook.com for Facebook Login tokens
+ */
+function getInstagramApiBase(): string {
+  return isUsingInstagramLoginToken() ? INSTAGRAM_GRAPH_API_BASE : GRAPH_API_BASE;
+}
 
 interface MetaConfig {
   accessToken: string;
@@ -328,9 +347,13 @@ async function postFacebookPhoto(options: {
  */
 export async function postToInstagram(options: InstagramPostOptions): Promise<PostResult> {
   const config = getInstagramConfig();
+  const apiBase = getInstagramApiBase();
+
+  console.log(`[Instagram] Using API base: ${apiBase}`);
+  console.log(`[Instagram] Account ID: ${config.instagramAccountId}`);
 
   // Step 1: Create media container
-  const containerUrl = `${GRAPH_API_BASE}/${config.instagramAccountId}/media`;
+  const containerUrl = `${apiBase}/${config.instagramAccountId}/media`;
 
   const containerBody: Record<string, string> = {
     caption: options.caption,
@@ -367,7 +390,7 @@ export async function postToInstagram(options: InstagramPostOptions): Promise<Po
   }
 
   // Step 3: Publish the container
-  const publishUrl = `${GRAPH_API_BASE}/${config.instagramAccountId}/media_publish`;
+  const publishUrl = `${apiBase}/${config.instagramAccountId}/media_publish`;
   
   const publishResponse = await fetch(publishUrl, {
     method: "POST",
@@ -403,11 +426,12 @@ export async function postToInstagram(options: InstagramPostOptions): Promise<Po
  * Wait for Instagram media container to be ready (for videos)
  */
 async function waitForMediaReady(containerId: string, accessToken: string): Promise<void> {
+  const apiBase = getInstagramApiBase();
   const maxAttempts = 30;
   const delayMs = 5000;
 
   for (let i = 0; i < maxAttempts; i++) {
-    const statusUrl = `${GRAPH_API_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`;
+    const statusUrl = `${apiBase}/${containerId}?fields=status_code&access_token=${accessToken}`;
     
     const response = await fetch(statusUrl);
     const data = await response.json();
@@ -430,7 +454,8 @@ async function waitForMediaReady(containerId: string, accessToken: string): Prom
  * Get Instagram post permalink
  */
 async function getInstagramPermalink(mediaId: string, accessToken: string): Promise<string> {
-  const url = `${GRAPH_API_BASE}/${mediaId}?fields=permalink&access_token=${accessToken}`;
+  const apiBase = getInstagramApiBase();
+  const url = `${apiBase}/${mediaId}?fields=permalink&access_token=${accessToken}`;
   
   const response = await fetch(url);
   
@@ -451,6 +476,7 @@ export async function postInstagramCarousel(options: {
   imageUrls: string[];
 }): Promise<PostResult> {
   const config = getInstagramConfig();
+  const apiBase = getInstagramApiBase();
 
   if (options.imageUrls.length < 2 || options.imageUrls.length > 10) {
     throw new Error("Carousel requires 2-10 images");
@@ -458,9 +484,9 @@ export async function postInstagramCarousel(options: {
 
   // Step 1: Create containers for each image
   const childContainerIds: string[] = [];
-  
+
   for (const imageUrl of options.imageUrls) {
-    const containerUrl = `${GRAPH_API_BASE}/${config.instagramAccountId}/media`;
+    const containerUrl = `${apiBase}/${config.instagramAccountId}/media`;
     
     const response = await fetch(containerUrl, {
       method: "POST",
@@ -482,7 +508,7 @@ export async function postInstagramCarousel(options: {
   }
 
   // Step 2: Create carousel container
-  const carouselUrl = `${GRAPH_API_BASE}/${config.instagramAccountId}/media`;
+  const carouselUrl = `${apiBase}/${config.instagramAccountId}/media`;
   
   const carouselResponse = await fetch(carouselUrl, {
     method: "POST",
@@ -504,7 +530,7 @@ export async function postInstagramCarousel(options: {
   const carouselId = carouselData.id;
 
   // Step 3: Publish carousel
-  const publishUrl = `${GRAPH_API_BASE}/${config.instagramAccountId}/media_publish`;
+  const publishUrl = `${apiBase}/${config.instagramAccountId}/media_publish`;
   
   const publishResponse = await fetch(publishUrl, {
     method: "POST",
@@ -593,8 +619,9 @@ export async function getInstagramAccountInfo(): Promise<{
   followers: number;
 }> {
   const config = getInstagramConfig();
+  const apiBase = getInstagramApiBase();
 
-  const url = `${GRAPH_API_BASE}/${config.instagramAccountId}?fields=id,username,followers_count&access_token=${config.accessToken}`;
+  const url = `${apiBase}/${config.instagramAccountId}?fields=id,username,followers_count&access_token=${config.accessToken}`;
   
   const response = await fetch(url);
   

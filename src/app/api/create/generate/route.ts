@@ -21,8 +21,8 @@ const CTA_URLS: Record<string, { url: string; label: string }> = {
     label: 'Get the free guide'
   },
   join_community: {
-    url: 'https://letstruck.com/tribe',
-    label: 'Join at letstruck.com/tribe'
+    url: 'https://letstrucktribe.com',
+    label: 'Join at letstrucktribe.com'
   },
   awareness: {
     url: '',

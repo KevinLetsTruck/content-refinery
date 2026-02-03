@@ -1,13 +1,20 @@
 /**
  * Meta API Client for Content Refinery
- * 
+ *
  * Handles publishing to Facebook Pages and Instagram Business accounts
  * Uses the Meta Graph API v18.0
- * 
- * Required environment variables:
- * - META_ACCESS_TOKEN (Page Access Token with pages_manage_posts, instagram_content_publish)
- * - FACEBOOK_PAGE_ID (Your Facebook Page ID)
- * - INSTAGRAM_BUSINESS_ACCOUNT_ID (Your IG Business Account ID, linked to the FB Page)
+ *
+ * Environment variables:
+ * For Facebook:
+ *   - META_ACCESS_TOKEN (Page Access Token with pages_manage_posts)
+ *   - FACEBOOK_PAGE_ID (Your Facebook Page ID)
+ *
+ * For Instagram (using Instagram API with Instagram Login):
+ *   - INSTAGRAM_ACCESS_TOKEN (Instagram user access token)
+ *   - INSTAGRAM_BUSINESS_ACCOUNT_ID (Your IG Business Account ID)
+ *
+ * Note: Instagram can use either META_ACCESS_TOKEN (if using Facebook Login flow)
+ * or INSTAGRAM_ACCESS_TOKEN (if using Instagram Login flow)
  */
 
 const GRAPH_API_VERSION = "v18.0";
@@ -17,6 +24,11 @@ interface MetaConfig {
   accessToken: string;
   facebookPageId?: string;
   instagramAccountId?: string;
+}
+
+interface InstagramConfig {
+  accessToken: string;
+  instagramAccountId: string;
 }
 
 interface PostResult {
@@ -60,6 +72,28 @@ function getConfig(): MetaConfig {
   return {
     accessToken,
     facebookPageId,
+    instagramAccountId,
+  };
+}
+
+/**
+ * Get Instagram-specific config (supports both Instagram Login and Facebook Login tokens)
+ */
+function getInstagramConfig(): InstagramConfig {
+  // Try Instagram-specific token first, fall back to Meta token
+  const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
+  const instagramAccountId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+
+  if (!accessToken) {
+    throw new Error("INSTAGRAM_ACCESS_TOKEN or META_ACCESS_TOKEN environment variable is not set");
+  }
+
+  if (!instagramAccountId) {
+    throw new Error("INSTAGRAM_BUSINESS_ACCOUNT_ID environment variable is not set");
+  }
+
+  return {
+    accessToken,
     instagramAccountId,
   };
 }
@@ -284,21 +318,20 @@ async function postFacebookPhoto(options: {
 
 /**
  * Post to Instagram Business Account
- * 
+ *
  * Instagram posting is a 2-step process:
  * 1. Create a media container
  * 2. Publish the container
+ *
+ * Supports both Instagram Login tokens (INSTAGRAM_ACCESS_TOKEN) and
+ * Facebook Login tokens (META_ACCESS_TOKEN)
  */
 export async function postToInstagram(options: InstagramPostOptions): Promise<PostResult> {
-  const config = getConfig();
-  
-  if (!config.instagramAccountId) {
-    throw new Error("INSTAGRAM_BUSINESS_ACCOUNT_ID environment variable is not set");
-  }
+  const config = getInstagramConfig();
 
   // Step 1: Create media container
   const containerUrl = `${GRAPH_API_BASE}/${config.instagramAccountId}/media`;
-  
+
   const containerBody: Record<string, string> = {
     caption: options.caption,
     access_token: config.accessToken,
@@ -417,11 +450,7 @@ export async function postInstagramCarousel(options: {
   caption: string;
   imageUrls: string[];
 }): Promise<PostResult> {
-  const config = getConfig();
-  
-  if (!config.instagramAccountId) {
-    throw new Error("INSTAGRAM_BUSINESS_ACCOUNT_ID environment variable is not set");
-  }
+  const config = getInstagramConfig();
 
   if (options.imageUrls.length < 2 || options.imageUrls.length > 10) {
     throw new Error("Carousel requires 2-10 images");
@@ -506,15 +535,21 @@ export async function postInstagramCarousel(options: {
  * Check if Meta credentials are configured
  */
 export function isConfigured(): { facebook: boolean; instagram: boolean } {
-  try {
-    const config = getConfig();
-    return {
-      facebook: !!config.facebookPageId,
-      instagram: !!config.instagramAccountId,
-    };
-  } catch {
-    return { facebook: false, instagram: false };
-  }
+  // Check Facebook (requires META_ACCESS_TOKEN + FACEBOOK_PAGE_ID)
+  const facebookConfigured =
+    !!process.env.META_ACCESS_TOKEN && !!process.env.FACEBOOK_PAGE_ID;
+
+  // Check Instagram (requires token + account ID)
+  // Supports both INSTAGRAM_ACCESS_TOKEN and META_ACCESS_TOKEN
+  const instagramToken =
+    process.env.INSTAGRAM_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN;
+  const instagramConfigured =
+    !!instagramToken && !!process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+
+  return {
+    facebook: facebookConfigured,
+    instagram: instagramConfigured,
+  };
 }
 
 /**
@@ -557,11 +592,7 @@ export async function getInstagramAccountInfo(): Promise<{
   username: string;
   followers: number;
 }> {
-  const config = getConfig();
-  
-  if (!config.instagramAccountId) {
-    throw new Error("INSTAGRAM_BUSINESS_ACCOUNT_ID not set");
-  }
+  const config = getInstagramConfig();
 
   const url = `${GRAPH_API_BASE}/${config.instagramAccountId}?fields=id,username,followers_count&access_token=${config.accessToken}`;
   

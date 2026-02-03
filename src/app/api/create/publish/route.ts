@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { postTweet, postThread, uploadMedia, isConfigured as isTwitterConfigured } from '@/lib/social/twitter';
 import { postToLinkedIn, postWithImage as postLinkedInWithImage, isConfigured as isLinkedInConfigured } from '@/lib/social/linkedin';
-// Facebook API publishing disabled - posts via API get zero reach due to "Published by" attribution
-// import { postToFacebook, isConfigured as isMetaConfigured } from '@/lib/social/meta';
+import { postToInstagram, isConfigured as isMetaConfigured } from '@/lib/social/meta';
 import { findProductInText } from '@/lib/products/catalog';
 
 interface PublishResult {
@@ -212,6 +211,40 @@ export async function POST(request: NextRequest) {
               } catch (linkedinError) {
                 console.error('[Publish] LinkedIn error:', linkedinError);
                 publishError = linkedinError instanceof Error ? linkedinError.message : 'LinkedIn publishing failed';
+              }
+            }
+          } else if (platform === 'instagram') {
+            // Publish to Instagram
+            const metaConfig = isMetaConfigured();
+            if (!metaConfig.instagram) {
+              publishError = 'Instagram not configured';
+            } else {
+              try {
+                // Build the full post text with product link and hashtags
+                const textWithProductLink = addProductLink(text);
+                const hashtagString = hashtags.length > 0
+                  ? '\n\n' + hashtags.map((tag: string) => `#${tag}`).join(' ')
+                  : '';
+                const fullText = textWithProductLink + hashtagString;
+
+                // Instagram REQUIRES an image
+                const imageUrl = visual?.imageUrl || visual?.gammaUrl;
+                if (!imageUrl || imageUrl.includes('gamma.app')) {
+                  publishError = 'Instagram requires an image. Please generate a visual first.';
+                } else {
+                  console.log('[Publish] Posting to Instagram with image:', imageUrl);
+                  const result = await postToInstagram({
+                    caption: fullText,
+                    imageUrl,
+                  });
+
+                  publishedUrl = result.url;
+                  publishSuccess = true;
+                  console.log('[Publish] Instagram posted:', result.url);
+                }
+              } catch (instagramError) {
+                console.error('[Publish] Instagram error:', instagramError);
+                publishError = instagramError instanceof Error ? instagramError.message : 'Instagram publishing failed';
               }
             }
           } else {

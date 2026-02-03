@@ -57,10 +57,17 @@ export async function POST(request: NextRequest) {
     const results: PublishResult[] = [];
 
     // Create generated content records for each platform
-    for (const platform of platforms) {
+    for (const rawPlatform of platforms) {
+      // Normalize platform names (instagram_feed -> instagram, etc.)
+      const platform = rawPlatform === 'instagram_feed' || rawPlatform === 'instagram_story'
+        ? 'instagram'
+        : rawPlatform;
+
       try {
-        // Find visual for this platform
-        const visual = visuals?.find((v: { platform: string }) => v.platform === platform);
+        // Find visual for this platform (check both normalized and raw platform names)
+        const visual = visuals?.find((v: { platform: string }) =>
+          v.platform === rawPlatform || v.platform === platform
+        );
 
         // Determine status based on publish option
         let status = 'draft';

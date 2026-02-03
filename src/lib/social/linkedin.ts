@@ -46,6 +46,10 @@ function getConfig(): LinkedInConfig {
 /**
  * Get the authenticated user's LinkedIn URN
  * Caches the result for subsequent calls
+ *
+ * Note: Uses /userinfo endpoint (OpenID Connect) instead of /me
+ * because /me requires r_liteprofile scope which we don't have.
+ * With just w_member_social scope, we need the LINKEDIN_USER_ID env var.
  */
 let cachedUserUrn: string | null = null;
 
@@ -55,14 +59,37 @@ export async function getUserUrn(): Promise<string> {
   }
 
   const config = getConfig();
-  
-  // Check if manually configured
+
+  // Check if manually configured (required for w_member_social-only tokens)
   if (config.userId) {
     cachedUserUrn = `urn:li:person:${config.userId}`;
+    console.log(`[LinkedIn] Using configured user URN: ${cachedUserUrn}`);
     return cachedUserUrn;
   }
 
-  // Fetch from API
+  // Try userinfo endpoint (OpenID Connect - requires openid scope)
+  // This likely won't work without openid scope, but try anyway
+  try {
+    const response = await fetch("https://api.linkedin.com/v2/userinfo", {
+      headers: {
+        Authorization: `Bearer ${config.accessToken}`,
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      // userinfo returns 'sub' field with the user ID
+      if (data.sub) {
+        cachedUserUrn = `urn:li:person:${data.sub}`;
+        console.log(`[LinkedIn] Fetched user URN from userinfo: ${cachedUserUrn}`);
+        return cachedUserUrn;
+      }
+    }
+  } catch (e) {
+    console.log("[LinkedIn] userinfo endpoint failed, trying /me");
+  }
+
+  // Fallback: Try /me endpoint (requires r_liteprofile scope)
   const response = await fetch(`${LINKEDIN_API_BASE}/me`, {
     headers: {
       Authorization: `Bearer ${config.accessToken}`,
@@ -73,12 +100,15 @@ export async function getUserUrn(): Promise<string> {
   if (!response.ok) {
     const error = await response.json();
     console.error("[LinkedIn] Failed to get user info:", error);
-    throw new Error(`LinkedIn API error: ${error.message || JSON.stringify(error)}`);
+    throw new Error(
+      `LinkedIn API error: ${error.message || JSON.stringify(error)}. ` +
+      `Please set LINKEDIN_USER_ID environment variable with your LinkedIn member ID.`
+    );
   }
 
   const data = await response.json();
   cachedUserUrn = `urn:li:person:${data.id}`;
-  
+
   console.log(`[LinkedIn] Fetched user URN: ${cachedUserUrn}`);
   return cachedUserUrn;
 }

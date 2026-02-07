@@ -4,10 +4,13 @@ import { useWizardStore } from "../store";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 export function WizardNavigation() {
-  const { currentStep, canProceed, isLoading, nextStep, prevStep } = useWizardStore();
+  const { currentStep, canProceed, isLoading, nextStep, prevStep, getSteps } = useWizardStore();
+  const steps = getSteps();
+  const totalSteps = steps.length || 7;
+  const lastStepNumber = steps.length > 0 ? steps[steps.length - 1].number : 7;
 
   const isFirstStep = currentStep === 1;
-  const isLastStep = currentStep === 7;
+  const isLastStep = currentStep === lastStepNumber;
 
   return (
     <footer className="border-t border-[#333333] bg-[#0D0D0D] px-6 py-4">
@@ -30,7 +33,7 @@ export function WizardNavigation() {
 
         {/* Step Indicator */}
         <span className="text-sm text-[#888888]">
-          Step {currentStep} of 7
+          Step {currentStep} of {totalSteps}
         </span>
 
         {/* Next Button */}

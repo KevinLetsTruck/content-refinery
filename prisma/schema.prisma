@@ -1145,6 +1145,30 @@ model LandingPage {
 }
 
 // ============================================
+// SHOW NOTES - Radio show prep and episode notes
+// ============================================
+
+model ShowNotes {
+  id             String    @id @default(uuid())
+  showName       String    @map("show_name") // tbb, destination_health, power_hour, custom
+  customShowName String?   @map("custom_show_name")
+  episodeTitle   String?   @map("episode_title")
+  sourceItems    Json      @map("source_items") // ShowNotesSourceItem[]
+  outline        Json? // ShowNotesOutline (segments + connectionMap)
+  publicNotes    Json?     @map("public_notes") // PublicShowNotes
+  teaserText     String?   @map("teaser_text") @db.Text
+  status         String    @default("draft") // draft, ready, used, archived
+  teaserContentId String?  @map("teaser_content_id")
+  showDate       DateTime? @map("show_date")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([showName])
+  @@index([status])
+  @@map("show_notes")
+}
+
+// ============================================
 // WIZARD SESSIONS - Track unified wizard state
 // ============================================
 

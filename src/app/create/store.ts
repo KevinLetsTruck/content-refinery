@@ -6,7 +6,7 @@ import { persist } from 'zustand/middleware';
 // ============================================
 
 export type SourceType = 'quick_idea' | 'feedly' | 'guide' | 'episode' | 'product' | 'success_story' | 'trucktales';
-export type WizardMode = 'quick_post' | 'campaign';
+export type WizardMode = 'quick_post' | 'campaign' | 'show_notes';
 export type Platform = 'instagram_feed' | 'instagram_story' | 'facebook' | 'linkedin' | 'twitter' | 'tiktok';
 export type ContentType = 'stat' | 'quote' | 'hook' | 'tip' | 'testimonial' | 'teaser' | 'educational' | 'news_commentary' | 'article';
 export type ContentLength = 'short' | 'medium' | 'long' | 'article';
@@ -150,6 +150,66 @@ export interface StepConfig {
 }
 
 // ============================================
+// Show Notes Types
+// ============================================
+
+export type ShowName = 'tbb' | 'destination_health' | 'power_hour' | 'custom';
+
+export interface ShowNotesSourceItem {
+  id: string;
+  type: 'feedly_article' | 'url' | 'idea' | 'guide' | 'episode';
+  title: string;
+  content: string;
+  url?: string;
+  sourceName?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ShowNotesSegment {
+  id: string;
+  order: number;
+  title: string;
+  talkingPoints: string[];
+  suggestedTransition: string;
+  sourceItemIds: string[];
+  statsToMention?: string[];
+  estimatedMinutes?: number;
+  type: 'opening' | 'topic' | 'deep_dive' | 'caller_segment' | 'product_mention' | 'closing';
+}
+
+export interface ShowNotesConnection {
+  fromSourceId: string;
+  toSourceId: string;
+  connectionType: string;
+  description: string;
+}
+
+export interface ShowNotesOutline {
+  segments: ShowNotesSegment[];
+  connectionMap: ShowNotesConnection[];
+  estimatedDuration?: string;
+}
+
+export interface PublicShowNotes {
+  title: string;
+  description: string;
+  topicsList: string[];
+  keyTakeaways: string[];
+  productMentions: string[];
+  links: { label: string; url: string }[];
+}
+
+export interface ShowNotesData {
+  show: ShowName;
+  customShowName?: string;
+  sourceItems: ShowNotesSourceItem[];
+  outline: ShowNotesOutline | null;
+  publicNotes: PublicShowNotes | null;
+  teaserText: string | null;
+  savedId?: string;
+}
+
+// ============================================
 // Defaults
 // ============================================
 
@@ -280,6 +340,9 @@ export interface WizardState {
   publishOption: PublishOption;
   scheduledTime: Date | null;
 
+  // Show Notes (show_notes mode)
+  showNotesData: ShowNotesData;
+
   // AI Assistant
   aiPanelOpen: boolean;
   aiMessages: AIMessage[];
@@ -347,6 +410,20 @@ export interface WizardState {
   // Actions - Publish
   setPublishOption: (option: PublishOption) => void;
   setScheduledTime: (time: Date | null) => void;
+
+  // Actions - Show Notes
+  setShowName: (show: ShowName, customName?: string) => void;
+  addShowNotesSource: (item: ShowNotesSourceItem) => void;
+  removeShowNotesSource: (id: string) => void;
+  reorderShowNotesSource: (fromIndex: number, toIndex: number) => void;
+  setShowNotesOutline: (outline: ShowNotesOutline) => void;
+  setPublicShowNotes: (notes: PublicShowNotes) => void;
+  reorderOutlineSegment: (fromIndex: number, toIndex: number) => void;
+  updateOutlineSegment: (segmentId: string, updates: Partial<ShowNotesSegment>) => void;
+  removeOutlineSegment: (segmentId: string) => void;
+  addOutlineSegment: (segment: ShowNotesSegment) => void;
+  setShowNotesTeaserText: (text: string) => void;
+  setShowNotesSavedId: (id: string) => void;
 
   // Actions - AI Panel
   toggleAIPanel: () => void;
@@ -420,6 +497,14 @@ const initialState = {
   publishOption: 'schedule' as PublishOption,
   scheduledTime: null,
 
+  showNotesData: {
+    show: 'destination_health' as ShowName,
+    sourceItems: [],
+    outline: null,
+    publicNotes: null,
+    teaserText: null,
+  },
+
   aiPanelOpen: false,
   aiMessages: [],
   aiSuggestions: [],
@@ -474,6 +559,22 @@ export const useWizardStore = create<WizardState>()(
             { number: 6, name: 'Visuals', path: '/create/visuals' },
             { number: 7, name: 'Review', path: '/create/review' },
             { number: 8, name: 'Publish', path: '/create/publish' },
+          ];
+        }
+
+        // Show Notes mode
+        if (mode === 'show_notes') {
+          return [
+            { number: 1, name: 'Source', path: '/create' },
+            { number: 2, name: 'Mode', path: '/create/mode' },
+            { number: 3, name: 'Sources', path: '/create/show-notes/sources' },
+            { number: 4, name: 'Generate', path: '/create/show-notes/generate' },
+            { number: 5, name: 'Outline', path: '/create/show-notes/outline' },
+            { number: 6, name: 'Teaser', path: '/create/show-notes/teaser' },
+            { number: 7, name: 'Platforms', path: '/create/platforms' },
+            { number: 8, name: 'Visuals', path: '/create/visuals' },
+            { number: 9, name: 'Review', path: '/create/review' },
+            { number: 10, name: 'Publish', path: '/create/publish' },
           ];
         }
 
@@ -617,6 +718,103 @@ export const useWizardStore = create<WizardState>()(
 
       setScheduledTime: (time) => set({ scheduledTime: time }),
 
+      // Show Notes Actions
+      setShowName: (show, customName) => set((state) => ({
+        showNotesData: { ...state.showNotesData, show, customShowName: customName },
+      })),
+
+      addShowNotesSource: (item) => set((state) => ({
+        showNotesData: {
+          ...state.showNotesData,
+          sourceItems: [...state.showNotesData.sourceItems, item],
+        },
+      })),
+
+      removeShowNotesSource: (id) => set((state) => ({
+        showNotesData: {
+          ...state.showNotesData,
+          sourceItems: state.showNotesData.sourceItems.filter((s) => s.id !== id),
+        },
+      })),
+
+      reorderShowNotesSource: (fromIndex, toIndex) => set((state) => {
+        const items = [...state.showNotesData.sourceItems];
+        const [moved] = items.splice(fromIndex, 1);
+        items.splice(toIndex, 0, moved);
+        return { showNotesData: { ...state.showNotesData, sourceItems: items } };
+      }),
+
+      setShowNotesOutline: (outline) => set((state) => ({
+        showNotesData: { ...state.showNotesData, outline },
+      })),
+
+      setPublicShowNotes: (notes) => set((state) => ({
+        showNotesData: { ...state.showNotesData, publicNotes: notes },
+      })),
+
+      reorderOutlineSegment: (fromIndex, toIndex) => set((state) => {
+        if (!state.showNotesData.outline) return state;
+        const segments = [...state.showNotesData.outline.segments];
+        const [moved] = segments.splice(fromIndex, 1);
+        segments.splice(toIndex, 0, moved);
+        const reordered = segments.map((s, i) => ({ ...s, order: i }));
+        return {
+          showNotesData: {
+            ...state.showNotesData,
+            outline: { ...state.showNotesData.outline, segments: reordered },
+          },
+        };
+      }),
+
+      updateOutlineSegment: (segmentId, updates) => set((state) => {
+        if (!state.showNotesData.outline) return state;
+        return {
+          showNotesData: {
+            ...state.showNotesData,
+            outline: {
+              ...state.showNotesData.outline,
+              segments: state.showNotesData.outline.segments.map((s) =>
+                s.id === segmentId ? { ...s, ...updates } : s
+              ),
+            },
+          },
+        };
+      }),
+
+      removeOutlineSegment: (segmentId) => set((state) => {
+        if (!state.showNotesData.outline) return state;
+        const filtered = state.showNotesData.outline.segments
+          .filter((s) => s.id !== segmentId)
+          .map((s, i) => ({ ...s, order: i }));
+        return {
+          showNotesData: {
+            ...state.showNotesData,
+            outline: { ...state.showNotesData.outline, segments: filtered },
+          },
+        };
+      }),
+
+      addOutlineSegment: (segment) => set((state) => {
+        if (!state.showNotesData.outline) return state;
+        return {
+          showNotesData: {
+            ...state.showNotesData,
+            outline: {
+              ...state.showNotesData.outline,
+              segments: [...state.showNotesData.outline.segments, segment],
+            },
+          },
+        };
+      }),
+
+      setShowNotesTeaserText: (text) => set((state) => ({
+        showNotesData: { ...state.showNotesData, teaserText: text },
+      })),
+
+      setShowNotesSavedId: (id) => set((state) => ({
+        showNotesData: { ...state.showNotesData, savedId: id },
+      })),
+
       // AI Panel Actions
       toggleAIPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
 
@@ -633,6 +831,13 @@ export const useWizardStore = create<WizardState>()(
         ...initialState,
         platforms: [...DEFAULT_PLATFORMS],
         campaignConfig: { ...DEFAULT_CAMPAIGN_CONFIG },
+        showNotesData: {
+          show: 'destination_health' as ShowName,
+          sourceItems: [],
+          outline: null,
+          publicNotes: null,
+          teaserText: null,
+        },
       }),
     }),
     {
@@ -652,6 +857,7 @@ export const useWizardStore = create<WizardState>()(
         contentStrategy: state.contentStrategy,
         landingPageConfig: state.landingPageConfig,
         emailSequence: state.emailSequence,
+        showNotesData: state.showNotesData,
       }),
     }
   )

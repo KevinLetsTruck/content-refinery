@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useWizardStore } from "../store";
-import { Zap, Calendar, ArrowLeft } from "lucide-react";
+import { Zap, Calendar, ArrowLeft, FileText } from "lucide-react";
 import { useEffect } from "react";
 
 export default function ModePage() {
@@ -23,14 +23,16 @@ export default function ModePage() {
     }
   }, [currentStep, goToStep]);
 
-  const handleModeSelect = (mode: "quick_post" | "campaign") => {
+  const handleModeSelect = (mode: "quick_post" | "campaign" | "show_notes") => {
     setMode(mode);
     nextStep();
 
     if (mode === "quick_post") {
       router.push("/create/interview");
-    } else {
+    } else if (mode === "campaign") {
       router.push("/create/configure");
+    } else {
+      router.push("/create/show-notes/sources");
     }
   };
 
@@ -89,7 +91,7 @@ export default function ModePage() {
         </span>
       </p>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
         {/* Quick Post Card */}
         <button
           onClick={() => handleModeSelect("quick_post")}
@@ -152,6 +154,37 @@ export default function ModePage() {
               {sourceType === "guide"
                 ? "Email sequence available"
                 : "AI-powered strategy"}
+            </li>
+          </ul>
+        </button>
+
+        {/* Show Notes Card */}
+        <button
+          onClick={() => handleModeSelect("show_notes")}
+          className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-8 text-left hover:border-[#F4A300]/50 transition-all group"
+        >
+          <div className="w-14 h-14 bg-[#F4A300]/10 rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#F4A300]/20 transition-colors">
+            <FileText className="w-7 h-7 text-[#F4A300]" />
+          </div>
+
+          <h2 className="text-2xl font-bold mb-3 text-white">Show Notes</h2>
+          <p className="text-[#888888] mb-6">
+            Prep for your radio show with AI-generated outlines, talking points,
+            and a teaser post.
+          </p>
+
+          <ul className="space-y-2 text-sm text-[#666666]">
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-[#444444] rounded-full" />
+              Mix Feedly articles, ideas, guides & episodes
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-[#444444] rounded-full" />
+              AI-generated show outline with talking points
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-[#444444] rounded-full" />
+              Social teaser post for promotion
             </li>
           </ul>
         </button>

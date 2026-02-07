@@ -69,6 +69,7 @@ const SHOWS: { value: ShowName; label: string }[] = [
   { value: "tbb", label: "Trucking Business & Beyond" },
   { value: "destination_health", label: "Destination Health" },
   { value: "power_hour", label: "Power Hour" },
+  { value: "coffee_with_kevin", label: "Coffee with Kevin" },
   { value: "custom", label: "Custom" },
 ];
 

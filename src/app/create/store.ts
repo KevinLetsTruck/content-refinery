@@ -153,7 +153,7 @@ export interface StepConfig {
 // Show Notes Types
 // ============================================
 
-export type ShowName = 'tbb' | 'destination_health' | 'power_hour' | 'custom';
+export type ShowName = 'tbb' | 'destination_health' | 'power_hour' | 'coffee_with_kevin' | 'custom';
 
 export interface ShowNotesSourceItem {
   id: string;
@@ -207,6 +207,8 @@ export interface ShowNotesData {
   publicNotes: PublicShowNotes | null;
   teaserText: string | null;
   savedId?: string;
+  showDate?: string;
+  teaserScheduledFor?: string;
 }
 
 // ============================================
@@ -424,6 +426,8 @@ export interface WizardState {
   addOutlineSegment: (segment: ShowNotesSegment) => void;
   setShowNotesTeaserText: (text: string) => void;
   setShowNotesSavedId: (id: string) => void;
+  setShowDate: (date: string | null) => void;
+  setTeaserScheduledFor: (date: string | null) => void;
 
   // Actions - AI Panel
   toggleAIPanel: () => void;
@@ -503,6 +507,8 @@ const initialState = {
     outline: null,
     publicNotes: null,
     teaserText: null,
+    showDate: undefined,
+    teaserScheduledFor: undefined,
   },
 
   aiPanelOpen: false,
@@ -815,6 +821,14 @@ export const useWizardStore = create<WizardState>()(
         showNotesData: { ...state.showNotesData, savedId: id },
       })),
 
+      setShowDate: (date) => set((state) => ({
+        showNotesData: { ...state.showNotesData, showDate: date || undefined },
+      })),
+
+      setTeaserScheduledFor: (date) => set((state) => ({
+        showNotesData: { ...state.showNotesData, teaserScheduledFor: date || undefined },
+      })),
+
       // AI Panel Actions
       toggleAIPanel: () => set((state) => ({ aiPanelOpen: !state.aiPanelOpen })),
 
@@ -837,6 +851,8 @@ export const useWizardStore = create<WizardState>()(
           outline: null,
           publicNotes: null,
           teaserText: null,
+          showDate: undefined,
+          teaserScheduledFor: undefined,
         },
       }),
     }),

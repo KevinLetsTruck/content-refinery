@@ -32,6 +32,15 @@ This is Kevin's interactive caller Q&A show.
 - Kevin often builds on previous episodes and references past advice
 - Great for addressing common misconceptions and providing personalized guidance`,
 
+  coffee_with_kevin: `SHOW: Coffee with Kevin
+This is Kevin's eclectic morning show airing Tuesday and Thursday mornings.
+- ANY topic goes — health, business, politics, current events, personal stories, listener topics
+- Audience: The Tribe tuning in during their morning coffee/pre-trip routine
+- Tone: Relaxed, conversational, morning coffee chat energy — but still Kevin's signature no-BS directness
+- Format: Free-flowing topics, morning motivation, whatever Kevin is fired up about that day
+- Often includes: hot takes on news, personal anecdotes, listener shoutouts, industry rants
+- Kevin speaks freely here — less structured than other shows, more personality-driven`,
+
   custom: `SHOW: Custom Show
 This is a custom or special episode. Adapt the tone and structure based on the source content provided.`,
 };
@@ -92,6 +101,7 @@ export async function POST(request: NextRequest) {
       : show === 'tbb' ? 'Trucking Business & Beyond'
       : show === 'destination_health' ? 'Destination Health'
       : show === 'power_hour' ? 'Power Hour'
+      : show === 'coffee_with_kevin' ? 'Coffee with Kevin'
       : 'Custom Show';
 
     // Build source items listing for the prompt

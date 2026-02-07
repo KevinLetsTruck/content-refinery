@@ -1158,13 +1158,15 @@ model ShowNotes {
   publicNotes    Json?     @map("public_notes") // PublicShowNotes
   teaserText     String?   @map("teaser_text") @db.Text
   status         String    @default("draft") // draft, ready, used, archived
-  teaserContentId String?  @map("teaser_content_id")
-  showDate       DateTime? @map("show_date")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  teaserContentId    String?   @map("teaser_content_id")
+  showDate           DateTime? @map("show_date")
+  teaserScheduledFor DateTime? @map("teaser_scheduled_for")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@index([showName])
   @@index([status])
+  @@index([showDate])
   @@map("show_notes")
 }
 

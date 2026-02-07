@@ -205,6 +205,8 @@ export default function ShowNotesOutlinePage() {
           outline: showNotesData.outline,
           publicNotes: showNotesData.publicNotes,
           teaserText: showNotesData.teaserText,
+          showDate: showNotesData.showDate || null,
+          teaserScheduledFor: showNotesData.teaserScheduledFor || null,
         }),
       });
 

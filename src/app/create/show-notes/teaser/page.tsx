@@ -11,6 +11,7 @@ import {
   Loader2,
   MessageSquare,
   AlertCircle,
+  CalendarDays,
 } from "lucide-react";
 
 // ============================================
@@ -21,6 +22,7 @@ const SHOW_LABELS: Record<ShowName, string> = {
   tbb: "Trucking Business & Beyond",
   destination_health: "Destination Health",
   power_hour: "Power Hour",
+  coffee_with_kevin: "Coffee with Kevin",
   custom: "Show",
 };
 
@@ -34,6 +36,8 @@ export default function ShowNotesTeaserPage() {
     showNotesData,
     setShowNotesTeaserText,
     setShowNotesSavedId,
+    setShowDate,
+    setTeaserScheduledFor,
     setSource,
     setContentOptions,
     selectContent,
@@ -47,6 +51,9 @@ export default function ShowNotesTeaserPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [localShowDate, setLocalShowDate] = useState(showNotesData.showDate || "");
+  const [localTeaserDate, setLocalTeaserDate] = useState(showNotesData.teaserScheduledFor || "");
+  const [teaserDateManuallySet, setTeaserDateManuallySet] = useState(!!showNotesData.teaserScheduledFor);
 
   // Ensure we're on step 6
   useEffect(() => {
@@ -85,6 +92,26 @@ export default function ShowNotesTeaserPage() {
   const handleTeaserChange = (value: string) => {
     setTeaserText(value);
     setShowNotesTeaserText(value);
+  };
+
+  const handleShowDateChange = (value: string) => {
+    setLocalShowDate(value);
+    setShowDate(value || null);
+
+    // Auto-suggest teaser date as 1 day before, if not manually set
+    if (value && !teaserDateManuallySet) {
+      const showDateObj = new Date(value);
+      showDateObj.setDate(showDateObj.getDate() - 1);
+      const autoTeaser = showDateObj.toISOString().slice(0, 16);
+      setLocalTeaserDate(autoTeaser);
+      setTeaserScheduledFor(autoTeaser);
+    }
+  };
+
+  const handleTeaserDateChange = (value: string) => {
+    setLocalTeaserDate(value);
+    setTeaserScheduledFor(value || null);
+    setTeaserDateManuallySet(true);
   };
 
   const handleRegenerate = async () => {
@@ -138,6 +165,8 @@ export default function ShowNotesTeaserPage() {
             outline: showNotesData.outline,
             publicNotes: showNotesData.publicNotes,
             teaserText: teaserText,
+            showDate: showNotesData.showDate || null,
+            teaserScheduledFor: showNotesData.teaserScheduledFor || null,
           }),
         });
 
@@ -315,6 +344,51 @@ export default function ShowNotesTeaserPage() {
               <span className="text-xs text-[#666666]">Share</span>
             </div>
           </div>
+        </div>
+
+        {/* ============================================ */}
+        {/* Schedule */}
+        {/* ============================================ */}
+        <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-6 mb-8">
+          <h2 className="text-sm font-medium text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-[#F4A300]" />
+            Schedule
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm text-[#888888] mb-2">
+                Show Air Date
+              </label>
+              <input
+                type="datetime-local"
+                value={localShowDate}
+                onChange={(e) => handleShowDateChange(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-[#333333] bg-[#0D0D0D] text-white focus:outline-none focus:border-[#F4A300] focus:ring-1 focus:ring-[#F4A300]/20"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-[#888888] mb-2">
+                Teaser Post Date
+              </label>
+              <input
+                type="datetime-local"
+                value={localTeaserDate}
+                onChange={(e) => handleTeaserDateChange(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-[#333333] bg-[#0D0D0D] text-white focus:outline-none focus:border-[#F4A300] focus:ring-1 focus:ring-[#F4A300]/20"
+              />
+              {localShowDate && !teaserDateManuallySet && localTeaserDate && (
+                <p className="text-xs text-[#666666] mt-1.5">
+                  Auto-set to 1 day before show
+                </p>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-[#555555] mt-4">
+            Both dates are optional. Skip to save as a draft.
+          </p>
         </div>
 
         {/* ============================================ */}

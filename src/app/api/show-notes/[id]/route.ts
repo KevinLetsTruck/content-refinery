@@ -44,6 +44,7 @@ export async function GET(
  *   - teaserText: string
  *   - status: string
  *   - showDate: string (ISO date)
+ *   - teaserScheduledFor: string (ISO date)
  *   - showName: string
  *   - customShowName: string
  *   - sourceItems: JSON
@@ -76,6 +77,7 @@ export async function PATCH(
     if (body.teaserText !== undefined) updateData.teaserText = body.teaserText;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.showDate !== undefined) updateData.showDate = body.showDate ? new Date(body.showDate) : null;
+    if (body.teaserScheduledFor !== undefined) updateData.teaserScheduledFor = body.teaserScheduledFor ? new Date(body.teaserScheduledFor) : null;
     if (body.showName !== undefined) updateData.showName = body.showName;
     if (body.customShowName !== undefined) updateData.customShowName = body.customShowName;
     if (body.sourceItems !== undefined) updateData.sourceItems = body.sourceItems;

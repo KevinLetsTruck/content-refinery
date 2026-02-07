@@ -17,6 +17,7 @@ import {
   Recycle,
   Wand2,
   Brain,
+  Radio,
 } from "lucide-react";
 
 interface NavItem {
@@ -74,6 +75,12 @@ const navigation: NavGroup[] = [
         label: "Calendar",
         href: "/calendar",
         icon: <Calendar className="h-5 w-5" />,
+      },
+      {
+        label: "Show Schedule",
+        href: "/show-schedule",
+        icon: <Radio className="h-5 w-5" />,
+        isNew: true,
       },
     ],
   },

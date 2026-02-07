@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       teaserText,
       status,
       showDate,
+      teaserScheduledFor,
     } = body;
 
     // Validate required fields for create
@@ -70,7 +71,8 @@ export async function POST(request: NextRequest) {
       if (publicNotes !== undefined) updateData.publicNotes = publicNotes;
       if (teaserText !== undefined) updateData.teaserText = teaserText;
       if (status !== undefined) updateData.status = status;
-      if (showDate !== undefined) updateData.showDate = new Date(showDate);
+      if (showDate !== undefined) updateData.showDate = showDate ? new Date(showDate) : null;
+      if (teaserScheduledFor !== undefined) updateData.teaserScheduledFor = teaserScheduledFor ? new Date(teaserScheduledFor) : null;
 
       await prisma.showNotes.update({
         where: { id },
@@ -91,6 +93,7 @@ export async function POST(request: NextRequest) {
           teaserText: teaserText || null,
           status: status || 'draft',
           showDate: showDate ? new Date(showDate) : null,
+          teaserScheduledFor: teaserScheduledFor ? new Date(teaserScheduledFor) : null,
         },
       });
 

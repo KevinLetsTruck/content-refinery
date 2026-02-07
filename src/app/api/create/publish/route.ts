@@ -261,13 +261,14 @@ export async function POST(request: NextRequest) {
               publishError = 'Mighty Networks not configured. Set MIGHTY_NETWORKS_API_TOKEN and MIGHTY_NETWORKS_SPACE_ID';
             } else {
               try {
-                // Adapt social content into a community-tailored Tribe post
+                // Adapt social content into a community-tailored Tribe post with title + formatted body
                 const textWithProductLink = addProductLink(text);
-                const communityText = await adaptForTribe(textWithProductLink);
+                const { title: tribeTitle, body: tribeBody } = await adaptForTribe(textWithProductLink);
 
-                console.log('[Publish] Posting to Mighty Networks, length:', communityText.length);
+                console.log('[Publish] Posting to Mighty Networks, title:', tribeTitle, 'body length:', tribeBody.length);
                 const result = await publishToMightyNetworks({
-                  text: communityText,
+                  title: tribeTitle,
+                  body: tribeBody,
                   imageUrl: visual?.imageUrl || visual?.gammaUrl || null,
                 });
 

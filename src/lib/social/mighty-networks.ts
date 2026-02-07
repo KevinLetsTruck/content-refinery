@@ -36,8 +36,14 @@ interface PostResult {
 }
 
 interface MightyNetworksPostOptions {
-  text: string;
+  title: string;
+  body: string;
   imageUrl?: string | null;
+}
+
+export interface TribeContent {
+  title: string;
+  body: string;
 }
 
 interface MightyNetworksSpace {
@@ -154,11 +160,64 @@ export async function getSpaces(): Promise<MightyNetworksSpace[]> {
 }
 
 /**
+ * Upload an image asset to Mighty Networks.
+ *
+ * Uses POST /admin/v1/networks/{network_id}/assets with source_url
+ * to upload an image from a URL. Returns the asset ID if successful.
+ *
+ * This should be called before creating a post — MN may auto-associate
+ * the uploaded asset with the next post created.
+ */
+async function uploadAsset(
+  imageUrl: string
+): Promise<{ id: number; url: string } | null> {
+  try {
+    const config = getConfig();
+
+    const formData = new FormData();
+    formData.append("asset_style", "post");
+    formData.append("source_url", imageUrl);
+    formData.append("input_type", "1");
+
+    console.log("[MightyNetworks] Uploading asset from URL:", imageUrl.substring(0, 100));
+
+    const response = await fetch(
+      `${MN_API_BASE}/admin/v1/networks/${config.networkId}/assets`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.apiToken}`,
+          Accept: "application/json",
+        },
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[MightyNetworks] Asset upload error:", response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    const assetId = data.id || data.asset_id;
+    const assetUrl = data.url || data.image_url;
+
+    console.log("[MightyNetworks] Asset uploaded:", assetId, assetUrl);
+    return { id: assetId, url: assetUrl || imageUrl };
+  } catch (error) {
+    console.error("[MightyNetworks] Asset upload failed:", error);
+    return null;
+  }
+}
+
+/**
  * Publish a post to the configured Mighty Networks space
  *
  * Uses POST /admin/v1/networks/{network_id}/posts to create a new post.
  * The post will appear in the specified space (e.g., "News").
  *
+ * If an imageUrl is provided, uploads it as an asset first.
  * API requires: space_id (int), title (string), description (string)
  */
 export async function publishToMightyNetworks(
@@ -166,20 +225,19 @@ export async function publishToMightyNetworks(
 ): Promise<PostResult> {
   const config = getConfig();
 
-  // Extract first line or first 100 chars as title
-  const firstLine = options.text.split("\n")[0];
-  const title = firstLine.length > 100
-    ? firstLine.substring(0, 97) + "..."
-    : firstLine;
+  // Upload image asset first if provided (non-blocking — post still goes out if upload fails)
+  if (options.imageUrl) {
+    await uploadAsset(options.imageUrl);
+  }
 
   // Build the post payload per API docs:
   // - space_id: integer ID of the target space
-  // - title: required string
-  // - description: the post body content
+  // - title: required string (AI-generated, descriptive)
+  // - description: the post body content (formatted with line breaks and bullets)
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
-    title,
-    description: options.text,
+    title: options.title,
+    description: options.body,
   };
 
   console.log(
@@ -187,8 +245,10 @@ export async function publishToMightyNetworks(
     config.spaceId,
     "network:",
     config.networkId,
-    "text length:",
-    options.text.length
+    "title:",
+    options.title,
+    "body length:",
+    options.body.length
   );
 
   const response = await fetch(
@@ -257,29 +317,42 @@ export async function publishToMightyNetworks(
  *
  * Takes content written for social platforms (short, hashtaggy) and
  * rewrites it as a conversational community post for The Tribe.
- * Uses Claude to transform the tone while preserving the message.
+ * Returns a title and formatted body with paragraph breaks and bullets.
  */
-export async function adaptForTribe(socialText: string): Promise<string> {
+export async function adaptForTribe(socialText: string): Promise<TribeContent> {
   try {
     const anthropic = new Anthropic();
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1500,
+      max_tokens: 2000,
       messages: [
         {
           role: "user",
-          content: `Rewrite this social media post as a community post for The Tribe (Let's Truck community on Mighty Networks).
+          content: `Rewrite this social media post as a community post for The Tribe (Let's Truck community on Mighty Networks). Return a JSON object with "title" and "body" fields.
 
 SOCIAL POST:
 ${socialText}
 
-RULES:
+TITLE RULES:
+- Short, compelling title (5-10 words) that captures the core message
+- NOT a greeting like "Hey Tribe" — make it descriptive and attention-grabbing
+- Examples: "Creatine Isn't Just for Gym Bros", "Your Brain Needs Real Fuel", "Why 70% of Drivers Have Candida"
+
+BODY FORMATTING RULES:
+- Use SHORT paragraphs (2-3 sentences max per paragraph)
+- Separate every paragraph with a blank line for breathing room
+- Use bullet points (•) for any lists of tips, facts, or steps
+- Use ALL CAPS sparingly for emphasis on key phrases (e.g., "HERE'S THE DEAL:")
+- Do NOT use markdown formatting (no #, no **, no _) — just plain text, line breaks, and bullets
+- White space is your friend — break up the wall of text
+
+VOICE & CONTENT RULES:
 - Write as Kevin Rutherford talking directly to The Tribe
 - Conversational and community-focused — like talking to your people
 - Longer than social (200-600 words is fine), add more depth and context
 - NO hashtags — community posts don't use them
-- Can open with "Tribe," or "Hey Tribe," or just dive in
+- Can open the body with "Tribe," or "Hey Tribe," or just dive in
 - End with engagement: ask a question, invite comments, start discussion
 - Examples: "What's your experience with this?", "Drop your thoughts below", "Who else deals with this?"
 - Keep Kevin's direct, no-BS voice — NEVER say "trucker" (use "driver", "professional driver")
@@ -287,26 +360,54 @@ RULES:
 - If there's a product link, keep it but weave it naturally into the conversation
 - Strip any emojis that feel too "social media" — a few are OK if natural
 
-Return ONLY the rewritten community post text. No JSON, no labels, no markdown formatting.`,
+Return ONLY valid JSON with this exact structure:
+{"title": "Your Compelling Title Here", "body": "Your formatted\\n\\nbody text\\n\\nwith paragraph breaks"}`,
         },
       ],
     });
 
     const content = message.content[0];
     if (content.type === "text" && content.text.trim()) {
-      console.log(
-        "[MightyNetworks] Adapted content for Tribe, length:",
-        content.text.trim().length
-      );
-      return content.text.trim();
+      // Parse JSON response
+      const text = content.text.trim();
+      // Try to extract JSON from the response (may be wrapped in code fences)
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.title && parsed.body) {
+          console.log(
+            "[MightyNetworks] Adapted for Tribe — title:",
+            parsed.title,
+            "body length:",
+            parsed.body.length
+          );
+          return {
+            title: parsed.title,
+            body: parsed.body,
+          };
+        }
+      }
+
+      // If JSON parsing fails, use text as body with a generated title
+      console.warn("[MightyNetworks] Failed to parse JSON, using text as body");
+      const firstSentence = text.split(/[.!?]/)[0];
+      return {
+        title: firstSentence.length > 80 ? firstSentence.substring(0, 77) + "..." : firstSentence,
+        body: text,
+      };
     }
   } catch (error) {
     console.error("[MightyNetworks] Failed to adapt content for Tribe:", error);
-    // Fall through to return original text
+    // Fall through to fallback
   }
 
-  // Fallback: strip hashtags from original text
-  return socialText.replace(/#\w+/g, "").trim();
+  // Fallback: strip hashtags from original text, generate simple title
+  const cleanText = socialText.replace(/#\w+/g, "").trim();
+  const fallbackTitle = cleanText.split(/[.!?\n]/)[0].substring(0, 80);
+  return {
+    title: fallbackTitle || "Community Update",
+    body: cleanText,
+  };
 }
 
 /**

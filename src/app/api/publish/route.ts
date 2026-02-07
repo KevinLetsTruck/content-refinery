@@ -472,12 +472,13 @@ async function publishToMightyNetworksPlatform(content: ContentInput): Promise<{
     );
   }
 
-  // Adapt social content into a community-tailored Tribe post (no hashtags in MN)
+  // Adapt social content into a community-tailored Tribe post with title + formatted body
   const baseText = truncateWithEllipsis(content.text, PLATFORM_CHAR_LIMITS.mighty_networks);
-  const communityText = await adaptForTribe(baseText);
+  const { title, body } = await adaptForTribe(baseText);
 
   const result = await postToMightyNetworks({
-    text: communityText,
+    title,
+    body,
     imageUrl: content.mediaUrl,
   });
 

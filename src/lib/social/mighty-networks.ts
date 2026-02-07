@@ -233,11 +233,14 @@ export async function publishToMightyNetworks(
   // Build the post payload per API docs:
   // - space_id: integer ID of the target space
   // - title: required string (AI-generated, descriptive)
-  // - description: the post body content (formatted with line breaks and bullets)
+  // - description: HTML-formatted body content
+  // - post_type: "article" renders with rich formatting (paragraphs, bold, lists)
+  //   vs "post" (Quick Post) which collapses all whitespace into one block
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,
     description: options.body,
+    post_type: "article",
   };
 
   console.log(
@@ -329,7 +332,7 @@ export async function adaptForTribe(socialText: string): Promise<TribeContent> {
       messages: [
         {
           role: "user",
-          content: `Rewrite this social media post as a community post for The Tribe (Let's Truck community on Mighty Networks). Return a JSON object with "title" and "body" fields.
+          content: `Rewrite this social media post as a community post for The Tribe (Let's Truck community on Mighty Networks). Return a JSON object with "title" and "body" fields. The body MUST use HTML tags for formatting.
 
 SOCIAL POST:
 ${socialText}
@@ -338,14 +341,16 @@ TITLE RULES:
 - Short, compelling title (5-10 words) that captures the core message
 - NOT a greeting like "Hey Tribe" — make it descriptive and attention-grabbing
 - Examples: "Creatine Isn't Just for Gym Bros", "Your Brain Needs Real Fuel", "Why 70% of Drivers Have Candida"
+- Plain text only (no HTML in the title)
 
-BODY FORMATTING RULES:
-- Use SHORT paragraphs (2-3 sentences max per paragraph)
-- Separate every paragraph with a blank line for breathing room
-- Use bullet points (•) for any lists of tips, facts, or steps
-- Use ALL CAPS sparingly for emphasis on key phrases (e.g., "HERE'S THE DEAL:")
-- Do NOT use markdown formatting (no #, no **, no _) — just plain text, line breaks, and bullets
-- White space is your friend — break up the wall of text
+BODY FORMATTING RULES (HTML REQUIRED):
+- Wrap EVERY paragraph in <p>...</p> tags — this is critical for spacing
+- Use SHORT paragraphs (2-3 sentences max per <p> block)
+- Use <strong>...</strong> for emphasis on key phrases (not ALL CAPS)
+- For bullet lists, use plain text bullets with <br> tags:
+  <p>• Point one<br>• Point two<br>• Point three</p>
+- Do NOT use markdown (#, **, _, etc.) — use HTML only
+- Keep it readable: lots of short paragraphs, not dense blocks
 
 VOICE & CONTENT RULES:
 - Write as Kevin Rutherford talking directly to The Tribe
@@ -357,11 +362,11 @@ VOICE & CONTENT RULES:
 - Examples: "What's your experience with this?", "Drop your thoughts below", "Who else deals with this?"
 - Keep Kevin's direct, no-BS voice — NEVER say "trucker" (use "driver", "professional driver")
 - Use phrases like "proper human diet", "owner-operator of your health", "The Tribe"
-- If there's a product link, keep it but weave it naturally into the conversation
+- If there's a product link, keep it but weave it naturally using <a href="...">link text</a>
 - Strip any emojis that feel too "social media" — a few are OK if natural
 
 Return ONLY valid JSON with this exact structure:
-{"title": "Your Compelling Title Here", "body": "Your formatted\\n\\nbody text\\n\\nwith paragraph breaks"}`,
+{"title": "Your Compelling Title Here", "body": "<p>First paragraph.</p><p>Second paragraph with <strong>emphasis</strong>.</p>"}`,
         },
       ],
     });

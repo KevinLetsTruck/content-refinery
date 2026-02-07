@@ -4,11 +4,17 @@
  * Handles publishing posts to Let's Truck Tribe (letstrucktribe.com)
  * using the Mighty Networks Admin API.
  *
+ * API docs: https://docs.mightynetworks.com/api-reference
+ * All endpoints require network_id in the path:
+ *   /admin/v1/networks/{network_id}/spaces
+ *   /admin/v1/networks/{network_id}/posts
+ *
  * Required environment variables:
  * - MIGHTY_NETWORKS_API_TOKEN (Bearer token from MN Admin > Integrations)
  * - MIGHTY_NETWORKS_SPACE_ID (ID of the target space, e.g., "News")
  *
  * Optional:
+ * - MIGHTY_NETWORKS_NETWORK_ID (numeric ID or subdomain — defaults to "letstrucktribe")
  * - MIGHTY_NETWORKS_NETWORK_URL (defaults to "https://letstrucktribe.com")
  */
 
@@ -19,6 +25,7 @@ const MN_API_BASE = "https://api.mn.co";
 interface MightyNetworksConfig {
   apiToken: string;
   spaceId: string;
+  networkId: string;
   networkUrl: string;
 }
 
@@ -62,9 +69,17 @@ export function hasToken(): boolean {
   return !!process.env.MIGHTY_NETWORKS_API_TOKEN;
 }
 
+/**
+ * Get the network ID (numeric or subdomain) for API paths
+ */
+function getNetworkId(): string {
+  return process.env.MIGHTY_NETWORKS_NETWORK_ID || "letstrucktribe";
+}
+
 function getConfig(): MightyNetworksConfig {
   const apiToken = getApiToken();
   const spaceId = process.env.MIGHTY_NETWORKS_SPACE_ID;
+  const networkId = getNetworkId();
   const networkUrl =
     process.env.MIGHTY_NETWORKS_NETWORK_URL || "https://letstrucktribe.com";
 
@@ -77,6 +92,7 @@ function getConfig(): MightyNetworksConfig {
   return {
     apiToken,
     spaceId,
+    networkId,
     networkUrl,
   };
 }
@@ -111,13 +127,17 @@ export async function validateToken(): Promise<boolean> {
  */
 export async function getSpaces(): Promise<MightyNetworksSpace[]> {
   const apiToken = getApiToken();
+  const networkId = getNetworkId();
 
-  const response = await fetch(`${MN_API_BASE}/admin/v1/spaces`, {
-    headers: {
-      Authorization: `Bearer ${apiToken}`,
-      Accept: "application/json",
-    },
-  });
+  const response = await fetch(
+    `${MN_API_BASE}/admin/v1/networks/${networkId}/spaces`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        Accept: "application/json",
+      },
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -136,39 +156,53 @@ export async function getSpaces(): Promise<MightyNetworksSpace[]> {
 /**
  * Publish a post to the configured Mighty Networks space
  *
- * Uses POST /admin/v1/posts to create a new post.
+ * Uses POST /admin/v1/networks/{network_id}/posts to create a new post.
  * The post will appear in the specified space (e.g., "News").
+ *
+ * API requires: space_id (int), title (string), description (string)
  */
 export async function publishToMightyNetworks(
   options: MightyNetworksPostOptions
 ): Promise<PostResult> {
   const config = getConfig();
 
-  // Build the post payload
-  // Note: Exact field names may vary — the API accepts body/content for post text
-  // and space_id to target a specific space
+  // Extract first line or first 100 chars as title
+  const firstLine = options.text.split("\n")[0];
+  const title = firstLine.length > 100
+    ? firstLine.substring(0, 97) + "..."
+    : firstLine;
+
+  // Build the post payload per API docs:
+  // - space_id: integer ID of the target space
+  // - title: required string
+  // - description: the post body content
   const postPayload: Record<string, unknown> = {
-    space_id: parseInt(config.spaceId, 10) || config.spaceId,
-    body: options.text,
-    post_type: "post",
+    space_id: parseInt(config.spaceId, 10),
+    title,
+    description: options.text,
   };
 
   console.log(
     "[MightyNetworks] Creating post in space:",
     config.spaceId,
+    "network:",
+    config.networkId,
     "text length:",
     options.text.length
   );
 
-  const response = await fetch(`${MN_API_BASE}/admin/v1/posts`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiToken}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(postPayload),
-  });
+  const response = await fetch(
+    `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(postPayload),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -191,9 +225,9 @@ export async function publishToMightyNetworks(
 
   const data = await response.json();
 
-  // Extract post ID from response
-  // API may return { id, ... } or nested structure
+  // Extract post ID and permalink from response
   const postId = data.id || data.post_id || data.data?.id;
+  const permalink = data.permalink || data.data?.permalink;
 
   if (!postId) {
     console.warn(
@@ -202,10 +236,12 @@ export async function publishToMightyNetworks(
     );
   }
 
-  // Build the public URL for the post
-  const postUrl = postId
-    ? `${config.networkUrl}/posts/${postId}`
-    : config.networkUrl;
+  // Use permalink from API if available, otherwise construct URL
+  const postUrl = permalink
+    ? `${config.networkUrl}${permalink.startsWith("/") ? "" : "/"}${permalink}`
+    : postId
+      ? `${config.networkUrl}/posts/${postId}`
+      : config.networkUrl;
 
   console.log("[MightyNetworks] Post created:", postId, "URL:", postUrl);
 
@@ -279,13 +315,16 @@ Return ONLY the rewritten community post text. No JSON, no labels, no markdown f
 export async function deletePost(postId: string): Promise<boolean> {
   const config = getConfig();
 
-  const response = await fetch(`${MN_API_BASE}/admin/v1/posts/${postId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${config.apiToken}`,
-      Accept: "application/json",
-    },
-  });
+  const response = await fetch(
+    `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts/${postId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${config.apiToken}`,
+        Accept: "application/json",
+      },
+    }
+  );
 
   return response.ok;
 }

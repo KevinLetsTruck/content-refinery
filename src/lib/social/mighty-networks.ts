@@ -42,17 +42,31 @@ interface MightyNetworksSpace {
   member_count?: number;
 }
 
-function getConfig(): MightyNetworksConfig {
+/**
+ * Get the API token only (for discovery endpoints that don't need space ID)
+ */
+function getApiToken(): string {
   const apiToken = process.env.MIGHTY_NETWORKS_API_TOKEN;
-  const spaceId = process.env.MIGHTY_NETWORKS_SPACE_ID;
-  const networkUrl =
-    process.env.MIGHTY_NETWORKS_NETWORK_URL || "https://letstrucktribe.com";
-
   if (!apiToken) {
     throw new Error(
       "MIGHTY_NETWORKS_API_TOKEN environment variable is not set"
     );
   }
+  return apiToken;
+}
+
+/**
+ * Check if the API token is set (doesn't require space ID)
+ */
+export function hasToken(): boolean {
+  return !!process.env.MIGHTY_NETWORKS_API_TOKEN;
+}
+
+function getConfig(): MightyNetworksConfig {
+  const apiToken = getApiToken();
+  const spaceId = process.env.MIGHTY_NETWORKS_SPACE_ID;
+  const networkUrl =
+    process.env.MIGHTY_NETWORKS_NETWORK_URL || "https://letstrucktribe.com";
 
   if (!spaceId) {
     throw new Error(
@@ -96,11 +110,11 @@ export async function validateToken(): Promise<boolean> {
  * Useful for discovering space IDs during setup
  */
 export async function getSpaces(): Promise<MightyNetworksSpace[]> {
-  const config = getConfig();
+  const apiToken = getApiToken();
 
   const response = await fetch(`${MN_API_BASE}/admin/v1/spaces`, {
     headers: {
-      Authorization: `Bearer ${config.apiToken}`,
+      Authorization: `Bearer ${apiToken}`,
       Accept: "application/json",
     },
   });

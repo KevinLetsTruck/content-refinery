@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getSpaces,
   isConfigured,
+  hasToken,
 } from "@/lib/social/mighty-networks";
 
 /**
@@ -11,21 +12,25 @@ import {
  * Used during setup to discover the space ID for the "News" space
  * (or any other target space).
  *
+ * Only requires MIGHTY_NETWORKS_API_TOKEN — does NOT require SPACE_ID
+ * since the whole point is to discover available space IDs.
+ *
  * Returns:
  *   - spaces: Array of { id, name, slug, ... }
- *   - configured: Whether API token and space ID are set
+ *   - configured: Whether API token AND space ID are both set
  *   - tokenValid: Whether the token is actually working
  */
 export async function GET() {
   try {
-    if (!isConfigured()) {
+    // Only need the API token to list spaces — space ID is what we're discovering
+    if (!hasToken()) {
       return NextResponse.json(
         {
           configured: false,
           tokenValid: false,
           spaces: [],
           message:
-            "Mighty Networks not configured. Set MIGHTY_NETWORKS_API_TOKEN and MIGHTY_NETWORKS_SPACE_ID environment variables.",
+            "Mighty Networks API token not set. Set MIGHTY_NETWORKS_API_TOKEN environment variable.",
         },
         { status: 200 }
       );
@@ -35,7 +40,7 @@ export async function GET() {
     const spaces = await getSpaces();
 
     return NextResponse.json({
-      configured: true,
+      configured: isConfigured(), // true only if BOTH token and space ID are set
       tokenValid: true,
       spaces,
       currentSpaceId: process.env.MIGHTY_NETWORKS_SPACE_ID || null,

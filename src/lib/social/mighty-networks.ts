@@ -73,7 +73,7 @@ export function hasToken(): boolean {
  * Get the network ID (numeric or subdomain) for API paths
  */
 function getNetworkId(): string {
-  return process.env.MIGHTY_NETWORKS_NETWORK_ID || "letstrucktribe";
+  return process.env.MIGHTY_NETWORKS_NETWORK_ID || "letstruck";
 }
 
 function getConfig(): MightyNetworksConfig {

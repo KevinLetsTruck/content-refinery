@@ -149,8 +149,8 @@ export async function getSpaces(): Promise<MightyNetworksSpace[]> {
 
   const data = await response.json();
 
-  // API may return { spaces: [...] } or just an array
-  return Array.isArray(data) ? data : data.spaces || data.data || [];
+  // API returns { items: [...], links: {...} } for paginated results
+  return Array.isArray(data) ? data : data.items || data.spaces || data.data || [];
 }
 
 /**

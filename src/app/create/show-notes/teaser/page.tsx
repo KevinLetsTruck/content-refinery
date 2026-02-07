@@ -159,7 +159,7 @@ export default function ShowNotesTeaserPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            show: showNotesData.show,
+            showName: showNotesData.show,
             customShowName: showNotesData.customShowName,
             sourceItems: showNotesData.sourceItems,
             outline: showNotesData.outline,

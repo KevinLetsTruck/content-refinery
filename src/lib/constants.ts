@@ -43,6 +43,7 @@ export const Platform = {
   LINKEDIN: "linkedin",
   TIKTOK: "tiktok",
   YOUTUBE: "youtube",
+  MIGHTY_NETWORKS: "mighty_networks",
 } as const;
 
 export type Platform = (typeof Platform)[keyof typeof Platform];
@@ -57,6 +58,7 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   [Platform.LINKEDIN]: "LinkedIn",
   [Platform.TIKTOK]: "TikTok",
   [Platform.YOUTUBE]: "YouTube",
+  [Platform.MIGHTY_NETWORKS]: "Let's Truck Tribe",
 };
 
 /**
@@ -69,6 +71,7 @@ export const PLATFORM_CHAR_LIMITS: Record<Platform, number> = {
   [Platform.LINKEDIN]: 3000,
   [Platform.TIKTOK]: 2200,
   [Platform.YOUTUBE]: 5000,
+  [Platform.MIGHTY_NETWORKS]: 5000,
 };
 
 /**

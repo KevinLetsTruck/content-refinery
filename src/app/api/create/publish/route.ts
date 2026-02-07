@@ -3,6 +3,7 @@ import prisma from '@/lib/db/prisma';
 import { postTweet, postThread, uploadMedia, isConfigured as isTwitterConfigured } from '@/lib/social/twitter';
 import { postToLinkedIn, postWithImage as postLinkedInWithImage, isConfigured as isLinkedInConfigured } from '@/lib/social/linkedin';
 import { postToInstagram, isConfigured as isMetaConfigured } from '@/lib/social/meta';
+import { publishToMightyNetworks, adaptForTribe, isConfigured as isMightyNetworksConfigured } from '@/lib/social/mighty-networks';
 import { findProductInText } from '@/lib/products/catalog';
 
 interface PublishResult {
@@ -252,6 +253,30 @@ export async function POST(request: NextRequest) {
               } catch (instagramError) {
                 console.error('[Publish] Instagram error:', instagramError);
                 publishError = instagramError instanceof Error ? instagramError.message : 'Instagram publishing failed';
+              }
+            }
+          } else if (platform === 'mighty_networks') {
+            // Publish to Mighty Networks (Let's Truck Tribe)
+            if (!isMightyNetworksConfigured()) {
+              publishError = 'Mighty Networks not configured. Set MIGHTY_NETWORKS_API_TOKEN and MIGHTY_NETWORKS_SPACE_ID';
+            } else {
+              try {
+                // Adapt social content into a community-tailored Tribe post
+                const textWithProductLink = addProductLink(text);
+                const communityText = await adaptForTribe(textWithProductLink);
+
+                console.log('[Publish] Posting to Mighty Networks, length:', communityText.length);
+                const result = await publishToMightyNetworks({
+                  text: communityText,
+                  imageUrl: visual?.imageUrl || visual?.gammaUrl || null,
+                });
+
+                publishedUrl = result.url;
+                publishSuccess = true;
+                console.log('[Publish] Mighty Networks posted:', result.url);
+              } catch (mnError) {
+                console.error('[Publish] Mighty Networks error:', mnError);
+                publishError = mnError instanceof Error ? mnError.message : 'Mighty Networks publishing failed';
               }
             }
           } else {

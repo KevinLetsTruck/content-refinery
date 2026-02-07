@@ -7,7 +7,7 @@ import { persist } from 'zustand/middleware';
 
 export type SourceType = 'quick_idea' | 'feedly' | 'guide' | 'episode' | 'product' | 'success_story' | 'trucktales';
 export type WizardMode = 'quick_post' | 'campaign' | 'show_notes';
-export type Platform = 'instagram_feed' | 'instagram_story' | 'facebook' | 'linkedin' | 'twitter' | 'tiktok';
+export type Platform = 'instagram_feed' | 'instagram_story' | 'facebook' | 'linkedin' | 'twitter' | 'tiktok' | 'mighty_networks';
 export type ContentType = 'stat' | 'quote' | 'hook' | 'tip' | 'testimonial' | 'teaser' | 'educational' | 'news_commentary' | 'article';
 export type ContentLength = 'short' | 'medium' | 'long' | 'article';
 export type QuickIdeaType = 'idea' | 'news_article' | 'stat' | 'quote' | 'tip';
@@ -222,6 +222,7 @@ const DEFAULT_PLATFORMS: PlatformConfig[] = [
   { platform: 'linkedin', enabled: false, format: '1.91:1', characterLimit: 3000, hashtagLimit: 5 },
   { platform: 'twitter', enabled: false, format: '16:9', characterLimit: 280, hashtagLimit: 3 },
   { platform: 'tiktok', enabled: false, format: '9:16', characterLimit: 2200, hashtagLimit: 5 },
+  { platform: 'mighty_networks', enabled: false, format: '1:1', characterLimit: 5000, hashtagLimit: 0 },
 ];
 
 const DEFAULT_CAMPAIGN_CONFIG: CampaignConfig = {

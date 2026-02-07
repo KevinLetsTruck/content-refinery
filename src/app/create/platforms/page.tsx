@@ -10,6 +10,7 @@ import {
   Linkedin,
   Twitter,
   Music2,
+  Users,
   Check,
   Minus,
   Plus,
@@ -67,6 +68,13 @@ const PLATFORM_INFO: Record<
     color: "bg-black",
     description: "Short-form video",
     supportsFrequency: false,
+  },
+  mighty_networks: {
+    name: "Let's Truck Tribe",
+    icon: <Users className="w-5 h-5" />,
+    color: "bg-indigo-600",
+    description: "Community post to The Tribe",
+    supportsFrequency: true,
   },
 };
 

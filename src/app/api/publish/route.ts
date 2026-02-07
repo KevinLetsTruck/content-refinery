@@ -6,6 +6,7 @@ import { postToFacebook, postToInstagram, isConfigured as isMetaConfigured } fro
 import { uploadVideo as uploadYouTubeVideo, isConfigured as isYouTubeConfigured } from "@/lib/social/youtube";
 import { postToLinkedIn, postWithImage as postLinkedInWithImage, isConfigured as isLinkedInConfigured } from "@/lib/social/linkedin";
 import { uploadVideo as uploadTikTokVideo, isConfigured as isTikTokConfigured } from "@/lib/social/tiktok";
+import { publishToMightyNetworks as postToMightyNetworks, adaptForTribe, isConfigured as isMightyNetworksConfigured } from "@/lib/social/mighty-networks";
 import { trackPublish } from "@/lib/analytics/track-performance";
 import { parseAndValidate, notFound, badRequest, notImplemented } from "@/lib/utils/api";
 import { PLATFORM_CHAR_LIMITS } from "@/lib/constants";
@@ -151,6 +152,10 @@ export async function POST(request: NextRequest) {
           title: content.title || undefined,
           videoUrl: content.mediaUrl,
         });
+        break;
+
+      case "mighty_networks":
+        result = await publishToMightyNetworksPlatform(content);
         break;
 
       default:
@@ -458,6 +463,28 @@ async function publishToTikTok(
 }
 
 /**
+ * Publish to Mighty Networks (Let's Truck Tribe)
+ */
+async function publishToMightyNetworksPlatform(content: ContentInput): Promise<{ id: string; url: string }> {
+  if (!isMightyNetworksConfigured()) {
+    throw new Error(
+      "Mighty Networks credentials not configured. Set MIGHTY_NETWORKS_API_TOKEN and MIGHTY_NETWORKS_SPACE_ID"
+    );
+  }
+
+  // Adapt social content into a community-tailored Tribe post (no hashtags in MN)
+  const baseText = truncateWithEllipsis(content.text, PLATFORM_CHAR_LIMITS.mighty_networks);
+  const communityText = await adaptForTribe(baseText);
+
+  const result = await postToMightyNetworks({
+    text: communityText,
+    imageUrl: content.mediaUrl,
+  });
+
+  return { id: result.id, url: result.url };
+}
+
+/**
  * GET /api/publish/status
  *
  * Check publishing capabilities
@@ -499,6 +526,10 @@ export async function GET() {
       name: "TikTok",
       requiresVideo: true,
       maxDuration: 180, // 3 minutes for regular, 60 for stories
+    },
+    mighty_networks: {
+      configured: isMightyNetworksConfigured(),
+      name: "Let's Truck Tribe",
     },
   };
 

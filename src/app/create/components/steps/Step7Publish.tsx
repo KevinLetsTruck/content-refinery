@@ -23,6 +23,7 @@ const PLATFORM_NAMES: Record<Platform, string> = {
   linkedin: "LinkedIn",
   twitter: "Twitter/X",
   tiktok: "TikTok",
+  mighty_networks: "Let's Truck Tribe",
 };
 
 const PUBLISH_OPTIONS: {

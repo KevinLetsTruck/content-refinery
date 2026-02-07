@@ -17,6 +17,7 @@ import {
   Linkedin,
   Twitter,
   Music2,
+  Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,6 +28,7 @@ const PLATFORM_ICONS: Record<Platform, React.ReactNode> = {
   linkedin: <Linkedin className="w-5 h-5" />,
   twitter: <Twitter className="w-5 h-5" />,
   tiktok: <Music2 className="w-5 h-5" />,
+  mighty_networks: <Users className="w-5 h-5" />,
 };
 
 const PLATFORM_FORMATS: Record<Platform, { width: number; height: number; label: string }> = {
@@ -36,6 +38,7 @@ const PLATFORM_FORMATS: Record<Platform, { width: number; height: number; label:
   linkedin: { width: 1200, height: 628, label: "1.91:1" },
   twitter: { width: 1200, height: 675, label: "16:9" },
   tiktok: { width: 1080, height: 1920, label: "9:16" },
+  mighty_networks: { width: 1200, height: 1200, label: "1:1" },
 };
 
 export default function VisualsPage() {

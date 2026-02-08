@@ -283,8 +283,9 @@ export async function publishToMightyNetworks(
   // MN API docs don't list image fields, but Zapier's integration supports
   // images — so there must be an undocumented field. We try candidates and
   // if MN rejects with "Bad field:", we retry without it.
-  // Current candidate: "image_url" (most common API pattern)
-  const imageFieldName = "image_url";
+  // Rejected: "images" (array), "image_url"
+  // Current candidate: "image" (Zapier error says "Asset must be an image")
+  const imageFieldName = "image";
   if (asset) {
     postPayload[imageFieldName] = asset.url;
     console.log("[MightyNetworks] Trying field '" + imageFieldName + "':", asset.url.substring(0, 80));

@@ -174,9 +174,15 @@ async function uploadAsset(
   try {
     const config = getConfig();
 
-    const formData = new FormData();
-    formData.append("asset_style", "post");
-    formData.append("source_url", imageUrl);
+    // Use JSON body instead of FormData so input_type sends as integer (not string)
+    // input_type: 0 = file upload, 1 = URL-based upload
+    // metadata.is_main_image tells MN to use this as the post's main image
+    const payload = {
+      asset_style: "post",
+      source_url: imageUrl,
+      input_type: 1,
+      metadata: { is_main_image: true },
+    };
 
     console.log("[MightyNetworks] Uploading asset from URL:", imageUrl.substring(0, 100));
 
@@ -186,9 +192,10 @@ async function uploadAsset(
         method: "POST",
         headers: {
           Authorization: `Bearer ${config.apiToken}`,
+          "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: formData,
+        body: JSON.stringify(payload),
       }
     );
 
@@ -252,24 +259,20 @@ export async function publishToMightyNetworks(
 ): Promise<PostResult> {
   const config = getConfig();
 
-  // Upload image asset first if provided
-  let imageAsset: { id: number; url: string } | null = null;
+  // Upload image asset first — MN auto-associates assets with asset_style "post"
+  // and metadata.is_main_image when the post is created right after
   if (options.imageUrl) {
-    imageAsset = await uploadAsset(options.imageUrl);
+    await uploadAsset(options.imageUrl);
   }
 
   // Build the post payload
-  // - space_id: integer ID of the target space
-  // - title: required string (AI-generated, descriptive)
-  // - description: body content (only inline style tags allowed)
-  // - post_type: "article" for rich formatting
-  // - images: array of image URLs to attach
+  // MN API only accepts: space_id, title, description, post_type
+  // Images are attached via the asset upload above, NOT in the post payload
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,
     description: sanitizeMNHtml(options.body),
     post_type: "article",
-    ...(imageAsset?.url ? { images: [imageAsset.url] } : {}),
   };
 
   console.log(

@@ -5,8 +5,8 @@
  * from the Mighty Networks Admin API for the Community Intelligence Dashboard.
  *
  * KEY: MN API uses nested objects:
- *   - Subscriptions: item.plan.amount, item.subscription.canceled_at
- *   - Purchases: item.plan.amount, item.purchase.purchased_at
+ *   - Subscriptions: item.plan.amount (cents), item.subscription.canceled_at
+ *   - Purchases: item.plan.amount (cents), item.purchase.purchased_at
  *   - Tags: item.title (NOT item.name)
  *   - Plans endpoint has NO pricing — pricing comes from subscriptions
  *
@@ -31,6 +31,10 @@ import type {
   TagCount,
 } from "./types";
 
+// ============================================
+// API Helpers
+// ============================================
+
 /**
  * Generic MN API GET request helper
  */
@@ -38,8 +42,6 @@ async function mnGet<T>(path: string): Promise<T> {
   const apiToken = getApiToken();
   const networkId = getNetworkId();
   const url = `${MN_API_BASE}/admin/v1/networks/${networkId}${path}`;
-
-  console.log("[Community] Fetching:", url);
 
   const response = await fetch(url, {
     headers: {
@@ -72,98 +74,123 @@ function extractItems<T>(data: unknown): T[] {
 }
 
 /**
- * Fetch all members (paginated — fetches up to 500 for stats)
+ * Generic paginator for MN API endpoints.
+ *
+ * Fetches all pages sequentially until:
+ *   - Empty response (0 items)
+ *   - Partial page (items < perPage → last page)
+ *   - maxPages safety cap reached
+ *
+ * Returns collected items + any errors encountered.
  */
-export async function getMembers(limit = 100): Promise<MNMember[]> {
-  const allMembers: MNMember[] = [];
+async function paginateAll<T>(
+  path: string,
+  options: { perPage?: number; maxPages?: number; label?: string } = {}
+): Promise<{ items: T[]; errors: string[] }> {
+  const { perPage = 100, maxPages = 100, label = path } = options;
+  const allItems: T[] = [];
+  const errors: string[] = [];
   let page = 1;
-  const maxPages = Math.ceil(limit / 100);
 
   while (page <= maxPages) {
     try {
-      const data = await mnGet<unknown>(`/members?page=${page}&per_page=100`);
-      const items = extractItems<MNMember>(data);
+      const separator = path.includes("?") ? "&" : "?";
+      const data = await mnGet<unknown>(
+        `${path}${separator}page=${page}&per_page=${perPage}`
+      );
+      const items = extractItems<T>(data);
 
-      if (items.length === 0) break;
+      if (items.length === 0) {
+        break;
+      }
 
-      allMembers.push(...items);
-      if (items.length < 100) break; // Last page
+      allItems.push(...items);
+
+      if (items.length < perPage) {
+        // Last page (partial)
+        break;
+      }
 
       page++;
     } catch (error) {
-      console.error("[Community] Error fetching members page", page, error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[Community] ${label}: error on page ${page}:`, msg);
+      errors.push(`Page ${page}: ${msg}`);
       break;
     }
   }
 
-  return allMembers;
+  console.log(
+    `[Community] ${label}: fetched ${allItems.length} items across ${page} pages${
+      errors.length > 0 ? ` (${errors.length} errors)` : ""
+    }`
+  );
+
+  return { items: allItems, errors };
+}
+
+// ============================================
+// Data Fetchers
+// ============================================
+
+/**
+ * Fetch ALL members (no artificial cap)
+ */
+export async function getMembers(): Promise<MNMember[]> {
+  const result = await paginateAll<MNMember>("/members", {
+    label: "members",
+    maxPages: 100,
+  });
+  return result.items;
 }
 
 /**
- * Fetch all subscriptions (with nested plan + subscription objects)
+ * Fetch ALL subscriptions (with nested plan + subscription objects)
  */
 export async function getSubscriptions(): Promise<MNSubscriptionItem[]> {
-  const allSubs: MNSubscriptionItem[] = [];
-  let page = 1;
-
-  while (page <= 10) {
-    try {
-      const data = await mnGet<unknown>(`/subscriptions?page=${page}&per_page=100`);
-      const items = extractItems<MNSubscriptionItem>(data);
-
-      if (items.length === 0) break;
-
-      allSubs.push(...items);
-      if (items.length < 100) break;
-
-      page++;
-    } catch (error) {
-      console.error("[Community] Error fetching subscriptions page", page, error);
-      break;
-    }
-  }
-
-  return allSubs;
+  const result = await paginateAll<MNSubscriptionItem>("/subscriptions", {
+    label: "subscriptions",
+    maxPages: 100,
+  });
+  return result.items;
 }
 
 /**
- * Fetch all purchases (one-time payments)
+ * Fetch ALL purchases (one-time payments)
  */
 export async function getPurchases(): Promise<MNPurchaseItem[]> {
-  try {
-    const data = await mnGet<unknown>("/purchases?per_page=100");
-    return extractItems<MNPurchaseItem>(data);
-  } catch (error) {
-    console.error("[Community] Error fetching purchases:", error);
-    return [];
-  }
+  const result = await paginateAll<MNPurchaseItem>("/purchases", {
+    label: "purchases",
+    maxPages: 50,
+  });
+  return result.items;
 }
 
 /**
- * Fetch all available plans (no pricing info — just names and statuses)
+ * Fetch all available plans (typically small set, no pagination needed but safe)
  */
 export async function getPlans(): Promise<MNPlan[]> {
-  try {
-    const data = await mnGet<unknown>("/plans");
-    return extractItems<MNPlan>(data);
-  } catch (error) {
-    console.error("[Community] Error fetching plans:", error);
-    return [];
-  }
+  const result = await paginateAll<MNPlan>("/plans", {
+    label: "plans",
+    maxPages: 5,
+  });
+  return result.items;
 }
 
 /**
  * Fetch all tags/segments (uses 'title' not 'name')
  */
 export async function getTags(): Promise<MNTag[]> {
-  try {
-    const data = await mnGet<unknown>("/tags");
-    return extractItems<MNTag>(data);
-  } catch (error) {
-    console.error("[Community] Error fetching tags:", error);
-    return [];
-  }
+  const result = await paginateAll<MNTag>("/tags", {
+    label: "tags",
+    maxPages: 5,
+  });
+  return result.items;
 }
+
+// ============================================
+// Stats Calculator
+// ============================================
 
 /**
  * Calculate community statistics from raw MN API data
@@ -246,7 +273,7 @@ function calculateStats(
 
   const avgRevenuePerMember = totalMembers > 0 ? mrr / totalMembers : 0;
 
-  // --- Plan Breakdown (derived from subscription data, not plans endpoint) ---
+  // --- Plan Breakdown (derived from subscription data) ---
   // Group active subscriptions by plan name to get counts and revenue
   const planMap = new Map<
     string,
@@ -295,19 +322,20 @@ function calculateStats(
     }));
 
   // --- Tag Distribution (uses 'title' not 'name', no member_count) ---
-  // Tags don't have member_count from the API, so just list them
   const tagDistribution: TagCount[] = tags.slice(0, 15).map((t) => ({
     id: String(t.id),
     name: t.title, // MN uses 'title' not 'name'
-    count: 0, // Tags endpoint doesn't provide member_count
+    count: 0,
   }));
 
-  // Log key metrics for debugging
+  // Log key metrics
   console.log(
     "[Community] Calculated:",
     `MRR=$${mrr.toFixed(2)},`,
+    `ARR=$${arr.toFixed(2)},`,
     `Active=${activeSubs.length},`,
     `Canceled=${canceledSubs.length},`,
+    `Churn=${churnRate.toFixed(1)}%,`,
     `Plans=${planBreakdown.length},`,
     `Referrers=${topReferrers.length}`
   );
@@ -337,9 +365,20 @@ function calculateStats(
     },
     snapshot: {
       fetchedAt: now.toISOString(),
+      fetchCounts: {
+        members: members.length,
+        subscriptions: subscriptions.length,
+        purchases: purchases.length,
+        plans: plans.length,
+        tags: tags.length,
+      },
     },
   };
 }
+
+// ============================================
+// Main Entry Point
+// ============================================
 
 /**
  * Fetch all community data from MN API and calculate stats
@@ -351,7 +390,7 @@ export async function getCommunityStats(): Promise<CommunityStats> {
   console.log("[Community] Fetching community stats...");
 
   const [members, subscriptions, purchases, plans, tags] = await Promise.all([
-    getMembers(500),
+    getMembers(),
     getSubscriptions(),
     getPurchases(),
     getPlans(),
@@ -359,7 +398,7 @@ export async function getCommunityStats(): Promise<CommunityStats> {
   ]);
 
   console.log(
-    "[Community] Raw data:",
+    "[Community] Fetched totals:",
     `${members.length} members,`,
     `${subscriptions.length} subscriptions,`,
     `${purchases.length} purchases,`,

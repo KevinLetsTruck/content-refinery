@@ -171,6 +171,23 @@ export default function CommunityPage() {
           </div>
         </div>
 
+        {/* Data Quality Indicator */}
+        {!loading && stats?.snapshot?.fetchCounts && (
+          <div className="mb-4 flex items-center gap-4 text-xs text-[#666666] bg-[#1A1A1A] border border-[#252525] rounded-lg px-4 py-2">
+            <span>
+              Loaded: {formatNumber(stats.snapshot.fetchCounts.members)} members,{" "}
+              {formatNumber(stats.snapshot.fetchCounts.subscriptions)} subscriptions,{" "}
+              {stats.snapshot.fetchCounts.purchases} purchases
+            </span>
+            {stats.snapshot.warnings && stats.snapshot.warnings.length > 0 && (
+              <span className="flex items-center gap-1 text-yellow-400">
+                <AlertTriangle className="h-3 w-3" />
+                {stats.snapshot.warnings[0]}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Loading State */}
         {loading && (
           <div className="flex items-center justify-center py-32">

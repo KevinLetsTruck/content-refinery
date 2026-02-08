@@ -37,6 +37,14 @@ export interface CommunityStats {
   };
   snapshot: {
     fetchedAt: string; // ISO timestamp
+    fetchCounts?: {
+      members: number;
+      subscriptions: number;
+      purchases: number;
+      plans: number;
+      tags: number;
+    };
+    warnings?: string[];
   };
 }
 

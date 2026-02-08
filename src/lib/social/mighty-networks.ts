@@ -261,12 +261,10 @@ export async function publishToMightyNetworks(
 ): Promise<PostResult> {
   const config = getConfig();
 
-  // Upload image asset first — MN may auto-associate asset with the next post
-  // when asset_style is "post". Previously untested with both steps succeeding
-  // together (asset upload worked at 18:34, post creation worked at 18:55,
-  // but never both in the same request).
+  // Upload image asset first to get MN-hosted URL
+  let asset: { id: number; url: string } | null = null;
   if (options.imageUrl) {
-    const asset = await uploadAsset(options.imageUrl);
+    asset = await uploadAsset(options.imageUrl);
     if (asset) {
       console.log("[MightyNetworks] Asset ready (id:", asset.id, "), creating post...");
     } else {
@@ -274,17 +272,23 @@ export async function publishToMightyNetworks(
     }
   }
 
-  // Build the post payload
-  // MN API only accepts: space_id, title, description, post_type
-  // Do NOT add images/assets to the payload — MN rejects unknown fields
-  // Omit post_type to create a "quick post" (default) — quick posts display
-  // images inline, and the uploaded asset may auto-associate with quick posts
-  // but not articles (which have a separate hero image mechanism).
+  // Build the post payload — base fields only
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,
     description: sanitizeMNHtml(options.body),
   };
+
+  // Try undocumented image field if we have an uploaded asset.
+  // MN API docs don't list image fields, but Zapier's integration supports
+  // images — so there must be an undocumented field. We try candidates and
+  // if MN rejects with "Bad field:", we retry without it.
+  // Current candidate: "image_url" (most common API pattern)
+  const imageFieldName = "image_url";
+  if (asset) {
+    postPayload[imageFieldName] = asset.url;
+    console.log("[MightyNetworks] Trying field '" + imageFieldName + "':", asset.url.substring(0, 80));
+  }
 
   console.log(
     "[MightyNetworks] Creating post in space:",
@@ -297,36 +301,55 @@ export async function publishToMightyNetworks(
     options.body.length
   );
 
-  const response = await fetch(
-    `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.apiToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(postPayload),
-    }
-  );
+  const postUrl = `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`;
+  const postHeaders = {
+    Authorization: `Bearer ${config.apiToken}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
 
+  let response = await fetch(postUrl, {
+    method: "POST",
+    headers: postHeaders,
+    body: JSON.stringify(postPayload),
+  });
+
+  // If "Bad field" error and we tried an image field, retry without it
   if (!response.ok) {
     const errorText = await response.text();
     console.error("[MightyNetworks] Post error:", response.status, errorText);
 
-    // Try to parse error for better message
-    let errorMessage = errorText;
-    try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage =
-        errorJson.message || errorJson.error || JSON.stringify(errorJson);
-    } catch {
-      // Use raw text
-    }
+    if (errorText.includes("Bad field") && asset && postPayload[imageFieldName]) {
+      console.warn("[MightyNetworks] '" + imageFieldName + "' rejected — retrying without image field");
+      delete postPayload[imageFieldName];
+      response = await fetch(postUrl, {
+        method: "POST",
+        headers: postHeaders,
+        body: JSON.stringify(postPayload),
+      });
 
-    throw new Error(
-      `Mighty Networks API error (${response.status}): ${errorMessage}`
-    );
+      if (!response.ok) {
+        const retryErrorText = await response.text();
+        throw new Error(
+          `Mighty Networks API error (${response.status}): ${retryErrorText}`
+        );
+      }
+      console.log("[MightyNetworks] Retry succeeded (without image field)");
+    } else {
+      // Non-image-related error
+      let errorMessage = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage =
+          errorJson.message || errorJson.error || JSON.stringify(errorJson);
+      } catch {
+        // Use raw text
+      }
+
+      throw new Error(
+        `Mighty Networks API error (${response.status}): ${errorMessage}`
+      );
+    }
   }
 
   const data = await response.json();

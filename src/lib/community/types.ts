@@ -12,12 +12,20 @@
  * - Tags: { items: [{ id, title, description, color }] } — uses 'title' not 'name'
  */
 
+export interface NetGrowth {
+  daily: number; // net = new members today - cancellations today
+  weekly: number; // net for last 7 days
+  monthly: number; // net for last 30 days
+  ytd: number; // net for year-to-date
+}
+
 export interface CommunityStats {
   members: {
     total: number;
     new30d: number;
     new7d: number;
     growthRate: number; // percentage
+    netGrowth: NetGrowth;
   };
   revenue: {
     mrr: number; // Monthly Recurring Revenue in dollars

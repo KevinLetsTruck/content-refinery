@@ -30,7 +30,9 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { Sidebar } from "@/components/navigation/Sidebar";
-import type { CommunityStats, CommunityInsight } from "@/lib/community/types";
+import type { CommunityStats, CommunityInsight, NetGrowth } from "@/lib/community/types";
+
+type NetPeriod = keyof NetGrowth;
 
 const PLAN_COLORS = [
   "#FF4500",
@@ -78,6 +80,7 @@ export default function CommunityPage() {
   const [generatingInsights, setGeneratingInsights] = useState(false);
   const [configured, setConfigured] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [netPeriod, setNetPeriod] = useState<NetPeriod>("monthly");
 
   useEffect(() => {
     fetchStats();
@@ -228,7 +231,7 @@ export default function CommunityPage() {
         {!loading && stats && (
           <>
             {/* Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
               {/* Total Members */}
               <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-6">
                 <div className="flex items-center justify-between mb-3">
@@ -348,6 +351,58 @@ export default function CommunityPage() {
                   <span className="text-xs text-[#666666]">
                     Industry avg: 5-7% for communities
                   </span>
+                </div>
+              </div>
+
+              {/* Net Growth */}
+              <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div
+                    className={`p-2 rounded-lg ${
+                      (stats.members.netGrowth?.[netPeriod] ?? 0) >= 0
+                        ? "bg-green-500/10"
+                        : "bg-red-500/10"
+                    }`}
+                  >
+                    {(stats.members.netGrowth?.[netPeriod] ?? 0) >= 0 ? (
+                      <TrendingUp className="h-5 w-5 text-green-400" />
+                    ) : (
+                      <TrendingDown className="h-5 w-5 text-red-400" />
+                    )}
+                  </div>
+                </div>
+                <p
+                  className={`text-3xl font-bold ${
+                    (stats.members.netGrowth?.[netPeriod] ?? 0) >= 0
+                      ? "text-green-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {(stats.members.netGrowth?.[netPeriod] ?? 0) >= 0 ? "+" : ""}
+                  {stats.members.netGrowth?.[netPeriod] ?? 0}
+                </p>
+                <p className="text-sm text-[#999999] mt-1">Net Growth</p>
+                <div className="mt-2 flex gap-1">
+                  {(
+                    [
+                      { key: "daily", label: "Day" },
+                      { key: "weekly", label: "Week" },
+                      { key: "monthly", label: "Month" },
+                      { key: "ytd", label: "YTD" },
+                    ] as { key: NetPeriod; label: string }[]
+                  ).map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setNetPeriod(tab.key)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                        netPeriod === tab.key
+                          ? "bg-[#FF4500] text-white"
+                          : "bg-[#252525] text-[#666666] hover:text-[#999999]"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

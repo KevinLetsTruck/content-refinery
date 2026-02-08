@@ -21,6 +21,7 @@ import {
 
 import type {
   CommunityStats,
+  NetGrowth,
   MNMember,
   MNSubscriptionItem,
   MNPurchaseItem,
@@ -189,6 +190,44 @@ export async function getTags(): Promise<MNTag[]> {
 }
 
 // ============================================
+// Plan Name Normalization
+// ============================================
+
+/**
+ * Normalize MN plan names by merging variants into clean display names.
+ *
+ * MN has many plan variants with suffixes like "Free", "Gift", "Legacy",
+ * "Special", "w/ Free Trial". This merges them into single display names.
+ *
+ * Examples:
+ *   COACHING, COACHING Gift, COACHING Legacy, COACHING Special → "Coaching"
+ *   FIRST MILE, FIRST MILE w/ Free Trial → "First Mile"
+ *   GEAR UP, GEAR UP Free → "Gear Up"
+ *   INNER CIRCLE, INNER CIRCLE Free → "Inner Circle"
+ *   CMC Virtual, CMC Virtual FREE → "CMC Virtual"
+ *   TRIBES Legacy, TRIBES FREE → "Tribes"
+ */
+function normalizePlanName(rawName: string): string {
+  const upper = rawName.toUpperCase().trim();
+
+  if (upper.startsWith("COACHING")) return "Coaching";
+  if (upper.startsWith("FIRST MILE")) return "First Mile";
+  if (upper.startsWith("GEAR UP")) return "Gear Up";
+  if (upper.startsWith("INNER CIRCLE")) return "Inner Circle";
+  if (upper.startsWith("CMC VIRTUAL")) return "CMC Virtual";
+  if (upper.startsWith("TRIBES")) return "Tribes";
+  if (upper.startsWith("OPEN ROAD")) return "Open Road";
+  if (upper.startsWith("AMBASSADOR")) return "Ambassador";
+  if (upper.startsWith("CONTENT AMBASSADOR")) return "Content Ambassador";
+  if (upper.startsWith("PARTNER ACCESS")) return "Partner Access";
+  if (upper.startsWith("COURSES")) return "Courses";
+  if (upper.startsWith("COFFEE")) return "Coffee w/ Kevin";
+
+  // Default: return as-is
+  return rawName;
+}
+
+// ============================================
 // Stats Calculator
 // ============================================
 
@@ -210,16 +249,24 @@ function calculateStats(
   tags: MNTag[]
 ): CommunityStats {
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const yearStart = new Date(now.getFullYear(), 0, 1);
 
   // --- Member Stats ---
   const totalMembers = members.length;
-  const new30d = members.filter(
-    (m) => new Date(m.created_at) >= thirtyDaysAgo
+  const new1d = members.filter(
+    (m) => new Date(m.created_at) >= startOfToday
   ).length;
   const new7d = members.filter(
     (m) => new Date(m.created_at) >= sevenDaysAgo
+  ).length;
+  const new30d = members.filter(
+    (m) => new Date(m.created_at) >= thirtyDaysAgo
+  ).length;
+  const newYTD = members.filter(
+    (m) => new Date(m.created_at) >= yearStart
   ).length;
   const growthRate = totalMembers > 0 ? (new30d / totalMembers) * 100 : 0;
 
@@ -233,15 +280,39 @@ function calculateStats(
   );
 
   // Churn: canceled in last 30 days / (active + canceled in last 30 days)
+  const canceledToday = canceledSubs.filter(
+    (s) =>
+      s.subscription?.canceled_at &&
+      new Date(s.subscription.canceled_at) >= startOfToday
+  ).length;
+  const canceled7d = canceledSubs.filter(
+    (s) =>
+      s.subscription?.canceled_at &&
+      new Date(s.subscription.canceled_at) >= sevenDaysAgo
+  ).length;
   const canceledLast30d = canceledSubs.filter(
     (s) =>
       s.subscription?.canceled_at &&
       new Date(s.subscription.canceled_at) >= thirtyDaysAgo
   ).length;
+  const canceledYTD = canceledSubs.filter(
+    (s) =>
+      s.subscription?.canceled_at &&
+      new Date(s.subscription.canceled_at) >= yearStart
+  ).length;
+
   const churnRate =
     activeSubs.length + canceledLast30d > 0
       ? (canceledLast30d / (activeSubs.length + canceledLast30d)) * 100
       : 0;
+
+  // --- Net Growth (new members - cancellations per period) ---
+  const netGrowth: NetGrowth = {
+    daily: new1d - canceledToday,
+    weekly: new7d - canceled7d,
+    monthly: new30d - canceledLast30d,
+    ytd: newYTD - canceledYTD,
+  };
 
   // --- Revenue Calculations ---
   // Price is in sub.plan.amount (cents)
@@ -274,39 +345,54 @@ function calculateStats(
   const avgRevenuePerMember = totalMembers > 0 ? mrr / totalMembers : 0;
 
   // --- Plan Breakdown (derived from subscription data) ---
-  // Group active subscriptions by plan name to get counts and revenue
+  // Group active subscriptions by NORMALIZED plan name to merge variants
+  // e.g., "COACHING", "COACHING Gift", "COACHING Legacy" → "Coaching"
   const planMap = new Map<
     string,
-    { name: string; count: number; amount: number; interval: string }
+    { name: string; count: number; totalMonthlyRevenue: number; highestAmount: number; interval: string }
   >();
 
   activeSubs.forEach((sub) => {
-    const planName = sub.plan?.name || "Unknown Plan";
+    const rawName = sub.plan?.name || "Unknown Plan";
+    const normalizedName = normalizePlanName(rawName);
     const amount = (sub.plan?.amount || 0) / 100;
     const interval = sub.plan?.interval || "month";
 
-    const existing = planMap.get(planName);
+    // Calculate this sub's monthly contribution
+    const monthlyContribution =
+      interval === "year" || interval === "annual"
+        ? amount / 12
+        : amount;
+
+    const existing = planMap.get(normalizedName);
     if (existing) {
       existing.count += 1;
+      existing.totalMonthlyRevenue += monthlyContribution;
+      // Track highest non-zero amount for display
+      if (amount > existing.highestAmount) {
+        existing.highestAmount = amount;
+        existing.interval = interval;
+      }
     } else {
-      planMap.set(planName, { name: planName, count: 1, amount, interval });
+      planMap.set(normalizedName, {
+        name: normalizedName,
+        count: 1,
+        totalMonthlyRevenue: monthlyContribution,
+        highestAmount: amount,
+        interval,
+      });
     }
   });
 
   const planBreakdown: PlanBreakdown[] = Array.from(planMap.values())
-    .map((plan) => {
-      const monthlyRevenue =
-        plan.interval === "year" || plan.interval === "annual"
-          ? (plan.amount / 12) * plan.count
-          : plan.amount * plan.count;
-      return {
-        name: plan.name,
-        count: plan.count,
-        amount: plan.amount,
-        interval: plan.interval,
-        revenue: Math.round(monthlyRevenue * 100) / 100,
-      };
-    })
+    .map((plan) => ({
+      name: plan.name,
+      count: plan.count,
+      amount: plan.highestAmount,
+      interval: plan.interval,
+      revenue: Math.round(plan.totalMonthlyRevenue * 100) / 100,
+    }))
+    .filter((plan) => plan.revenue > 0) // Hide $0 revenue plans
     .sort((a, b) => b.revenue - a.revenue);
 
   // --- Top Referrers (from members data) ---
@@ -337,7 +423,8 @@ function calculateStats(
     `Canceled=${canceledSubs.length},`,
     `Churn=${churnRate.toFixed(1)}%,`,
     `Plans=${planBreakdown.length},`,
-    `Referrers=${topReferrers.length}`
+    `Referrers=${topReferrers.length},`,
+    `Net(month)=${netGrowth.monthly}`
   );
 
   return {
@@ -346,6 +433,7 @@ function calculateStats(
       new30d,
       new7d,
       growthRate: Math.round(growthRate * 10) / 10,
+      netGrowth,
     },
     revenue: {
       mrr: Math.round(mrr * 100) / 100,

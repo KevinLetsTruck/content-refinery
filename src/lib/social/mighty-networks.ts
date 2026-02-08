@@ -20,7 +20,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 
-const MN_API_BASE = "https://api.mn.co";
+export const MN_API_BASE = "https://api.mn.co";
 
 interface MightyNetworksConfig {
   apiToken: string;
@@ -58,7 +58,7 @@ interface MightyNetworksSpace {
 /**
  * Get the API token only (for discovery endpoints that don't need space ID)
  */
-function getApiToken(): string {
+export function getApiToken(): string {
   const apiToken = process.env.MIGHTY_NETWORKS_API_TOKEN;
   if (!apiToken) {
     throw new Error(
@@ -78,7 +78,7 @@ export function hasToken(): boolean {
 /**
  * Get the network ID (numeric or subdomain) for API paths
  */
-function getNetworkId(): string {
+export function getNetworkId(): string {
   return process.env.MIGHTY_NETWORKS_NETWORK_ID || "letstruck";
 }
 

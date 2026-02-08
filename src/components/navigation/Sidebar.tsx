@@ -18,6 +18,7 @@ import {
   Wand2,
   Brain,
   Radio,
+  Users,
 } from "lucide-react";
 
 interface NavItem {
@@ -80,6 +81,12 @@ const navigation: NavGroup[] = [
         label: "Show Schedule",
         href: "/show-schedule",
         icon: <Radio className="h-5 w-5" />,
+        isNew: true,
+      },
+      {
+        label: "Community",
+        href: "/community",
+        icon: <Users className="h-5 w-5" />,
         isNew: true,
       },
     ],

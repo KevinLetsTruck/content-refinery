@@ -177,7 +177,6 @@ async function uploadAsset(
     const formData = new FormData();
     formData.append("asset_style", "post");
     formData.append("source_url", imageUrl);
-    formData.append("input_type", "1");
 
     console.log("[MightyNetworks] Uploading asset from URL:", imageUrl.substring(0, 100));
 
@@ -223,13 +222,29 @@ async function uploadAsset(
 
 /**
  * Sanitize HTML for Mighty Networks API.
- * MN only allows style tags (bold, italic, etc.) — no links or images.
- * Strips <a> tags (keeping inner text) and removes <img> tags entirely.
+ *
+ * MN only allows inline style tags (<strong>, <em>, <b>, <i>).
+ * Block-level tags (<p>, <div>, <h1-h6>) and media tags (<a>, <img>)
+ * are NOT supported and will cause a 422 error.
+ *
+ * This function:
+ * - Converts <p> tags to double-newlines for paragraph spacing
+ * - Converts <br> to single newlines
+ * - Strips <a> tags (keeping inner text)
+ * - Removes <img> tags entirely
+ * - Collapses excess whitespace
  */
 function sanitizeMNHtml(html: string): string {
   return html
-    .replace(/<a[^>]*>(.*?)<\/a>/gi, "$1") // Strip <a> tags, keep inner text
-    .replace(/<img[^>]*\/?>/gi, ""); // Remove <img> tags entirely
+    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n") // </p><p> → double newline
+    .replace(/<p[^>]*>/gi, "") // Opening <p> → remove
+    .replace(/<\/p>/gi, "\n\n") // Closing </p> → double newline
+    .replace(/<br\s*\/?>/gi, "\n") // <br> → single newline
+    .replace(/<a[^>]*>(.*?)<\/a>/gi, "$1") // Strip <a> tags, keep text
+    .replace(/<img[^>]*\/?>/gi, "") // Remove <img> tags
+    .replace(/<\/?(div|h[1-6]|ul|ol|li|blockquote)[^>]*>/gi, "\n") // Other block tags → newline
+    .replace(/\n{3,}/g, "\n\n") // Collapse excess newlines
+    .trim();
 }
 
 export async function publishToMightyNetworks(
@@ -237,22 +252,24 @@ export async function publishToMightyNetworks(
 ): Promise<PostResult> {
   const config = getConfig();
 
-  // Upload image asset first if provided (non-blocking — post still goes out if upload fails)
+  // Upload image asset first if provided
+  let imageAsset: { id: number; url: string } | null = null;
   if (options.imageUrl) {
-    await uploadAsset(options.imageUrl);
+    imageAsset = await uploadAsset(options.imageUrl);
   }
 
-  // Build the post payload per API docs:
+  // Build the post payload
   // - space_id: integer ID of the target space
   // - title: required string (AI-generated, descriptive)
-  // - description: HTML-formatted body content
-  // - post_type: "article" renders with rich formatting (paragraphs, bold, lists)
-  //   vs "post" (Quick Post) which collapses all whitespace into one block
+  // - description: body content (only inline style tags allowed)
+  // - post_type: "article" for rich formatting
+  // - images: array of image URLs to attach
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,
     description: sanitizeMNHtml(options.body),
     post_type: "article",
+    ...(imageAsset?.url ? { images: [imageAsset.url] } : {}),
   };
 
   console.log(
@@ -312,8 +329,11 @@ export async function publishToMightyNetworks(
   }
 
   // Use permalink from API if available, otherwise construct URL
+  // Note: MN API returns full URLs in permalink (e.g., "https://www.letstrucktribe.com/posts/...")
   const postUrl = permalink
-    ? `${config.networkUrl}${permalink.startsWith("/") ? "" : "/"}${permalink}`
+    ? permalink.startsWith("http")
+      ? permalink
+      : `${config.networkUrl}${permalink.startsWith("/") ? "" : "/"}${permalink}`
     : postId
       ? `${config.networkUrl}/posts/${postId}`
       : config.networkUrl;
@@ -344,7 +364,7 @@ export async function adaptForTribe(socialText: string): Promise<TribeContent> {
       messages: [
         {
           role: "user",
-          content: `Rewrite this social media post as a community post for The Tribe (Let's Truck community on Mighty Networks). Return a JSON object with "title" and "body" fields. The body MUST use HTML tags for formatting.
+          content: `Rewrite this social media post as a community post for The Tribe (Let's Truck community on Mighty Networks). Return a JSON object with "title" and "body" fields.
 
 SOCIAL POST:
 ${socialText}
@@ -355,14 +375,19 @@ TITLE RULES:
 - Examples: "Creatine Isn't Just for Gym Bros", "Your Brain Needs Real Fuel", "Why 70% of Drivers Have Candida"
 - Plain text only (no HTML in the title)
 
-BODY FORMATTING RULES (HTML REQUIRED):
-- Wrap EVERY paragraph in <p>...</p> tags — this is critical for spacing
-- Use SHORT paragraphs (2-3 sentences max per <p> block)
-- Use <strong>...</strong> for emphasis on key phrases (not ALL CAPS)
-- For bullet lists, use plain text bullets with <br> tags:
-  <p>• Point one<br>• Point two<br>• Point three</p>
-- Do NOT use markdown (#, **, _, etc.) — use HTML only
-- Keep it readable: lots of short paragraphs, not dense blocks
+BODY FORMATTING RULES:
+- Use double newlines (blank lines) between paragraphs for spacing
+- Use SHORT paragraphs (2-3 sentences max)
+- Use <strong>...</strong> for bold emphasis on key phrases
+- Use <em>...</em> for italic
+- For bullet lists, use plain text bullets with newlines:
+  • Point one
+  • Point two
+  • Point three
+- Do NOT use <p>, <div>, <h1-h6>, <a>, <img>, or any block-level HTML tags
+- Do NOT use markdown (#, **, _, etc.)
+- ONLY allowed HTML tags: <strong>, <em>, <b>, <i>
+- Keep it readable: lots of short paragraphs separated by blank lines
 
 VOICE & CONTENT RULES:
 - Write as Kevin Rutherford talking directly to The Tribe
@@ -374,11 +399,11 @@ VOICE & CONTENT RULES:
 - Examples: "What's your experience with this?", "Drop your thoughts below", "Who else deals with this?"
 - Keep Kevin's direct, no-BS voice — NEVER say "trucker" (use "driver", "professional driver")
 - Use phrases like "proper human diet", "owner-operator of your health", "The Tribe"
-- If there's a product URL, mention the product name in bold but do NOT use <a> link tags — MN doesn't allow them. Just say something like "check out <strong>Product Name</strong> on the store"
+- If there's a product URL, mention the product name in bold but do NOT include a link — MN doesn't allow them. Just say something like "check out <strong>Product Name</strong> on the store"
 - Strip any emojis that feel too "social media" — a few are OK if natural
 
 Return ONLY valid JSON with this exact structure:
-{"title": "Your Compelling Title Here", "body": "<p>First paragraph.</p><p>Second paragraph with <strong>emphasis</strong>.</p>"}`,
+{"title": "Your Compelling Title Here", "body": "First paragraph here.\\n\\nSecond paragraph with <strong>emphasis</strong>.\\n\\nThird paragraph."}`,
         },
       ],
     });

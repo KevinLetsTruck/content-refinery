@@ -230,27 +230,31 @@ async function uploadAsset(
 /**
  * Sanitize HTML for Mighty Networks API.
  *
- * MN only allows inline style tags (<strong>, <em>, <b>, <i>).
+ * MN only allows inline style tags: <strong>, <em>, <b>, <i>, <br>.
  * Block-level tags (<p>, <div>, <h1-h6>) and media tags (<a>, <img>)
  * are NOT supported and will cause a 422 error.
  *
- * This function:
- * - Converts <p> tags to double-newlines for paragraph spacing
- * - Converts <br> to single newlines
- * - Strips <a> tags (keeping inner text)
- * - Removes <img> tags entirely
- * - Collapses excess whitespace
+ * MN renders description as HTML, so we use <br> tags for line breaks
+ * (plain \n newlines are collapsed by HTML rendering).
  */
 function sanitizeMNHtml(html: string): string {
   return html
-    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n") // </p><p> → double newline
+    .replace(/<\/p>\s*<p[^>]*>/gi, "<br><br>") // </p><p> → double break
     .replace(/<p[^>]*>/gi, "") // Opening <p> → remove
-    .replace(/<\/p>/gi, "\n\n") // Closing </p> → double newline
-    .replace(/<br\s*\/?>/gi, "\n") // <br> → single newline
+    .replace(/<\/p>/gi, "<br><br>") // Closing </p> → double break
+    .replace(/<br\s*\/?>/gi, "<br>") // Normalize <br> variants
     .replace(/<a[^>]*>(.*?)<\/a>/gi, "$1") // Strip <a> tags, keep text
     .replace(/<img[^>]*\/?>/gi, "") // Remove <img> tags
-    .replace(/<\/?(div|h[1-6]|ul|ol|li|blockquote)[^>]*>/gi, "\n") // Other block tags → newline
-    .replace(/\n{3,}/g, "\n\n") // Collapse excess newlines
+    .replace(/<\/?(div|section|article|header|footer|nav|main|aside)[^>]*>/gi, "<br>")
+    .replace(/<\/?(h[1-6])[^>]*>/gi, "<br>") // Headings → break
+    .replace(/<\/?(ul|ol)[^>]*>/gi, "<br>") // List containers → break
+    .replace(/<li[^>]*>/gi, "• ") // List items → bullet
+    .replace(/<\/li>/gi, "<br>") // End list item → break
+    .replace(/<\/?(blockquote)[^>]*>/gi, "<br>")
+    .replace(/\n\n/g, "<br><br>") // Double newlines → double break
+    .replace(/\n/g, "<br>") // Single newlines → single break
+    .replace(/<\/?(?!(?:strong|em|b|i|br)\b)[a-z][^>]*>/gi, "") // Strip any non-whitelisted HTML tags
+    .replace(/(<br>){4,}/g, "<br><br>") // Collapse excess breaks
     .trim();
 }
 
@@ -259,15 +263,13 @@ export async function publishToMightyNetworks(
 ): Promise<PostResult> {
   const config = getConfig();
 
-  // Upload image asset first — MN auto-associates assets with asset_style "post"
-  // and metadata.is_main_image when the post is created right after
-  if (options.imageUrl) {
-    await uploadAsset(options.imageUrl);
-  }
+  // NOTE: MN Admin API has no way to attach images to posts.
+  // The asset upload endpoint works, but there's no field in the post creation
+  // or update endpoints to associate an asset with a post. The `images` array
+  // appears in the response but not the request schema. Skipping image upload.
 
   // Build the post payload
   // MN API only accepts: space_id, title, description, post_type
-  // Images are attached via the asset upload above, NOT in the post payload
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,
@@ -379,18 +381,15 @@ TITLE RULES:
 - Plain text only (no HTML in the title)
 
 BODY FORMATTING RULES:
-- Use double newlines (blank lines) between paragraphs for spacing
+- Use <br><br> between paragraphs for spacing (NOT newlines — MN renders as HTML)
 - Use SHORT paragraphs (2-3 sentences max)
 - Use <strong>...</strong> for bold emphasis on key phrases
 - Use <em>...</em> for italic
-- For bullet lists, use plain text bullets with newlines:
-  • Point one
-  • Point two
-  • Point three
-- Do NOT use <p>, <div>, <h1-h6>, <a>, <img>, or any block-level HTML tags
+- For bullet lists, use: • Point one<br>• Point two<br>• Point three
+- ONLY allowed HTML tags: <strong>, <em>, <b>, <i>, <br>
+- Do NOT use <p>, <div>, <h1-h6>, <a>, <img>, or any other HTML tags
 - Do NOT use markdown (#, **, _, etc.)
-- ONLY allowed HTML tags: <strong>, <em>, <b>, <i>
-- Keep it readable: lots of short paragraphs separated by blank lines
+- Keep it readable: lots of short paragraphs separated by <br><br>
 
 VOICE & CONTENT RULES:
 - Write as Kevin Rutherford talking directly to The Tribe
@@ -406,7 +405,7 @@ VOICE & CONTENT RULES:
 - Strip any emojis that feel too "social media" — a few are OK if natural
 
 Return ONLY valid JSON with this exact structure:
-{"title": "Your Compelling Title Here", "body": "First paragraph here.\\n\\nSecond paragraph with <strong>emphasis</strong>.\\n\\nThird paragraph."}`,
+{"title": "Your Compelling Title Here", "body": "First paragraph here.<br><br>Second paragraph with <strong>emphasis</strong>.<br><br>Third paragraph."}`,
         },
       ],
     });

@@ -220,6 +220,18 @@ async function uploadAsset(
  * If an imageUrl is provided, uploads it as an asset first.
  * API requires: space_id (int), title (string), description (string)
  */
+
+/**
+ * Sanitize HTML for Mighty Networks API.
+ * MN only allows style tags (bold, italic, etc.) — no links or images.
+ * Strips <a> tags (keeping inner text) and removes <img> tags entirely.
+ */
+function sanitizeMNHtml(html: string): string {
+  return html
+    .replace(/<a[^>]*>(.*?)<\/a>/gi, "$1") // Strip <a> tags, keep inner text
+    .replace(/<img[^>]*\/?>/gi, ""); // Remove <img> tags entirely
+}
+
 export async function publishToMightyNetworks(
   options: MightyNetworksPostOptions
 ): Promise<PostResult> {
@@ -239,7 +251,7 @@ export async function publishToMightyNetworks(
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,
-    description: options.body,
+    description: sanitizeMNHtml(options.body),
     post_type: "article",
   };
 
@@ -362,7 +374,7 @@ VOICE & CONTENT RULES:
 - Examples: "What's your experience with this?", "Drop your thoughts below", "Who else deals with this?"
 - Keep Kevin's direct, no-BS voice — NEVER say "trucker" (use "driver", "professional driver")
 - Use phrases like "proper human diet", "owner-operator of your health", "The Tribe"
-- If there's a product link, keep it but weave it naturally using <a href="...">link text</a>
+- If there's a product URL, mention the product name in bold but do NOT use <a> link tags — MN doesn't allow them. Just say something like "check out <strong>Product Name</strong> on the store"
 - Strip any emojis that feel too "social media" — a few are OK if natural
 
 Return ONLY valid JSON with this exact structure:

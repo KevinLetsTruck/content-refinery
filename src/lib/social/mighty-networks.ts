@@ -277,11 +277,13 @@ export async function publishToMightyNetworks(
   // Build the post payload
   // MN API only accepts: space_id, title, description, post_type
   // Do NOT add images/assets to the payload — MN rejects unknown fields
+  // Omit post_type to create a "quick post" (default) — quick posts display
+  // images inline, and the uploaded asset may auto-associate with quick posts
+  // but not articles (which have a separate hero image mechanism).
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,
     description: sanitizeMNHtml(options.body),
-    post_type: "article",
   };
 
   console.log(

@@ -275,55 +275,58 @@ export async function publishToMightyNetworks(
     options.body.length
   );
 
-  // Strategy: If we have an image, send the entire post as multipart/form-data
-  // with an "asset" file field (like Zapier does). JSON body rejects all image
-  // field names ("images", "image_url", "image" all return "Bad field").
-  // If multipart fails, fall back to JSON without image.
+  // Strategy: Upload asset first (proven to work), then create post via
+  // multipart/form-data with asset_id reference. JSON body rejects all image
+  // fields, and multipart with file blob returns 413 (too large).
+  // Using multipart with asset_id avoids both issues.
   let response: Response | null = null;
 
   if (options.imageUrl) {
-    try {
-      // Download image from R2/storage
-      console.log("[MightyNetworks] Downloading image for multipart post:", options.imageUrl.substring(0, 100));
-      const imageResponse = await fetch(options.imageUrl);
+    // Step 1: Upload asset to MN (proven reliable)
+    const asset = await uploadAsset(options.imageUrl);
 
-      if (imageResponse.ok) {
-        const imageBuffer = await imageResponse.arrayBuffer();
-        const imageBlob = new Blob([imageBuffer], { type: "image/png" });
+    if (asset) {
+      // Step 2: Try creating post via multipart with asset reference fields
+      // MN's JSON body validator rejects unknown fields, but multipart may accept them.
+      // Try field names in order: asset_id, asset, attachment_id, media_id, cover_image_id
+      const fieldNamesToTry = ["asset_id", "asset", "attachment_id", "media_id", "cover_image_id"];
 
-        // Build multipart form with text fields + asset file
-        const formData = new FormData();
-        formData.append("space_id", String(spaceId));
-        formData.append("title", options.title);
-        formData.append("description", sanitizedBody);
-        formData.append("asset", imageBlob, "image.png");
+      for (const fieldName of fieldNamesToTry) {
+        try {
+          const formData = new FormData();
+          formData.append("space_id", String(spaceId));
+          formData.append("title", options.title);
+          formData.append("description", sanitizedBody);
+          formData.append(fieldName, String(asset.id));
 
-        console.log("[MightyNetworks] Sending multipart post with asset file (" + imageBuffer.byteLength + " bytes)...");
+          console.log(`[MightyNetworks] Trying multipart post with '${fieldName}': ${asset.id}`);
 
-        response = await fetch(apiEndpoint, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${config.apiToken}`,
-            Accept: "application/json",
-            // Do NOT set Content-Type — fetch auto-sets multipart/form-data with boundary
-          },
-          body: formData,
-        });
+          response = await fetch(apiEndpoint, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${config.apiToken}`,
+              Accept: "application/json",
+            },
+            body: formData,
+          });
 
-        if (response.ok) {
-          console.log("[MightyNetworks] Multipart post with asset succeeded!");
-        } else {
+          if (response.ok) {
+            console.log(`[MightyNetworks] Multipart post with '${fieldName}' succeeded!`);
+            break; // Success — stop trying other field names
+          }
+
           const errorText = await response.text();
-          console.warn("[MightyNetworks] Multipart post failed:", response.status, errorText);
-          console.log("[MightyNetworks] Falling back to JSON post without image");
-          response = null; // Reset so we fall through to JSON
+          console.warn(`[MightyNetworks] Multipart '${fieldName}' failed:`, response.status, errorText.substring(0, 200));
+          response = null; // Reset for next attempt
+        } catch (err) {
+          console.warn(`[MightyNetworks] Multipart '${fieldName}' error:`, err);
+          response = null;
         }
-      } else {
-        console.warn("[MightyNetworks] Image download failed:", imageResponse.status);
       }
-    } catch (err) {
-      console.warn("[MightyNetworks] Image download/multipart error:", err);
-      response = null;
+
+      if (!response) {
+        console.log("[MightyNetworks] All multipart field names failed, falling back to JSON without image");
+      }
     }
   }
 

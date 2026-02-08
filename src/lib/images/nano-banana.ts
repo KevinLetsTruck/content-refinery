@@ -138,7 +138,7 @@ export async function createImagePromptWithAI(
   platform: string
 ): Promise<string> {
   // Use Gemini to generate a contextually-appropriate scene description
-  const analysisPrompt = `You are an expert visual director for Let's Truck, a health coaching brand for professional truck drivers.
+  const analysisPrompt = `You are an expert visual director creating images for social media posts.
 
 Analyze this social media post and create a scene description for an AI image generator.
 
@@ -148,20 +148,27 @@ ${contentText}
 POST TYPE: ${contentType}
 PLATFORM: ${platform}
 
-IMPORTANT CONTEXT:
-- Let's Truck serves professional truck drivers with health coaching
-- The brand is direct, no-BS, anti-establishment
-- Understand the SENTIMENT: Is this a warning? A celebration? Education? A wake-up call?
-- Match the visual MOOD to the message - don't show hopeful imagery for warnings about dangers
+CRITICAL RULE - MATCH THE IMAGE TO THE CONTENT TOPIC:
+- If the post is about NUTRITION, DIET, KETO, or FOOD → show food, ingredients, meals, cooking
+- If the post is about GUT HEALTH, PROBIOTICS, or SUPPLEMENTS → show supplements, healthy foods, wellness imagery
+- If the post is about SLEEP or RECOVERY → show restful, calm scenes
+- If the post is about HEART/CARDIOVASCULAR health → show circulation, vitality, blood flow concepts
+- If the post is about WEIGHT LOSS or TRANSFORMATION → show transformation, journey, progress
+- If the post is about MENTAL HEALTH or STRESS → show peace, clarity, nature
+- If the post is about TRUCKING INDUSTRY, REGULATIONS, or DRIVING → show trucks, highways, industry
+- ONLY show trucks/driving imagery if the post is specifically about trucking topics
+- The audience is professional truck drivers, but that does NOT mean every image needs a truck
+
+SENTIMENT MATCHING:
+- WARNING about dangers → dark/serious/cautionary imagery
+- EDUCATIONAL content → clear, informative visuals
+- INSPIRING content → uplifting, powerful imagery
+- STATISTICS → dramatic, impactful composition
 
 VISUAL REQUIREMENTS:
-- Create a scene that visually represents the core message
-- If the post is WARNING about something (like drug side effects, health dangers), use dark/serious/cautionary imagery
-- If the post is EDUCATIONAL, use clear, informative visuals
-- If the post is INSPIRING, use uplifting, powerful imagery
+- Create a scene that visually represents the CORE MESSAGE of the post
 - Include specific visual elements, camera angles, lighting, and mood
-- Reference trucking/driver lifestyle when relevant
-- NO TEXT in the image
+- NO TEXT in the image — pure visual imagery only
 
 Respond with ONLY the scene description (2-3 sentences), nothing else.`;
 

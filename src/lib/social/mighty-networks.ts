@@ -260,36 +260,9 @@ export async function publishToMightyNetworks(
   options: MightyNetworksPostOptions
 ): Promise<PostResult> {
   const config = getConfig();
-
-  // Upload image asset first to get MN-hosted URL
-  let asset: { id: number; url: string } | null = null;
-  if (options.imageUrl) {
-    asset = await uploadAsset(options.imageUrl);
-    if (asset) {
-      console.log("[MightyNetworks] Asset ready (id:", asset.id, "), creating post...");
-    } else {
-      console.warn("[MightyNetworks] Asset upload failed, creating post without image");
-    }
-  }
-
-  // Build the post payload — base fields only
-  const postPayload: Record<string, unknown> = {
-    space_id: parseInt(config.spaceId, 10),
-    title: options.title,
-    description: sanitizeMNHtml(options.body),
-  };
-
-  // Try undocumented image field if we have an uploaded asset.
-  // MN API docs don't list image fields, but Zapier's integration supports
-  // images — so there must be an undocumented field. We try candidates and
-  // if MN rejects with "Bad field:", we retry without it.
-  // Rejected: "images" (array), "image_url"
-  // Current candidate: "image" (Zapier error says "Asset must be an image")
-  const imageFieldName = "image";
-  if (asset) {
-    postPayload[imageFieldName] = asset.url;
-    console.log("[MightyNetworks] Trying field '" + imageFieldName + "':", asset.url.substring(0, 80));
-  }
+  const sanitizedBody = sanitizeMNHtml(options.body);
+  const apiEndpoint = `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`;
+  const spaceId = parseInt(config.spaceId, 10);
 
   console.log(
     "[MightyNetworks] Creating post in space:",
@@ -302,42 +275,80 @@ export async function publishToMightyNetworks(
     options.body.length
   );
 
-  const apiEndpoint = `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`;
-  const postHeaders = {
-    Authorization: `Bearer ${config.apiToken}`,
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
+  // Strategy: If we have an image, send the entire post as multipart/form-data
+  // with an "asset" file field (like Zapier does). JSON body rejects all image
+  // field names ("images", "image_url", "image" all return "Bad field").
+  // If multipart fails, fall back to JSON without image.
+  let response: Response | null = null;
 
-  let response = await fetch(apiEndpoint, {
-    method: "POST",
-    headers: postHeaders,
-    body: JSON.stringify(postPayload),
-  });
+  if (options.imageUrl) {
+    try {
+      // Download image from R2/storage
+      console.log("[MightyNetworks] Downloading image for multipart post:", options.imageUrl.substring(0, 100));
+      const imageResponse = await fetch(options.imageUrl);
 
-  // If "Bad field" error and we tried an image field, retry without it
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("[MightyNetworks] Post error:", response.status, errorText);
+      if (imageResponse.ok) {
+        const imageBuffer = await imageResponse.arrayBuffer();
+        const imageBlob = new Blob([imageBuffer], { type: "image/png" });
 
-    if (errorText.includes("Bad field") && asset && postPayload[imageFieldName]) {
-      console.warn("[MightyNetworks] '" + imageFieldName + "' rejected — retrying without image field");
-      delete postPayload[imageFieldName];
-      response = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: postHeaders,
-        body: JSON.stringify(postPayload),
-      });
+        // Build multipart form with text fields + asset file
+        const formData = new FormData();
+        formData.append("space_id", String(spaceId));
+        formData.append("title", options.title);
+        formData.append("description", sanitizedBody);
+        formData.append("asset", imageBlob, "image.png");
 
-      if (!response.ok) {
-        const retryErrorText = await response.text();
-        throw new Error(
-          `Mighty Networks API error (${response.status}): ${retryErrorText}`
-        );
+        console.log("[MightyNetworks] Sending multipart post with asset file (" + imageBuffer.byteLength + " bytes)...");
+
+        response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.apiToken}`,
+            Accept: "application/json",
+            // Do NOT set Content-Type — fetch auto-sets multipart/form-data with boundary
+          },
+          body: formData,
+        });
+
+        if (response.ok) {
+          console.log("[MightyNetworks] Multipart post with asset succeeded!");
+        } else {
+          const errorText = await response.text();
+          console.warn("[MightyNetworks] Multipart post failed:", response.status, errorText);
+          console.log("[MightyNetworks] Falling back to JSON post without image");
+          response = null; // Reset so we fall through to JSON
+        }
+      } else {
+        console.warn("[MightyNetworks] Image download failed:", imageResponse.status);
       }
-      console.log("[MightyNetworks] Retry succeeded (without image field)");
-    } else {
-      // Non-image-related error
+    } catch (err) {
+      console.warn("[MightyNetworks] Image download/multipart error:", err);
+      response = null;
+    }
+  }
+
+  // Fallback: JSON post without image (proven to work)
+  if (!response || !response.ok) {
+    const postPayload = {
+      space_id: spaceId,
+      title: options.title,
+      description: sanitizedBody,
+    };
+
+    response = await fetch(apiEndpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiToken}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(postPayload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[MightyNetworks] JSON post error:", response.status, errorText);
+
       let errorMessage = errorText;
       try {
         const errorJson = JSON.parse(errorText);

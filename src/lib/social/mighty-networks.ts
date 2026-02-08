@@ -301,14 +301,14 @@ export async function publishToMightyNetworks(
     options.body.length
   );
 
-  const postUrl = `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`;
+  const apiEndpoint = `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`;
   const postHeaders = {
     Authorization: `Bearer ${config.apiToken}`,
     "Content-Type": "application/json",
     Accept: "application/json",
   };
 
-  let response = await fetch(postUrl, {
+  let response = await fetch(apiEndpoint, {
     method: "POST",
     headers: postHeaders,
     body: JSON.stringify(postPayload),
@@ -322,7 +322,7 @@ export async function publishToMightyNetworks(
     if (errorText.includes("Bad field") && asset && postPayload[imageFieldName]) {
       console.warn("[MightyNetworks] '" + imageFieldName + "' rejected — retrying without image field");
       delete postPayload[imageFieldName];
-      response = await fetch(postUrl, {
+      response = await fetch(apiEndpoint, {
         method: "POST",
         headers: postHeaders,
         body: JSON.stringify(postPayload),

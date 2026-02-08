@@ -382,22 +382,30 @@ export default function CommunityPage() {
                   {stats.members.netGrowth?.[netPeriod] ?? 0}
                 </p>
                 <p className="text-sm text-[#999999] mt-1">Net Growth</p>
-                <div className="mt-2 flex gap-1">
+                <div className="mt-3 flex w-full">
                   {(
                     [
                       { key: "daily", label: "Day" },
-                      { key: "weekly", label: "Week" },
-                      { key: "monthly", label: "Month" },
+                      { key: "weekly", label: "Wk" },
+                      { key: "monthly", label: "Mo" },
                       { key: "ytd", label: "YTD" },
                     ] as { key: NetPeriod; label: string }[]
-                  ).map((tab) => (
+                  ).map((tab, i, arr) => (
                     <button
                       key={tab.key}
                       onClick={() => setNetPeriod(tab.key)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                      className={`flex-1 py-1 text-xs font-medium transition-colors ${
+                        i === 0 ? "rounded-l-md" : ""
+                      } ${
+                        i === arr.length - 1 ? "rounded-r-md" : ""
+                      } ${
                         netPeriod === tab.key
                           ? "bg-[#FF4500] text-white"
                           : "bg-[#252525] text-[#666666] hover:text-[#999999]"
+                      } ${
+                        i > 0 && netPeriod !== tab.key && netPeriod !== arr[i - 1]?.key
+                          ? "border-l border-[#333333]"
+                          : ""
                       }`}
                     >
                       {tab.label}

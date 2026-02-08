@@ -174,15 +174,13 @@ async function uploadAsset(
   try {
     const config = getConfig();
 
-    // Use JSON body instead of FormData so input_type sends as integer (not string)
-    // input_type: 0 = file upload, 1 = URL-based upload
-    // metadata.is_main_image tells MN to use this as the post's main image
-    const payload = {
-      asset_style: "post",
-      source_url: imageUrl,
-      input_type: 1,
-      metadata: { is_main_image: true },
-    };
+    // MN asset upload requires multipart/form-data (not JSON body).
+    // Omit input_type — MN infers it from source_url presence.
+    // FormData stringifies integers which causes "Invalid input_type" errors.
+    // Proven to work: Feb 8 18:34 upload succeeded with id 149939655 using this approach.
+    const formData = new FormData();
+    formData.append("asset_style", "post");
+    formData.append("source_url", imageUrl);
 
     console.log("[MightyNetworks] Uploading asset from URL:", imageUrl.substring(0, 100));
 
@@ -192,10 +190,10 @@ async function uploadAsset(
         method: "POST",
         headers: {
           Authorization: `Bearer ${config.apiToken}`,
-          "Content-Type": "application/json",
           Accept: "application/json",
+          // Do NOT set Content-Type — fetch auto-sets multipart/form-data with boundary
         },
-        body: JSON.stringify(payload),
+        body: formData,
       }
     );
 
@@ -263,13 +261,22 @@ export async function publishToMightyNetworks(
 ): Promise<PostResult> {
   const config = getConfig();
 
-  // NOTE: MN Admin API has no way to attach images to posts.
-  // The asset upload endpoint works, but there's no field in the post creation
-  // or update endpoints to associate an asset with a post. The `images` array
-  // appears in the response but not the request schema. Skipping image upload.
+  // Upload image asset first — MN may auto-associate asset with the next post
+  // when asset_style is "post". Previously untested with both steps succeeding
+  // together (asset upload worked at 18:34, post creation worked at 18:55,
+  // but never both in the same request).
+  if (options.imageUrl) {
+    const asset = await uploadAsset(options.imageUrl);
+    if (asset) {
+      console.log("[MightyNetworks] Asset ready (id:", asset.id, "), creating post...");
+    } else {
+      console.warn("[MightyNetworks] Asset upload failed, creating post without image");
+    }
+  }
 
   // Build the post payload
   // MN API only accepts: space_id, title, description, post_type
+  // Do NOT add images/assets to the payload — MN rejects unknown fields
   const postPayload: Record<string, unknown> = {
     space_id: parseInt(config.spaceId, 10),
     title: options.title,

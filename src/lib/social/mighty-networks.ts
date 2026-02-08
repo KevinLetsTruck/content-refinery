@@ -216,14 +216,61 @@ async function uploadAsset(
 }
 
 /**
- * Publish a post to the configured Mighty Networks space
+ * Publish a post via Zapier webhook bridge.
  *
- * Uses POST /admin/v1/networks/{network_id}/posts to create a new post.
- * The post will appear in the specified space (e.g., "News").
+ * The MN Admin API does not support attaching images to posts (all field names
+ * are rejected). Zapier's native MN integration has an "Asset" field that works
+ * via a proprietary API channel. We POST to a Zapier Catch Hook webhook, which
+ * triggers a Zap that creates the MN post with the image.
  *
- * If an imageUrl is provided, uploads it as an asset first.
- * API requires: space_id (int), title (string), description (string)
+ * Requires ZAPIER_MN_WEBHOOK_URL environment variable.
  */
+async function publishViaZapier(
+  options: MightyNetworksPostOptions
+): Promise<PostResult> {
+  const webhookUrl = process.env.ZAPIER_MN_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error("ZAPIER_MN_WEBHOOK_URL environment variable is not set");
+  }
+
+  const config = getConfig();
+  const sanitizedBody = sanitizeMNHtml(options.body);
+
+  console.log(
+    "[MightyNetworks] Sending to Zapier bridge — title:",
+    options.title,
+    "body length:",
+    sanitizedBody.length,
+    "imageUrl:",
+    options.imageUrl?.substring(0, 80)
+  );
+
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: options.title,
+      body: sanitizedBody,
+      imageUrl: options.imageUrl,
+      spaceId: parseInt(config.spaceId, 10),
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("[MightyNetworks] Zapier webhook error:", response.status, errorText);
+    throw new Error(`Zapier webhook error (${response.status}): ${errorText}`);
+  }
+
+  console.log("[MightyNetworks] Zapier bridge accepted the post");
+
+  // Zapier returns a generic 200 — no post ID or permalink available
+  return {
+    id: `zapier-${Date.now()}`,
+    url: config.networkUrl,
+    platform: "mighty_networks",
+  };
+}
 
 /**
  * Sanitize HTML for Mighty Networks API.
@@ -259,112 +306,72 @@ function sanitizeMNHtml(html: string): string {
 export async function publishToMightyNetworks(
   options: MightyNetworksPostOptions
 ): Promise<PostResult> {
+  // If we have an image and Zapier is configured, route through Zapier.
+  // The MN Admin API does not support attaching images to posts (exhaustively
+  // tested: all field names rejected). Zapier's native MN integration has an
+  // "Asset" field that works via a proprietary API channel.
+  if (options.imageUrl && process.env.ZAPIER_MN_WEBHOOK_URL) {
+    try {
+      console.log("[MightyNetworks] Using Zapier bridge for image post");
+      return await publishViaZapier(options);
+    } catch (error) {
+      console.error(
+        "[MightyNetworks] Zapier bridge failed, falling back to direct API (without image):",
+        error
+      );
+      // Fall through to direct API without image
+    }
+  }
+
+  // Direct API: JSON post (space_id, title, description) — no image support
   const config = getConfig();
   const sanitizedBody = sanitizeMNHtml(options.body);
   const apiEndpoint = `${MN_API_BASE}/admin/v1/networks/${config.networkId}/posts`;
   const spaceId = parseInt(config.spaceId, 10);
 
   console.log(
-    "[MightyNetworks] Creating post in space:",
+    "[MightyNetworks] Creating post via direct API in space:",
     config.spaceId,
     "network:",
     config.networkId,
     "title:",
     options.title,
     "body length:",
-    options.body.length
+    sanitizedBody.length
   );
 
-  // Strategy: Upload asset first (proven to work), then create post via
-  // multipart/form-data with asset_id reference. JSON body rejects all image
-  // fields, and multipart with file blob returns 413 (too large).
-  // Using multipart with asset_id avoids both issues.
-  let response: Response | null = null;
+  const postPayload = {
+    space_id: spaceId,
+    title: options.title,
+    description: sanitizedBody,
+  };
 
-  if (options.imageUrl) {
-    // Step 1: Upload asset to MN (proven reliable)
-    const asset = await uploadAsset(options.imageUrl);
+  const response = await fetch(apiEndpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiToken}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(postPayload),
+  });
 
-    if (asset) {
-      // Step 2: Try creating post via multipart with asset reference fields
-      // MN's JSON body validator rejects unknown fields, but multipart may accept them.
-      // Try field names in order: asset_id, asset, attachment_id, media_id, cover_image_id
-      const fieldNamesToTry = ["asset_id", "asset", "attachment_id", "media_id", "cover_image_id"];
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("[MightyNetworks] Post error:", response.status, errorText);
 
-      for (const fieldName of fieldNamesToTry) {
-        try {
-          const formData = new FormData();
-          formData.append("space_id", String(spaceId));
-          formData.append("title", options.title);
-          formData.append("description", sanitizedBody);
-          formData.append(fieldName, String(asset.id));
-
-          console.log(`[MightyNetworks] Trying multipart post with '${fieldName}': ${asset.id}`);
-
-          response = await fetch(apiEndpoint, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${config.apiToken}`,
-              Accept: "application/json",
-            },
-            body: formData,
-          });
-
-          if (response.ok) {
-            console.log(`[MightyNetworks] Multipart post with '${fieldName}' succeeded!`);
-            break; // Success — stop trying other field names
-          }
-
-          const errorText = await response.text();
-          console.warn(`[MightyNetworks] Multipart '${fieldName}' failed:`, response.status, errorText.substring(0, 200));
-          response = null; // Reset for next attempt
-        } catch (err) {
-          console.warn(`[MightyNetworks] Multipart '${fieldName}' error:`, err);
-          response = null;
-        }
-      }
-
-      if (!response) {
-        console.log("[MightyNetworks] All multipart field names failed, falling back to JSON without image");
-      }
+    let errorMessage = errorText;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage =
+        errorJson.message || errorJson.error || JSON.stringify(errorJson);
+    } catch {
+      // Use raw text
     }
-  }
 
-  // Fallback: JSON post without image (proven to work)
-  if (!response || !response.ok) {
-    const postPayload = {
-      space_id: spaceId,
-      title: options.title,
-      description: sanitizedBody,
-    };
-
-    response = await fetch(apiEndpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.apiToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(postPayload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[MightyNetworks] JSON post error:", response.status, errorText);
-
-      let errorMessage = errorText;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage =
-          errorJson.message || errorJson.error || JSON.stringify(errorJson);
-      } catch {
-        // Use raw text
-      }
-
-      throw new Error(
-        `Mighty Networks API error (${response.status}): ${errorMessage}`
-      );
-    }
+    throw new Error(
+      `Mighty Networks API error (${response.status}): ${errorMessage}`
+    );
   }
 
   const data = await response.json();

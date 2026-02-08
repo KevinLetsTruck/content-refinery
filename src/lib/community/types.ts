@@ -3,6 +3,13 @@
  *
  * TypeScript interfaces for Mighty Networks community data,
  * revenue calculations, and AI advisor insights.
+ *
+ * MN API Response Structure (from live testing):
+ * - Subscriptions: { items: [{ member_id, email, plan: { id, name, amount, interval }, subscription: { canceled_at, ... } }] }
+ * - Plans: { items: [{ id, name, status, pricing_type }] } — NO amount field
+ * - Members: { items: [{ id, email, first_name, last_name, referral_count, ... }] }
+ * - Purchases: { items: [{ member_id, plan: { amount, interval: "one_time" }, purchase: { ... } }] }
+ * - Tags: { items: [{ id, title, description, color }] } — uses 'title' not 'name'
  */
 
 export interface CommunityStats {
@@ -63,11 +70,12 @@ export interface CommunityInsight {
   data?: Record<string, unknown>;
 }
 
-// Raw MN API response types
+// ============================================
+// Raw MN API response types (from live API testing)
+// ============================================
 
 export interface MNMember {
   id: number;
-  name?: string;
   first_name?: string;
   last_name?: string;
   email?: string;
@@ -75,55 +83,89 @@ export interface MNMember {
   referral_count?: number;
   ambassador_level?: string;
   location?: string;
-  status?: string;
+  permalink?: string;
 }
 
-export interface MNSubscription {
-  id: number;
-  member_id?: number;
-  plan_id?: number;
-  plan_name?: string;
-  amount?: number; // cents
-  interval?: string; // "month" | "year"
-  status?: string;
-  canceled_at?: string | null;
+/**
+ * MN Subscription item — each item contains member info (flat),
+ * a nested `plan` object with pricing, and a nested `subscription` object.
+ */
+export interface MNSubscriptionItem {
+  member_id: number;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  referral_count?: number;
   created_at?: string;
-  current_period_end?: string;
+  // Nested plan with pricing info
+  plan: {
+    id: number;
+    name: string;
+    amount: number; // cents
+    currency: string; // "usd"
+    interval: string; // "month" | "year"
+    type: string; // "subscription"
+    has_free_trial?: boolean;
+  };
+  // Nested subscription with status
+  subscription: {
+    id: number;
+    current_period_start?: string;
+    current_period_end?: string;
+    payment_platform?: string;
+    canceled_at: string | null;
+    purchased_at?: string;
+    trial_start?: string | null;
+    trial_end?: string | null;
+  };
 }
 
-export interface MNPurchase {
-  id: number;
-  member_id?: number;
-  amount?: number; // cents
-  description?: string;
-  created_at?: string;
+/**
+ * MN Purchase item — similar structure to subscription but with
+ * member_ prefixed fields and a nested purchase object
+ */
+export interface MNPurchaseItem {
+  member_id: number;
+  member_email?: string;
+  member_first_name?: string;
+  member_last_name?: string;
+  // Nested plan info
+  plan: {
+    id: number;
+    name: string;
+    amount: number; // cents
+    currency: string;
+    interval: string; // "one_time"
+    type: string; // "one-time-payment"
+  };
+  // Nested purchase info
+  purchase: {
+    id: number;
+    purchased_at?: string;
+    payment_platform?: string;
+  };
 }
 
+/**
+ * MN Plan — from /plans endpoint.
+ * Note: This does NOT include pricing info. Pricing comes from subscriptions.
+ */
 export interface MNPlan {
   id: number;
   name: string;
-  amount?: number; // cents
-  interval?: string;
-  status?: string;
-  member_count?: number;
+  description?: string;
+  status: string; // "visible" | "hidden"
+  pricing_type: string; // "subscription" | "free" | "nonpaid"
+  visible_to_members?: boolean;
+  permalink?: string;
 }
 
+/**
+ * MN Tag — uses 'title' not 'name'
+ */
 export interface MNTag {
   id: number;
-  name: string;
-  member_count?: number;
-}
-
-export interface MNPaginatedResponse<T> {
-  items?: T[];
-  data?: T[];
-  links?: {
-    next?: string;
-    prev?: string;
-  };
-  meta?: {
-    total?: number;
-    page?: number;
-    per_page?: number;
-  };
+  title: string; // NOT 'name'
+  description?: string;
+  color?: string;
 }

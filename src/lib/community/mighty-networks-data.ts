@@ -4,6 +4,12 @@
  * Pulls member stats, subscription/revenue data, and engagement metrics
  * from the Mighty Networks Admin API for the Community Intelligence Dashboard.
  *
+ * KEY: MN API uses nested objects:
+ *   - Subscriptions: item.plan.amount, item.subscription.canceled_at
+ *   - Purchases: item.plan.amount, item.purchase.purchased_at
+ *   - Tags: item.title (NOT item.name)
+ *   - Plans endpoint has NO pricing — pricing comes from subscriptions
+ *
  * Reuses auth/config from the existing MN publishing client.
  */
 
@@ -16,8 +22,8 @@ import {
 import type {
   CommunityStats,
   MNMember,
-  MNSubscription,
-  MNPurchase,
+  MNSubscriptionItem,
+  MNPurchaseItem,
   MNPlan,
   MNTag,
   PlanBreakdown,
@@ -55,7 +61,7 @@ async function mnGet<T>(path: string): Promise<T> {
 
 /**
  * Extract items from a paginated MN API response
- * MN returns { items: [...] } or raw arrays depending on endpoint
+ * MN returns { items: [...] } for all endpoints
  */
 function extractItems<T>(data: unknown): T[] {
   if (Array.isArray(data)) return data;
@@ -94,25 +100,39 @@ export async function getMembers(limit = 100): Promise<MNMember[]> {
 }
 
 /**
- * Fetch all subscriptions
+ * Fetch all subscriptions (with nested plan + subscription objects)
  */
-export async function getSubscriptions(): Promise<MNSubscription[]> {
-  try {
-    const data = await mnGet<unknown>("/subscriptions?per_page=100");
-    return extractItems<MNSubscription>(data);
-  } catch (error) {
-    console.error("[Community] Error fetching subscriptions:", error);
-    return [];
+export async function getSubscriptions(): Promise<MNSubscriptionItem[]> {
+  const allSubs: MNSubscriptionItem[] = [];
+  let page = 1;
+
+  while (page <= 10) {
+    try {
+      const data = await mnGet<unknown>(`/subscriptions?page=${page}&per_page=100`);
+      const items = extractItems<MNSubscriptionItem>(data);
+
+      if (items.length === 0) break;
+
+      allSubs.push(...items);
+      if (items.length < 100) break;
+
+      page++;
+    } catch (error) {
+      console.error("[Community] Error fetching subscriptions page", page, error);
+      break;
+    }
   }
+
+  return allSubs;
 }
 
 /**
  * Fetch all purchases (one-time payments)
  */
-export async function getPurchases(): Promise<MNPurchase[]> {
+export async function getPurchases(): Promise<MNPurchaseItem[]> {
   try {
     const data = await mnGet<unknown>("/purchases?per_page=100");
-    return extractItems<MNPurchase>(data);
+    return extractItems<MNPurchaseItem>(data);
   } catch (error) {
     console.error("[Community] Error fetching purchases:", error);
     return [];
@@ -120,7 +140,7 @@ export async function getPurchases(): Promise<MNPurchase[]> {
 }
 
 /**
- * Fetch all available plans
+ * Fetch all available plans (no pricing info — just names and statuses)
  */
 export async function getPlans(): Promise<MNPlan[]> {
   try {
@@ -133,7 +153,7 @@ export async function getPlans(): Promise<MNPlan[]> {
 }
 
 /**
- * Fetch all tags/segments
+ * Fetch all tags/segments (uses 'title' not 'name')
  */
 export async function getTags(): Promise<MNTag[]> {
   try {
@@ -147,11 +167,18 @@ export async function getTags(): Promise<MNTag[]> {
 
 /**
  * Calculate community statistics from raw MN API data
+ *
+ * Key field mappings (from live API testing):
+ *   - sub.plan.amount (cents) — subscription price
+ *   - sub.plan.interval — "month" or "year"
+ *   - sub.subscription.canceled_at — null = active, date = canceled
+ *   - purchase.plan.amount (cents) — one-time payment amount
+ *   - tag.title — tag name (NOT tag.name)
  */
 function calculateStats(
   members: MNMember[],
-  subscriptions: MNSubscription[],
-  purchases: MNPurchase[],
+  subscriptions: MNSubscriptionItem[],
+  purchases: MNPurchaseItem[],
   plans: MNPlan[],
   tags: MNTag[]
 ): CommunityStats {
@@ -167,16 +194,22 @@ function calculateStats(
   const new7d = members.filter(
     (m) => new Date(m.created_at) >= sevenDaysAgo
   ).length;
-  const growthRate =
-    totalMembers > 0 ? ((new30d / totalMembers) * 100) : 0;
+  const growthRate = totalMembers > 0 ? (new30d / totalMembers) * 100 : 0;
 
-  // --- Subscription Stats ---
-  const activeSubs = subscriptions.filter((s) => !s.canceled_at);
-  const canceledSubs = subscriptions.filter((s) => !!s.canceled_at);
+  // --- Subscription Stats (using nested objects) ---
+  // Active = subscription.canceled_at is null
+  const activeSubs = subscriptions.filter(
+    (s) => !s.subscription?.canceled_at
+  );
+  const canceledSubs = subscriptions.filter(
+    (s) => !!s.subscription?.canceled_at
+  );
 
   // Churn: canceled in last 30 days / (active + canceled in last 30 days)
   const canceledLast30d = canceledSubs.filter(
-    (s) => s.canceled_at && new Date(s.canceled_at) >= thirtyDaysAgo
+    (s) =>
+      s.subscription?.canceled_at &&
+      new Date(s.subscription.canceled_at) >= thirtyDaysAgo
   ).length;
   const churnRate =
     activeSubs.length + canceledLast30d > 0
@@ -184,11 +217,12 @@ function calculateStats(
       : 0;
 
   // --- Revenue Calculations ---
-  // MN amounts are in cents
+  // Price is in sub.plan.amount (cents)
   let mrr = 0;
   activeSubs.forEach((sub) => {
-    const amountDollars = (sub.amount || 0) / 100;
-    if (sub.interval === "year" || sub.interval === "annual") {
+    const amountDollars = (sub.plan?.amount || 0) / 100;
+    const interval = sub.plan?.interval || "month";
+    if (interval === "year" || interval === "annual") {
       mrr += amountDollars / 12;
     } else {
       mrr += amountDollars;
@@ -197,62 +231,86 @@ function calculateStats(
 
   const arr = mrr * 12;
 
-  // Total revenue from all purchases
+  // Total revenue from one-time purchases
   const totalPurchaseRevenue = purchases.reduce(
-    (sum, p) => sum + (p.amount || 0) / 100,
+    (sum, p) => sum + (p.plan?.amount || 0) / 100,
     0
   );
-  // Total subscription revenue (rough: active subs * their amount)
+
+  // Estimate total sub revenue (all subs * their plan amount)
   const totalSubRevenue = subscriptions.reduce(
-    (sum, s) => sum + (s.amount || 0) / 100,
+    (sum, s) => sum + (s.plan?.amount || 0) / 100,
     0
   );
   const totalRevenue = totalPurchaseRevenue + totalSubRevenue;
 
-  const avgRevenuePerMember =
-    totalMembers > 0 ? mrr / totalMembers : 0;
+  const avgRevenuePerMember = totalMembers > 0 ? mrr / totalMembers : 0;
 
-  // --- Plan Breakdown ---
-  const planBreakdown: PlanBreakdown[] = plans.map((plan) => {
-    const planSubs = activeSubs.filter((s) => s.plan_id === plan.id);
-    const count = plan.member_count || planSubs.length;
-    const amountDollars = (plan.amount || 0) / 100;
-    const interval = plan.interval || "month";
-    const monthlyRevenue =
-      interval === "year" || interval === "annual"
-        ? (amountDollars / 12) * count
-        : amountDollars * count;
+  // --- Plan Breakdown (derived from subscription data, not plans endpoint) ---
+  // Group active subscriptions by plan name to get counts and revenue
+  const planMap = new Map<
+    string,
+    { name: string; count: number; amount: number; interval: string }
+  >();
 
-    return {
-      name: plan.name,
-      count,
-      amount: amountDollars,
-      interval,
-      revenue: monthlyRevenue,
-    };
+  activeSubs.forEach((sub) => {
+    const planName = sub.plan?.name || "Unknown Plan";
+    const amount = (sub.plan?.amount || 0) / 100;
+    const interval = sub.plan?.interval || "month";
+
+    const existing = planMap.get(planName);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      planMap.set(planName, { name: planName, count: 1, amount, interval });
+    }
   });
 
-  // --- Top Referrers ---
+  const planBreakdown: PlanBreakdown[] = Array.from(planMap.values())
+    .map((plan) => {
+      const monthlyRevenue =
+        plan.interval === "year" || plan.interval === "annual"
+          ? (plan.amount / 12) * plan.count
+          : plan.amount * plan.count;
+      return {
+        name: plan.name,
+        count: plan.count,
+        amount: plan.amount,
+        interval: plan.interval,
+        revenue: Math.round(monthlyRevenue * 100) / 100,
+      };
+    })
+    .sort((a, b) => b.revenue - a.revenue);
+
+  // --- Top Referrers (from members data) ---
   const topReferrers: Referrer[] = members
     .filter((m) => (m.referral_count || 0) > 0)
     .sort((a, b) => (b.referral_count || 0) - (a.referral_count || 0))
     .slice(0, 10)
     .map((m) => ({
       id: String(m.id),
-      name: m.name || `${m.first_name || ""} ${m.last_name || ""}`.trim() || "Unknown",
+      name:
+        `${m.first_name || ""} ${m.last_name || ""}`.trim() || "Unknown",
       referralCount: m.referral_count || 0,
     }));
 
-  // --- Tag Distribution ---
-  const tagDistribution: TagCount[] = tags
-    .filter((t) => (t.member_count || 0) > 0)
-    .sort((a, b) => (b.member_count || 0) - (a.member_count || 0))
-    .slice(0, 15)
-    .map((t) => ({
-      id: String(t.id),
-      name: t.name,
-      count: t.member_count || 0,
-    }));
+  // --- Tag Distribution (uses 'title' not 'name', no member_count) ---
+  // Tags don't have member_count from the API, so just list them
+  const tagDistribution: TagCount[] = tags.slice(0, 15).map((t) => ({
+    id: String(t.id),
+    name: t.title, // MN uses 'title' not 'name'
+    count: 0, // Tags endpoint doesn't provide member_count
+  }));
+
+  // Log key metrics for debugging
+  console.log(
+    "[Community] Calculated:",
+    `MRR=$${mrr.toFixed(2)},`,
+    `Active=${activeSubs.length},`,
+    `Canceled=${canceledSubs.length},`,
+    `Plans=${planBreakdown.length},`,
+    `Referrers=${topReferrers.length}`
+  );
 
   return {
     members: {

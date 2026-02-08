@@ -400,16 +400,16 @@ export default function CommunityPage() {
                 </div>
               )}
 
-              {/* Tag Distribution Bar Chart */}
-              {stats.engagement.tagDistribution.length > 0 && (
+              {/* Subscribers by Plan Bar Chart */}
+              {stats.subscriptions.planBreakdown.length > 0 && (
                 <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-white mb-4">
-                    Member Segments (Tags)
+                    Subscribers by Plan
                   </h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={stats.engagement.tagDistribution.slice(0, 8)}
+                        data={stats.subscriptions.planBreakdown}
                         layout="vertical"
                         margin={{ left: 10, right: 20 }}
                       >
@@ -433,7 +433,7 @@ export default function CommunityPage() {
                             borderRadius: "8px",
                             color: "#fff",
                           }}
-                          formatter={(value: number) => [value, "Members"]}
+                          formatter={(value: number) => [value, "Subscribers"]}
                         />
                         <Bar
                           dataKey="count"
@@ -518,43 +518,22 @@ export default function CommunityPage() {
                 )}
               </div>
 
-              {/* Tag Distribution List */}
+              {/* Community Tags */}
               <div className="bg-[#1A1A1A] border border-[#333333] rounded-xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                   <Tag className="h-5 w-5 text-green-400" />
                   Community Tags
                 </h3>
                 {stats.engagement.tagDistribution.length > 0 ? (
-                  <div className="space-y-3">
-                    {stats.engagement.tagDistribution
-                      .slice(0, 8)
-                      .map((tag) => (
-                        <div
-                          key={tag.id}
-                          className="flex items-center justify-between py-2 border-b border-[#252525] last:border-0"
-                        >
-                          <span className="text-sm text-white">{tag.name}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 bg-[#252525] rounded-full h-2">
-                              <div
-                                className="bg-[#FF4500] h-2 rounded-full"
-                                style={{
-                                  width: `${Math.min(
-                                    (tag.count /
-                                      (stats.engagement.tagDistribution[0]
-                                        ?.count || 1)) *
-                                      100,
-                                    100
-                                  )}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="text-xs text-[#999999] w-8 text-right">
-                              {tag.count}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                  <div className="flex flex-wrap gap-2">
+                    {stats.engagement.tagDistribution.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="px-3 py-1.5 rounded-full text-sm bg-[#252525] text-[#999999] border border-[#333333]"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-sm text-[#666666]">No tags found</p>

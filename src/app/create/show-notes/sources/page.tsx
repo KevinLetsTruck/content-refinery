@@ -22,6 +22,8 @@ import {
   ExternalLink,
   AlertCircle,
   FileText,
+  FlaskConical,
+  Upload,
 } from "lucide-react";
 
 // ============================================
@@ -90,9 +92,10 @@ const TYPE_BADGES: Record<
   idea: { label: "Idea", color: "bg-[#F4A300]/20 text-[#F4A300]" },
   guide: { label: "Guide", color: "bg-purple-500/20 text-purple-400" },
   episode: { label: "Episode", color: "bg-rose-500/20 text-rose-400" },
+  research: { label: "Research", color: "bg-cyan-500/20 text-cyan-400" },
 };
 
-type AddTab = "feedly" | "url" | "idea" | "guide" | "episode";
+type AddTab = "feedly" | "url" | "idea" | "guide" | "episode" | "research";
 
 // ============================================
 // Component
@@ -140,6 +143,12 @@ export default function ShowNotesSourcesPage() {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [episodesLoading, setEpisodesLoading] = useState(false);
   const [loadingEpisodeId, setLoadingEpisodeId] = useState<string | null>(null);
+
+  // Research tab state
+  const [researchMode, setResearchMode] = useState<"paste" | "upload">("paste");
+  const [researchTitle, setResearchTitle] = useState("");
+  const [researchContent, setResearchContent] = useState("");
+  const [uploadFileName, setUploadFileName] = useState<string | null>(null);
 
   // Ensure we're on step 3
   useEffect(() => {
@@ -382,6 +391,71 @@ export default function ShowNotesSourcesPage() {
   };
 
   // ============================================
+  // Research handlers
+  // ============================================
+
+  const handleAddResearch = () => {
+    if (!researchContent.trim()) return;
+
+    // Auto-title: use manual title if provided, otherwise first line of content
+    let title = researchTitle.trim();
+    if (!title) {
+      const firstLine = researchContent.trim().split("\n")[0];
+      // Strip markdown heading markers
+      title = firstLine.replace(/^#+\s*/, "").substring(0, 120);
+    }
+
+    const item: ShowNotesSourceItem = {
+      id: crypto.randomUUID(),
+      type: "research",
+      title,
+      content: researchContent.trim(),
+      metadata: uploadFileName ? { fileName: uploadFileName } : undefined,
+    };
+    addShowNotesSource(item);
+
+    // Reset form
+    setResearchTitle("");
+    setResearchContent("");
+    setUploadFileName(null);
+  };
+
+  const handleResearchFileUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = [".md", ".txt", ".markdown"];
+    const ext = "." + file.name.split(".").pop()?.toLowerCase();
+    if (!validTypes.includes(ext)) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        setResearchContent(text);
+        // Use filename (minus extension) as default title
+        const nameWithoutExt = file.name.replace(
+          /\.(md|txt|markdown)$/i,
+          ""
+        );
+        if (!researchTitle.trim()) {
+          setResearchTitle(nameWithoutExt);
+        }
+        setUploadFileName(file.name);
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset the input so the same file can be selected again
+    e.target.value = "";
+  };
+
+  // ============================================
   // Move handlers
   // ============================================
 
@@ -437,6 +511,11 @@ export default function ShowNotesSourcesPage() {
     { key: "idea", label: "Idea", icon: <Lightbulb className="h-4 w-4" /> },
     { key: "guide", label: "Guide", icon: <BookOpen className="h-4 w-4" /> },
     { key: "episode", label: "Episode", icon: <Mic className="h-4 w-4" /> },
+    {
+      key: "research",
+      label: "Research",
+      icon: <FlaskConical className="h-4 w-4" />,
+    },
   ];
 
   // ============================================
@@ -998,6 +1077,127 @@ export default function ShowNotesSourcesPage() {
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ============ Research Tab ============ */}
+            {activeTab === "research" && (
+              <div>
+                <label className="block text-sm font-medium mb-2 text-white">
+                  Add research notes
+                </label>
+                <p className="text-xs text-[#666666] mb-4">
+                  Paste an article summary from your Claude research project, or
+                  upload a .md/.txt file.
+                </p>
+
+                {/* Mode Toggle: Paste / Upload */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setResearchMode("paste")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors ${
+                      researchMode === "paste"
+                        ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                        : "bg-[#0D0D0D] border border-[#333333] text-[#888888] hover:border-[#444444]"
+                    }`}
+                  >
+                    <FlaskConical className="h-4 w-4" />
+                    Paste
+                  </button>
+                  <button
+                    onClick={() => setResearchMode("upload")}
+                    className={`flex items-center gap-2 px-4 py-2 rounded text-sm font-medium transition-colors ${
+                      researchMode === "upload"
+                        ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                        : "bg-[#0D0D0D] border border-[#333333] text-[#888888] hover:border-[#444444]"
+                    }`}
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload File
+                  </button>
+                </div>
+
+                {/* Title field (shared by both modes) */}
+                <div className="mb-3">
+                  <label className="block text-xs text-[#888888] mb-1">
+                    Title{" "}
+                    <span className="text-[#666666]">
+                      (optional — auto-detected from first line)
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={researchTitle}
+                    onChange={(e) => setResearchTitle(e.target.value)}
+                    placeholder="e.g., Nitric oxide and cardiovascular health in sedentary workers"
+                    className="w-full px-4 py-2 rounded border border-[#333333] bg-[#0D0D0D] text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/20 placeholder-[#666666]"
+                  />
+                </div>
+
+                {/* Paste mode */}
+                {researchMode === "paste" && (
+                  <div>
+                    <textarea
+                      value={researchContent}
+                      onChange={(e) => setResearchContent(e.target.value)}
+                      placeholder="Paste your article research/analysis here..."
+                      rows={10}
+                      className="w-full px-4 py-3 rounded border border-[#333333] bg-[#0D0D0D] text-white text-sm resize-y focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/20 placeholder-[#666666] font-mono"
+                    />
+                    {researchContent && (
+                      <p className="text-xs text-[#666666] mt-1">
+                        {researchContent.length.toLocaleString()} characters
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Upload mode */}
+                {researchMode === "upload" && (
+                  <div>
+                    <label className="flex flex-col items-center justify-center w-full h-32 rounded border-2 border-dashed border-[#333333] bg-[#0D0D0D] hover:border-cyan-400/50 hover:bg-cyan-500/5 transition-colors cursor-pointer">
+                      <Upload className="h-8 w-8 text-[#444444] mb-2" />
+                      <span className="text-sm text-[#888888]">
+                        {uploadFileName
+                          ? uploadFileName
+                          : "Drop a .md or .txt file, or click to browse"}
+                      </span>
+                      <span className="text-xs text-[#666666] mt-1">
+                        Markdown and plain text files only
+                      </span>
+                      <input
+                        type="file"
+                        accept=".md,.txt,.markdown"
+                        onChange={handleResearchFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    {researchContent && (
+                      <div className="mt-3 p-3 rounded border border-[#333333] bg-[#0D0D0D] max-h-40 overflow-y-auto">
+                        <p className="text-xs text-[#888888] mb-1">
+                          Preview ({researchContent.length.toLocaleString()}{" "}
+                          characters):
+                        </p>
+                        <p className="text-xs text-[#666666] whitespace-pre-wrap line-clamp-6">
+                          {researchContent.substring(0, 500)}
+                          {researchContent.length > 500 ? "..." : ""}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Add button */}
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={handleAddResearch}
+                    disabled={!researchContent.trim()}
+                    className="flex items-center gap-2 px-4 py-2 rounded bg-[#F4A300] hover:bg-[#D48F00] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Research
+                  </button>
+                </div>
               </div>
             )}
           </div>

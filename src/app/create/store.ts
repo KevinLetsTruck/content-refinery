@@ -157,7 +157,7 @@ export type ShowName = 'tbb' | 'destination_health' | 'power_hour' | 'coffee_wit
 
 export interface ShowNotesSourceItem {
   id: string;
-  type: 'feedly_article' | 'url' | 'idea' | 'guide' | 'episode';
+  type: 'feedly_article' | 'url' | 'idea' | 'guide' | 'episode' | 'research';
   title: string;
   content: string;
   url?: string;
